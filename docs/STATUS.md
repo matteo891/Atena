@@ -9,6 +9,9 @@
 
 Infrastruttura di governance completata (ADR 0001–0008, git hooks attivi, navigazione bidirezionale). Nessun codice applicativo presente. In attesa delle prime istruzioni di progetto dal Leader.
 
+**Repository:** https://github.com/santacrocefrancesco00-ux/Atena
+**Milestone tag corrente:** `milestone/ADR-0001-0008` (commit `a796ce0`)
+
 ---
 
 ## Appena Completato
@@ -19,7 +22,7 @@ Infrastruttura di governance completata (ADR 0001–0008, git hooks attivi, navi
 | Git hooks attivi: pre-commit + commit-msg | ADR-0006 | CHG-2026-04-29-001 |
 | Navigazione bidirezionale: FILE-ADR-MAP, INDEX, CHG-ID convention | ADR-0001, 0004, 0005 | CHG-2026-04-29-001 |
 | docs/STATUS.md creato (questo file) | ADR-0008 | CHG-2026-04-29-001 |
-| Repo GitHub creata e pushata (prima versione) | ADR-0003 | CHG-2026-04-29-001 |
+| Repo GitHub creata e pushata (prima versione) | ADR-0003 | CHG-2026-04-29-001 — commit 5959ebd |
 
 ---
 

@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-001
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 5959ebd
 adr_ref: ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008
 ---
 
@@ -86,6 +86,6 @@ Sistema chiuso e auto-consistente: ogni nodo punta ad altri nodi. Gli hook git t
 ## Refs
 
 - ADR: [ADR-0001](../decisions/ADR-0001-meta-architettura-adr.md) → [ADR-0007](../decisions/ADR-0007-gitnexus-integration.md)
-- Commit: `[da aggiornare post-commit]`
+- Commit: `5959ebd`
 - Checkpoint successivo: `milestone/ADR-0001-0007` (primo milestone tag del progetto)
 - Issue / Task: —
