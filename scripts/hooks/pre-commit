@@ -1,0 +1,99 @@
+#!/bin/bash
+# ADR-0006: Git Hooks Enforcement
+# Verifica (1) change document, (2) struttura ADR prima di ogni commit.
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
+[ -z "$STAGED" ] && exit 0
+
+# ── Classifica i file in staging ──────────────────────────────────────────────
+NON_TRIVIAL_FILES=()
+NEW_ADR_FILES=()
+
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    # ADR files (subset dei non-triviali, ma gestiti separatamente)
+    if echo "$f" | grep -qE '^docs/decisions/ADR-[0-9]+-.*\.md$'; then
+        NEW_ADR_FILES+=("$f")
+    # File triviali: solo .md, docs/, .claude/, .gitnexus/, gitconfig
+    elif ! echo "$f" | grep -qE '(\.md$|^docs/|^\.claude/|^\.gitnexus/|^\.gitignore$|^\.gitattributes$)'; then
+        NON_TRIVIAL_FILES+=("$f")
+    fi
+done <<< "$STAGED"
+
+# ── Check 1: Change Document obbligatorio (ADR-0002, ADR-0004) ────────────────
+if [ ${#NON_TRIVIAL_FILES[@]} -gt 0 ]; then
+    TODAY=$(date +%Y-%m-%d)
+    CHANGE_DOC_FOUND=$(find docs/changes -maxdepth 1 -name "${TODAY}-*.md" \
+        ! -name "TEMPLATE.md" 2>/dev/null | head -1)
+
+    if [ -z "$CHANGE_DOC_FOUND" ]; then
+        echo ""
+        echo "ERROR: COMMIT BLOCCATO — ADR-0002 + ADR-0004"
+        echo "──────────────────────────────────────────────────────"
+        echo "File non-triviali in staging:"
+        for f in "${NON_TRIVIAL_FILES[@]}"; do
+            echo "  • $f"
+        done
+        echo ""
+        echo "Nessun change document trovato per oggi ($TODAY)."
+        echo ""
+        echo "Soluzione:"
+        echo "  1. Crea docs/changes/${TODAY}-NNN-slug.md"
+        echo "     (usa docs/changes/TEMPLATE.md come base)"
+        echo "  2. Esegui i test (ADR-0002)"
+        echo "  3. Richiedi permesso al Leader"
+        echo "  4. Riprova il commit"
+        echo "──────────────────────────────────────────────────────"
+        echo ""
+        exit 1
+    fi
+fi
+
+# ── Check 2: Struttura ADR (ADR-0001) ─────────────────────────────────────────
+if [ ${#NEW_ADR_FILES[@]} -gt 0 ]; then
+    REQUIRED=("## Contesto" "## Decisione" "## Conseguenze" "## Cross-References" "## Rollback")
+
+    for adr in "${NEW_ADR_FILES[@]}"; do
+        MISSING_SECTIONS=()
+
+        for section in "${REQUIRED[@]}"; do
+            if ! grep -q "^${section}" "$adr" 2>/dev/null; then
+                MISSING_SECTIONS+=("$section")
+            fi
+        done
+
+        if [ ${#MISSING_SECTIONS[@]} -gt 0 ]; then
+            echo ""
+            echo "ERROR: COMMIT BLOCCATO — ADR-0001 (struttura ADR)"
+            echo "──────────────────────────────────────────────────────"
+            echo "ADR malformato: $adr"
+            echo "Sezioni mancanti:"
+            for s in "${MISSING_SECTIONS[@]}"; do
+                echo "  • $s"
+            done
+            echo ""
+            echo "Consulta docs/decisions/TEMPLATE.md per il formato corretto."
+            echo "──────────────────────────────────────────────────────"
+            echo ""
+            exit 1
+        fi
+
+        # Verifica presenza in INDEX.md
+        ADR_ID=$(grep -m1 "^id:" "$adr" 2>/dev/null | sed 's/id:[[:space:]]*//' | tr -d '\r')
+        if [ -n "$ADR_ID" ] && [ -f "docs/decisions/INDEX.md" ]; then
+            if ! grep -q "$ADR_ID" docs/decisions/INDEX.md; then
+                echo ""
+                echo "ERROR: COMMIT BLOCCATO — ADR-0001 (INDEX.md)"
+                echo "──────────────────────────────────────────────────────"
+                echo "$ADR_ID non è referenziato in docs/decisions/INDEX.md."
+                echo ""
+                echo "Aggiorna INDEX.md prima di committare il nuovo ADR."
+                echo "──────────────────────────────────────────────────────"
+                echo ""
+                exit 1
+            fi
+        fi
+    done
+fi
+
+exit 0

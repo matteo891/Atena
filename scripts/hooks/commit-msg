@@ -1,0 +1,44 @@
+#!/bin/bash
+# ADR-0006 + ADR-0005: Valida il formato del commit message.
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE" 2>/dev/null || echo "")
+
+# Bypass: merge commits
+echo "$COMMIT_MSG" | grep -qE "^Merge " && exit 0
+
+# Bypass: revert commits
+echo "$COMMIT_MSG" | grep -qE "^Revert " && exit 0
+
+# Bypass: emergency commits (ADR-0002)
+echo "$COMMIT_MSG" | grep -q "\[EMERGENCY-NO-TEST\]" && exit 0
+
+# Bypass: commit triviali (docs, chore, ci)
+echo "$COMMIT_MSG" | grep -qE "^(docs|chore|ci)(\(|:)" && exit 0
+
+# Per tutti gli altri commit: CHG-ID obbligatorio (ADR-0005)
+if ! echo "$COMMIT_MSG" | grep -qE "CHG-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}"; then
+    echo ""
+    echo "ERROR: COMMIT BLOCCATO — ADR-0005 (commit convention)"
+    echo "──────────────────────────────────────────────────────"
+    echo "Il commit message non contiene un riferimento CHG-ID."
+    echo ""
+    echo "Formato richiesto nel footer:"
+    echo "  CHG-YYYY-MM-DD-NNN"
+    echo "  ADR-NNNN"
+    echo ""
+    echo "Esempio completo:"
+    echo "  feat(auth): add session token validation"
+    echo ""
+    echo "  CHG-$(date +%Y-%m-%d)-001"
+    echo "  ADR-0002"
+    echo ""
+    echo "Commit di documentazione/manutenzione? Usa il prefisso:"
+    echo "  docs(scope): descrizione"
+    echo "  chore(scope): descrizione"
+    echo "──────────────────────────────────────────────────────"
+    echo ""
+    exit 1
+fi
+
+exit 0
