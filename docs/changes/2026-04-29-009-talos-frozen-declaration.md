@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-009
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: <pending>
+status: Committed
+commit: 5f8d664
 adr_ref: ADR-0012
 ---
 
@@ -107,5 +107,5 @@ Test manuali documentati (governance — ADR-0011).
 - ADR: ADR-0012 (step [5] completato), ADR-0003 (proposta milestone tag), ADR-0009 (regime post-Frozen)
 - Vision: `PROJECT-RAW.md` — ora `Frozen`
 - Predecessori: CHG-007 (Round 4), CHG-008 (Round 5)
-- Commit: `<pending>`
+- Commit: `5f8d664`
 - Issue: ESP-006 (chiusa con questo CHG) → ESP-007 (proposta scomposizione aperta) + TAG-001 (suggerito)

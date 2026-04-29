@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `<pending CHG-009 backfill>`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `5f8d664`
 > **Sessione corrente:** TALOS — **`Frozen` dichiarato esplicitamente dal Leader** (Round 6, verbatim: *"dichiaro frozen"*). La vision è congelata: `frontmatter.status: Frozen`, `frozen_at: 2026-04-29`. Sblocco dello step [6] di ADR-0012: Claude può proporre in chat la scomposizione in ADR di stack + task ROADMAP, soggetta a validazione del Leader.
 
 ---
@@ -33,7 +33,7 @@ Governance hardened (ADR 0001–0012) + **vision TALOS `Frozen` dal 2026-04-29**
 | Backfill CHG-007 + fix repo URL al fork operativo `matteo891/Atena` | — | (parte di CHG-007) | `97f404f`, `2abe28e` |
 | **TALOS — Round 5: sweep finale, chiuse tutte le 17 lacune residue. Vision pronta per Frozen.** | 0012 | [CHG-008](changes/2026-04-29-008-talos-iterating-round-5-sweep-finale.md) | `08beebf` |
 | Backfill CHG-008 | — | (parte di CHG-008) | `8f7333d` |
-| **TALOS — Round 6: `Frozen` dichiarato esplicitamente dal Leader. Vision congelata.** | 0012 | [CHG-009](changes/2026-04-29-009-talos-frozen-declaration.md) | `<pending backfill>` |
+| **TALOS — Round 6: `Frozen` dichiarato esplicitamente dal Leader. Vision congelata.** | 0012 | [CHG-009](changes/2026-04-29-009-talos-frozen-declaration.md) | `5f8d664` |
 
 ---
 
