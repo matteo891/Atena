@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `<pending CHG-008 backfill>`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `08beebf`
 > **Sessione corrente:** TALOS — Iterating **Round 5 (sweep finale)**: chiuse tutte le 17 lacune residue in un colpo. Default proposti accettati al 100% tranne L02 = Opzione (a) budget di sessione e L14 = Streamlit. Formula manuale Fee_FBA fornita verbatim per L11b. **0 lacune aperte.** Vision pronta per dichiarazione esplicita di `Frozen`. Repo riallineato al fork `matteo891/Atena` (commit `2abe28e`).
 
 ---
@@ -31,7 +31,7 @@ Governance hardened (ADR 0001–0012) + vision **Iterating completato** su **TAL
 | **TALOS — Round 3: formula VGP, Keepa out-of-scope, L04b critica aperta, direttiva concisione → memory** | 0012 | [CHG-006](changes/2026-04-29-006-talos-iterating-round-3.md) | `7dee02b` |
 | **TALOS — Round 4: chiusa L04b (normalizzazione min-max [0,1] dei tre termini VGP). 0 critiche residue.** | 0012 | [CHG-007](changes/2026-04-29-007-talos-iterating-round-4.md) | `0cd9f1f` |
 | Backfill CHG-007 + fix repo URL al fork operativo `matteo891/Atena` | — | (parte di CHG-007) | `97f404f`, `2abe28e` |
-| **TALOS — Round 5: sweep finale, chiuse tutte le 17 lacune residue. Vision pronta per Frozen.** | 0012 | [CHG-008](changes/2026-04-29-008-talos-iterating-round-5-sweep-finale.md) | `<pending backfill>` |
+| **TALOS — Round 5: sweep finale, chiuse tutte le 17 lacune residue. Vision pronta per Frozen.** | 0012 | [CHG-008](changes/2026-04-29-008-talos-iterating-round-5-sweep-finale.md) | `08beebf` |
 
 ---
 

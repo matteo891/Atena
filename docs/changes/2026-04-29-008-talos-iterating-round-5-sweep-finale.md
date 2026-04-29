@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-008
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: <pending>
+status: Committed
+commit: 08beebf
 adr_ref: ADR-0012
 ---
 
@@ -135,5 +135,5 @@ Test manuali documentati (governance — ADR-0011).
 - ADR: ADR-0012
 - Vision: `PROJECT-RAW.md`
 - Predecessore: CHG-2026-04-29-007 (Round 4)
-- Commit: `<pending>`
+- Commit: `08beebf`
 - Issue: ESP-005 (chiusa con questo CHG) → ESP-006 (transizione Frozen aperta)
