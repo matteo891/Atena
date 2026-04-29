@@ -12,7 +12,7 @@
 
 Governance hardened (ADR 0001–0012) + vision in `Iterating` **Round 4** su **TALOS (Scaler 500k)**. **0 lacune critiche residue.** 17 importanti+forma da chiudere con sweep finale prima del Frozen. Dominio matematico del decisore VGP pienamente specificato (formula + normalizzazione).
 
-**Repository:** https://github.com/santacrocefrancesco00-ux/Atena
+**Repository:** https://github.com/matteo891/Atena (fork operativo del Leader; il repo originale `santacrocefrancesco00-ux/Atena` è del padre)
 **Milestone tag corrente:** `milestone/vision-protocol-v0.6.0` su commit `55ea55f` (restore point pre-esposizione)
 **Codename progetto:** TALOS — *Scaler 500k*
 
