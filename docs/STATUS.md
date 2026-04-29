@@ -13,8 +13,9 @@
 Governance hardened (ADR 0001–0011) e vision capture protocol attivo (ADR-0012). `PROJECT-RAW.md` esiste in root, status `Draft`, 16 lacune aperte da chiudere all'esposizione del Leader. Nessun codice applicativo presente.
 
 **Repository:** https://github.com/santacrocefrancesco00-ux/Atena
-**Milestone tag corrente:** `milestone/ADR-0001-0008` su commit `a796ce0`
-**Milestone tag proposto (governance hardening):** `milestone/governance-hardening-v0.5.0` su commit `416ab87` (richiede approvazione Leader esplicita)
+**Milestone tag corrente:** `milestone/vision-protocol-v0.6.0` su commit `55ea55f` (creato 2026-04-29 su autorizzazione Leader come restore point pre-esposizione bozza)
+**Milestone tag precedenti:** `milestone/ADR-0001-0008` su `a796ce0`
+**GitHub Release:** non creata in automatico (`gh` CLI non disponibile sulla macchina locale); creabile manualmente dalla pagina del tag o post-installazione `gh`
 
 ---
 
