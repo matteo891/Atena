@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-003
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 7b7ef17
 adr_ref: ADR-0012
 ---
 
@@ -96,6 +96,6 @@ L'autorizzazione al commit + push è stata data esplicitamente: "committa e push
 ## Refs
 
 - ADR: [ADR-0012](../decisions/ADR-0012-project-vision-capture.md)
-- Commit: [da aggiornare post-commit]
+- Commit: `7b7ef17`
 - Checkpoint successivo: nessun tag previsto per questo CHG (modifica di sola governance, non significativa ai fini del conteggio soglia-5 di ADR-0003)
 - Issue / Task: ISS-002 ancora aperta — questa è la struttura per chiuderla, non la chiusura

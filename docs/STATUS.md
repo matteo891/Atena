@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `[da aggiornare post-commit CHG-003]`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `7b7ef17`
 > **Sessione corrente:** Vision capture protocol (CHG-003) — promulgazione ADR-0012 + creazione `PROJECT-RAW.md` template Draft. Pronto per esposizione bozza dal Leader.
 
 ---
@@ -24,9 +24,9 @@ Governance hardened (ADR 0001–0011) e vision capture protocol attivo (ADR-0012
 |---|---|---|---|
 | ADR 0001–0008 promulgati (governance fondativa) | 0001–0008 | [CHG-001](changes/2026-04-29-001-bootstrap-adr-fondativi.md) | `5959ebd`, `a796ce0` |
 | Hardening governance v0.5.0 — fix audit (B1–B5, M1–M9, P1–P3); ADR-0009/0010/0011 | 0009–0011 | [CHG-002](changes/2026-04-29-002-hardening-governance.md) | `416ab87` (+ backfill `1235f13`) |
-| **Vision capture protocol — ADR-0012 promulgato** | 0012 | [CHG-003](changes/2026-04-29-003-vision-capture-adr.md) | [commit corrente] |
-| **`PROJECT-RAW.md` creato in root, status `Draft`, 16 lacune iniziali, Q&A Log vuoto** | 0012 | CHG-003 | [commit corrente] |
-| **INDEX, FILE-ADR-MAP, ROADMAP, CHANGELOG aggiornati con ADR-0012** | 0012 | CHG-003 | [commit corrente] |
+| **Vision capture protocol — ADR-0012 promulgato** | 0012 | [CHG-003](changes/2026-04-29-003-vision-capture-adr.md) | `7b7ef17` |
+| **`PROJECT-RAW.md` creato in root, status `Draft`, 16 lacune iniziali, Q&A Log vuoto** | 0012 | CHG-003 | `7b7ef17` |
+| **INDEX, FILE-ADR-MAP, ROADMAP, CHANGELOG aggiornati con ADR-0012** | 0012 | CHG-003 | `7b7ef17` |
 
 ---
 
