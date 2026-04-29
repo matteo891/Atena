@@ -9,6 +9,17 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-04-29 — TALOS Iterating Round 3 (formula VGP)
+
+### Changed
+- `PROJECT-RAW.md`: chiuse L04 (formula VGP `(ROI*0.4)+(Vel*0.4)+(Cash_Profit*0.2)`) e L21 (Keepa out-of-scope per Talos); aperta L04b critica (normalizzazione scale) ([CHG-2026-04-29-006](docs/changes/2026-04-29-006-talos-iterating-round-3.md)); `qa_rounds: 3`; 18 aperte (1 critica L04b)
+- `docs/STATUS.md`, `ROADMAP.md`: Round 3 registrato
+- Direttiva del Leader sulla concisione documentale salvata come **memory feedback** durevole
+
+### Added
+- `docs/changes/2026-04-29-006-talos-iterating-round-3.md`
+- `memory/feedback_concisione_documentale.md` (auto-memory)
+
 ## [0.7.1] — 2026-04-29 — TALOS Iterating Round 2
 
 ### Changed

@@ -4,7 +4,7 @@ owner: Leader
 started: 2026-04-29
 last_iteration: 2026-04-29
 frozen_at: —
-qa_rounds: 2
+qa_rounds: 3
 codename: TALOS
 tagline: Scaler 500k
 ---
@@ -18,7 +18,8 @@ tagline: Scaler 500k
 >
 > **Nota di Claude (ADR-0012 regola "Lacune Mai Completate"):** rispettando la disciplina del documento, sono state comunque marcate **24 lacune o ambiguità** in Round 1 — alcune critiche (formula VGP non specificata; il "monarca decisore" del sistema), altre di forma (apparente refuso R-08 ↔ R-09; sezione 15 saltata). La regola obbliga a marcare anche lacune che il Leader può ritenere chiare: chiusura nei round Q&A successivi.
 >
-> **Round 2 (2026-04-29):** chiuse 6 lacune (L06, L08, L11, L12, L18, L20), aperta 1 sub-lacuna condizionale (L11b — formula Fee_FBA fornita dal Leader). **19 lacune aperte** (2 critiche: L04 formula VGP, L21 Keepa subscription).
+> **Round 2 (2026-04-29):** chiuse 6 lacune (L06, L08, L11, L12, L18, L20), aperta L11b condizionale.
+> **Round 3 (2026-04-29):** chiuse L04 (formula VGP fornita), L21 (out-of-scope: piano Keepa è gestito esternamente dal Leader; Talos consuma le API). Aperta L04b (osservazione tecnica su normalizzazione delle scale nei termini della formula VGP). **18 lacune aperte** (1 critica: L04b).
 >
 > **Pipeline (ADR-0012):** Draft → **Iterating (qui)** → Frozen → proposta scomposizione (in chat) → validazione Leader → ADR di stack + ROADMAP.
 
@@ -80,7 +81,7 @@ Se si procede con il file di JungleScout, è necessario fare un **lookup del pro
 
 > **[L08 — CHIUSA Round 2 (2026-04-29)]** — Decisione Leader: **scraping di amazon.it**. La libreria specifica (Selenium / Playwright / requests+BeautifulSoup) sarà oggetto di ADR di stack futuro. Implicazioni ToS Amazon da gestire (vedi anche L17 sui rischi non tecnici, sezione 8.2).
 
-> [LACUNA L21 — CRITICA, ANCORA APERTA]: API Keepa: quale subscription level necessaria? Quali campi specifici servono (BuyBox corrente + storico, BSR, Fee FBA, Referral Fee, dimensioni/peso)? Stima costo mensile? Affidabilità dei limiti di rate? **Risposta del Leader attesa nei prossimi round.**
+> **[L21 — CHIUSA Round 3 (2026-04-29)]** — Risposta Leader: il piano Keepa è **gestito esternamente** dal Leader, **out-of-scope per Talos**. Talos deve avere l'infrastruttura per usare le API Keepa ed estrarre ogni dato utile all'analisi; se un campo non è esposto dal piano corrente del Leader, il sistema fallisce con errore esplicito (R-01 NO SILENT DROPS) e il Leader sceglie se passare a piano superiore o attivare il fallback (es. L11b formula manuale Fee_FBA).
 
 #### 4.1.2 Estrattore di entità (Regex specializzato)
 
@@ -117,7 +118,7 @@ Idea plausibile per ottenere sempre match perfetti:
 
 L'algoritmo di ranking è l'**unico ed esclusivo decisore**. L'analisi è **totalmente cieca**: ignora se un ASIN è un flagship o un accessorio; decide unicamente in base al **massimo coefficiente matematico di guadagno (VGP Score)**.
 
-> [LACUNA L04 — CRITICA / BLOCCANTE]: la **formula del VGP Score non è stata definita** in nessun punto della bozza. È il "monarca decisore" del sistema, il cuore di Talos. Le formule 1-5 della sezione 6.3 coprono Cash Inflow, Cash Profit, Compounding, Quantità Target e Lotti, ma **non esiste formula `VGP = f(...)`. **Domanda:** qual è la formula esatta del VGP Score? Quali variabili coinvolge (Cash_Profit, Velocity, ROI, Volume Q_m, Costo)? Senza questa formula non è specificabile né testabile l'MVP.
+> **[L04 — CHIUSA Round 3 (2026-04-29)]** — formula VGP fornita dal Leader (vedi sezione 6.3 Formula VGP). Pesi: ROI 40% / Velocità 40% / Cash Profit 20%. **L04b aperta (CRITICA)** sull'effetto delle scale non normalizzate.
 
 #### 4.1.5 Reattività Vettoriale
 
@@ -299,7 +300,20 @@ Qty_Final = Floor(Qty_Target / 5) * 5
 VGP = ???
 ```
 
-> [LACUNA L04 — CRITICA / BLOCCANTE — qui in pari posizione delle altre formule]: la formula non è stata fornita. Bloccante per qualsiasi implementazione. Vedi 4.1.4.
+**Formula VGP (chiusa Round 3 — risposta verbatim del Leader):**
+
+```
+VGP_Score = (ROI_Percentuale * 0.4) + (Velocita_Rotazione_Mensile * 0.4) + (Cash_Profit_Assoluto * 0.2)
+```
+
+Variabili:
+- **ROI_Percentuale** — Rapporto tra utile e costo (es. `0.15` per il 15%). Peso 40% — *"garantisce la salute del capitale"*.
+- **Velocita_Rotazione_Mensile** — Numero di volte che la quota `Q_m` ruota in 30 giorni. Peso 40% — *"il Cash Drag (soldi fermi) è il nemico n.1"*.
+- **Cash_Profit_Assoluto** — Guadagno in € per singolo pezzo (= Cash Profit della Formula 2). Peso 20% — *"tie-breaker: a parità di ROI e Velocità, vince chi porta più cassa"*.
+
+Pesi sommano a 1.0 ✓.
+
+> **[LACUNA L04b — CRITICA, APERTA Round 3]** — *Osservazione tecnica non-minuteria.* I tre termini hanno scale non comparabili: `ROI_Percentuale` ∈ [0.08, ~0.5], `Velocita_Rotazione_Mensile` ∈ [tipicamente 0.5–10], `Cash_Profit_Assoluto` ∈ [decine di €, su High-Ticket centinaia]. Senza normalizzazione, il termine `Cash_Profit_Assoluto * 0.2` domina in valore assoluto la somma anche con peso minore (es. ROI=0.15·0.4=0.06 vs Profit=80·0.2=16). Conseguenza: i pesi dichiarati 40/40/20 **non riflettono il contributo effettivo** al ranking; il VGP attuale è di fatto un ranking per Cash_Profit_Assoluto, con ROI e Velocità trascurabili. **Domanda al Leader:** (a) accetti la formula così (Cash Profit dominante per costruzione)? oppure (b) normalizziamo i tre termini su [0,1] (min-max o z-score sul listino di sessione) prima di applicare i pesi? Se (b), confermare la metrica di normalizzazione preferita.
 
 ### 6.4 Ambiente operativo
 
@@ -370,46 +384,47 @@ Nessun deadline temporale dichiarato esplicitamente.
 
 ## 9. Lacune Aperte
 
-> Sezione **live** alimentata in `Iterating`. Scende monotonicamente verso 0 (o lacune accettate consapevolmente) prima del `Frozen`.
+> Sezione live in `Iterating`. Scende verso 0 prima del `Frozen`.
 >
-> **Stato Round 2:** 6 lacune chiuse (L06, L08, L11, L12, L18, L20), 1 sub-lacuna nuova aperta (L11b). **19 aperte.**
+> **Round 3:** chiuse L04 (formula VGP), L21 (Keepa out-of-scope). Aperta L04b (normalizzazione scale VGP). **18 aperte (1 critica).**
 
 ### Lacune Aperte
 
-| # | Priorità | Lacuna | Sezione | Round aperto |
+| # | Priorità | Lacuna | Sez. | Round |
 |---|---|---|---|---|
-| **L04** | **CRITICA** | Formula del **VGP Score** non definita — è il monarca decisore del sistema | 4.1.4 / 6.3 | 1 |
-| **L21** | **CRITICA** | Keepa: subscription, campi, costo, rate limit | 4.1.1 | 1 |
-| **L11b** | IMPORTANTE / CONDIZIONALE | Formula manuale Fee_FBA fornita dal Leader (attivata se Keepa non espone il campo nel piano scelto — derivante da L11) | 6.3 (F1) | 2 |
-| **L01** | IMPORTANTE | Stateless vs Storico Ordini/Panchina: confermare semantica | 1 | 1 |
-| **L02** | IMPORTANTE | Capitale di partenza `x`: valore concreto | 2 | 1 |
-| **L03** | IMPORTANTE | Cosa esce per il commercialista (formato/canale) | 3.2 | 1 |
-| **L05** | IMPORTANTE | Slider Velocity Target: range, default, granularità | 4.1.5 | 1 |
-| **L07** | IMPORTANTE | Filtro NLP vs Estrattore di entità: 1 modulo o 2? | 4.1.2-3 | 1 |
-| **L10** | IMPORTANTE | Soglia 8% Veto ROI: hardcoded o configurabile? | 6.2 R-08 | 1 |
-| **L13** | IMPORTANTE | Manual Override (R-04): UI/UX del lock-in | 6.2 R-04 | 1 |
-| **L14** | IMPORTANTE | Streamlit vs Gradio: scelta o decisione differita? | 6.4 | 1 |
-| **L15** | IMPORTANTE | PostgreSQL "Zero-Trust": RLS, ruoli, audit? | 6.1 | 1 |
-| **L16** | IMPORTANTE | ORM, test framework, type checker, linter (parzialmente compensata da L20: pytest + ruff + mypy/pyright) | 6.1 | 1 |
-| **L17** | IMPORTANTE | Sezione 15 saltata: rischi non tecnici (ToS, GDPR, single-vendor) — aggravata da L08 (scraping ↔ ToS Amazon) | 8.2 | 1 |
-| **L24** | IMPORTANTE | Rischi tecnici aggiuntivi (throttling, drift Keepa, OCR fail) — aggravata da L18 (Tesseract qualità media su PDF deteriorati) | 8.1 | 1 |
-| **L09** | FORMA | R-08 vs R-09: refuso "Veto ROI (R-09)" — riferimento corretto è R-08? | 4.1.9 / 6.2 | 1 |
-| **L09b** | FORMA | R-09 cita "ciclo di saturazione Tetris (R-07)" — il Tetris è R-06 | 6.2 R-09 | 1 |
-| **L19** | FORMA | "DOCS" come formato: `.docx`? | 4.3 | 1 |
-| **L22** | FORMA | Storico ordini: solo interno o sync da Seller Central? | 4.1.10 | 1 |
+| **L04b** | **CRITICA** | Normalizzazione scale termini VGP: pesi 40/40/20 dichiarati ≠ contributo effettivo (Cash_Profit_Assoluto domina per scala) | 6.3 | 3 |
+| **L11b** | COND. | Formula manuale Fee_FBA (attiva solo se Keepa non espone il campo) | 6.3 (F1) | 2 |
+| L01 | IMPO | Stateless vs Storico/Panchina: confermare semantica | 1 | 1 |
+| L02 | IMPO | Capitale di partenza `x` | 2 | 1 |
+| L03 | IMPO | Cosa esce per il commercialista | 3.2 | 1 |
+| L05 | IMPO | Slider Velocity Target: range/default/granularità | 4.1.5 | 1 |
+| L07 | IMPO | Filtro NLP vs Estrattore: 1 modulo o 2? | 4.1.2-3 | 1 |
+| L10 | IMPO | Soglia 8% Veto ROI: hardcoded o configurabile? | R-08 | 1 |
+| L13 | IMPO | Manual Override (R-04): UI/UX del lock-in | R-04 | 1 |
+| L14 | IMPO | Streamlit vs Gradio | 6.4 | 1 |
+| L15 | IMPO | PostgreSQL "Zero-Trust": RLS/ruoli/audit | 6.1 | 1 |
+| L16 | IMPO | ORM specifico (pytest+ruff+mypy già fissati da L20) | 6.1 | 1 |
+| L17 | IMPO | Rischi non tecnici (ToS Amazon scraping, GDPR, single-vendor) | 8.2 | 1 |
+| L24 | IMPO | Rischi tecnici extra (throttling Keepa, OCR fail) | 8.1 | 1 |
+| L09 | FORMA | R-08 vs R-09: "Veto ROI (R-09)" — corretto è R-08? | 6.2 | 1 |
+| L09b | FORMA | R-09 cita "Tetris (R-07)" — Tetris è R-06 | R-09 | 1 |
+| L19 | FORMA | "DOCS" = `.docx`? | 4.3 | 1 |
+| L22 | FORMA | Storico ordini: solo interno o sync Seller Central? | 4.1.10 | 1 |
 
-**Totale lacune aperte:** 19 (2 critiche, 13 importanti, 4 di forma)
+**Totale aperte:** 18 (1 critica, 13 importanti, 4 di forma).
 
 ### Lacune Chiuse
 
-| # | Round chiuso | Decisione finale (sintesi) |
+| # | Round | Decisione |
 |---|---|---|
-| **L06** | 2 | MVP Samsung-only + interface `BrandExtractor` modulare (delega Leader → Claude) |
-| **L08** | 2 | Scraping `amazon.it` (libreria specifica in ADR di stack) |
-| **L11** | 2 | Lookup primario Keepa + fallback a formula manuale (→ L11b nuova) |
-| **L12** | 2 | Lookup automatico per categoria + override manuale configurabile dal cruscotto |
-| **L18** | 2 | Tesseract locale (open source, gratis, qualità media) |
-| **L20** | 2 | Pytest + fixture byte-exact + grep statico R-01 + lint + type-check strict |
+| L04 | 3 | Formula VGP fornita: `(ROI*0.4)+(Vel*0.4)+(Cash_Profit*0.2)` |
+| L21 | 3 | Keepa: piano gestito esternamente dal Leader, out-of-scope per Talos |
+| L06 | 2 | MVP Samsung-only + interface `BrandExtractor` modulare (delega) |
+| L08 | 2 | Scraping `amazon.it` |
+| L11 | 2 | Lookup primario Keepa + fallback formula manuale → L11b |
+| L12 | 2 | Lookup categoria + override manuale configurabile |
+| L18 | 2 | Tesseract locale |
+| L20 | 2 | Pytest + fixture byte-exact + grep R-01 + ruff + mypy/pyright strict |
 
 ---
 
@@ -455,6 +470,19 @@ Nessun deadline temporale dichiarato esplicitamente.
 
 ---
 
+### Round 3 — 2026-04-29 — Formula VGP + Keepa out-of-scope + direttiva concisione
+
+| # | Lacuna | Risposta Leader (verbatim) | Decisione | Stato |
+|---|---|---|---|---|
+| 3.1 | **L04** Formula VGP | `VGP = (ROI%*0.4)+(Velocità*0.4)+(Cash_Profit*0.2)` con definizioni dei tre termini | Formula incisa in sezione 6.3 | ✅ chiusa |
+| 3.2 | **L21** Keepa | *"non penso debba interessarti, ci deve essere l'infrastruttura per usare le api di keepa ai miei scopi, come le ho è un fatto mio"* | Out-of-scope Talos (piano gestito dal Leader) | ✅ chiusa |
+| 3.3 | **L04b** (nuova) | n/a — sollevata da Claude | Pesi 40/40/20 vs scale dei termini: senza normalizzazione Cash_Profit_Assoluto domina. Domanda al Leader: accettare o normalizzare? | ❌ aperta |
+| 3.4 | Direttiva di stile | *"non fossilizzarti troppo sulle minuterie [...] tutto sia accessibile brieffabile e tracciato nelle modifiche non banali"* | Salvata come **memory feedback** durevole; applicata da CHG-006 in poi (CHG e tabelle più snelli) | feedback registrato |
+
+**Esito Round 3:** 18 aperte (1 critica residua: L04b). Vicini al Frozen — manca decisione su normalizzazione VGP, poi sweep finale importanti+forma.
+
+---
+
 ## 11. Refs
 
 > Riferimenti esterni (link, documenti, ispirazioni) che il Leader vuole conservare come contesto.
@@ -474,3 +502,4 @@ Nessun deadline temporale dichiarato esplicitamente.
 | 2026-04-29 | Draft | File creato (CHG-2026-04-29-003, ratifica ADR-0012) — pronto per esposizione |
 | 2026-04-29 | **Iterating** | Esposizione iniziale del Leader; trascrizione verbatim; 24 lacune raccolte (CHG-2026-04-29-004) |
 | 2026-04-29 | **Iterating** | Round 2 Q&A: chiuse 6 lacune critiche (L06, L08, L11, L12, L18, L20), aperta L11b condizionale; 19 aperte (CHG-2026-04-29-005) |
+| 2026-04-29 | **Iterating** | Round 3: chiuse L04 (formula VGP) + L21 (Keepa out-of-scope); aperta L04b (normalizzazione scale); direttiva concisione registrata; 18 aperte (CHG-2026-04-29-006) |
