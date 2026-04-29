@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `[da aggiornare post-commit CHG-004]`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `44d53e7`
 > **Sessione corrente:** TALOS — Iterating Round 1: trascrizione verbatim della bozza del Leader in PROJECT-RAW.md, raccolta di 24 lacune (8 critiche, 12 importanti, 4 di forma).
 
 ---
@@ -26,7 +26,7 @@ Governance hardened (ADR 0001–0012) + vision in `Iterating` Round 1 su **TALOS
 | Hardening governance v0.5.0 — ADR-0009/0010/0011 | 0009–0011 | [CHG-002](changes/2026-04-29-002-hardening-governance.md) | `416ab87` |
 | Vision capture protocol — ADR-0012 + PROJECT-RAW.md template Draft | 0012 | [CHG-003](changes/2026-04-29-003-vision-capture-adr.md) | `7b7ef17` |
 | Restore point `milestone/vision-protocol-v0.6.0` | 0003 | — | tag su `55ea55f` |
-| **TALOS — Esposizione Round 1: trascrizione verbatim + 24 lacune** | 0012 | [CHG-004](changes/2026-04-29-004-talos-exposition-iterating.md) | [commit corrente] |
+| **TALOS — Esposizione Round 1: trascrizione verbatim + 24 lacune** | 0012 | [CHG-004](changes/2026-04-29-004-talos-exposition-iterating.md) | `44d53e7` |
 
 ---
 

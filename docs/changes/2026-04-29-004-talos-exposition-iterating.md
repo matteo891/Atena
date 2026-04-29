@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-004
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 44d53e7
 adr_ref: ADR-0012
 ---
 
@@ -106,6 +106,6 @@ tagline: Scaler 500k
 
 - ADR: [ADR-0012](../decisions/ADR-0012-project-vision-capture.md)
 - Vision file: [PROJECT-RAW.md](../../PROJECT-RAW.md) (root)
-- Commit: [da aggiornare post-commit]
+- Commit: `44d53e7`
 - Restore point precedente: tag `milestone/vision-protocol-v0.6.0` su `55ea55f`
 - Issue / Task: ESP-001 (esposizione bozza) → in corso, non chiusa fino al Frozen
