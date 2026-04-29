@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-006
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 7dee02b
 adr_ref: ADR-0012
 ---
 
@@ -40,4 +40,4 @@ Edit puntuali in `PROJECT-RAW.md`: header, sez. 4.1.4 (VGP), sez. 4.1.1 (Keepa c
 - ADR: ADR-0012
 - Vision: `PROJECT-RAW.md`
 - Memory: `feedback_concisione_documentale.md`
-- Commit: [da aggiornare post-commit]
+- Commit: `7dee02b`

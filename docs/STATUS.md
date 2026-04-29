@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `[da aggiornare post-commit CHG-006]`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `7dee02b`
 > **Sessione corrente:** TALOS — Iterating **Round 3**: formula VGP fornita (L04 chiusa), Keepa out-of-scope (L21 chiusa), aperta **L04b critica** sulla normalizzazione delle scale dei termini VGP. **18 aperte** (1 critica). Direttiva concisione del Leader registrata come memory.
 
 ---
@@ -28,7 +28,7 @@ Governance hardened (ADR 0001–0012) + vision in `Iterating` **Round 3** su **T
 | Restore point `milestone/vision-protocol-v0.6.0` | 0003 | — | tag su `55ea55f` |
 | **TALOS — Esposizione Round 1: trascrizione verbatim + 24 lacune** | 0012 | [CHG-004](changes/2026-04-29-004-talos-exposition-iterating.md) | `44d53e7` |
 | **TALOS — Round 2 Q&A: 6 critiche chiuse, L11b condizionale aperta** | 0012 | [CHG-005](changes/2026-04-29-005-talos-iterating-round-2.md) | `b05ecbe` |
-| **TALOS — Round 3: formula VGP, Keepa out-of-scope, L04b critica aperta, direttiva concisione → memory** | 0012 | [CHG-006](changes/2026-04-29-006-talos-iterating-round-3.md) | [commit corrente] |
+| **TALOS — Round 3: formula VGP, Keepa out-of-scope, L04b critica aperta, direttiva concisione → memory** | 0012 | [CHG-006](changes/2026-04-29-006-talos-iterating-round-3.md) | `7dee02b` |
 
 ---
 
