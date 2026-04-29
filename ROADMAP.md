@@ -16,8 +16,8 @@ Tracker operativo del progetto. Ogni voce deve essere tracciabile a un ADR valid
 | 4 | Hardening governance v0.5.0 — fix audit (B1–B5, M1–M9, P1–P3) | ADR-0009, ADR-0010, ADR-0011 | Completato (commit `416ab87`) |
 | 5 | Verdetto: sistema governance a prova di bomba per fase pre-codice | tutti 0001–0011 | Confermato — sistema in produzione |
 | 6 | Vision capture protocol — ADR-0012 + PROJECT-RAW.md template `Draft` | ADR-0012 | Completato (CHG-2026-04-29-003) |
-| 7 | Esposizione bozza dal Leader → riempimento PROJECT-RAW.md `Draft → Iterating` | ADR-0012 | Round 1+2+3 (CHG-004/005/006). 18 aperte (1 critica L04b sulla normalizzazione VGP). Vicini al Frozen |
-| 8 | `Frozen` PROJECT-RAW.md → proposta scomposizione (Claude) → validazione Leader → ADR di stack | ADR-0012, ADR di stack da promulgare | Successivo al chiudere lacune critiche di #7 (in particolare L04 formula VGP) |
+| 7 | Esposizione bozza dal Leader → riempimento PROJECT-RAW.md `Draft → Iterating` | ADR-0012 | Round 1+2+3+4 (CHG-004/005/006/007). 17 aperte, **0 critiche**. Manca solo lo sweep importanti+forma per il Frozen |
+| 8 | `Frozen` PROJECT-RAW.md → proposta scomposizione (Claude) → validazione Leader → ADR di stack | ADR-0012, ADR di stack da promulgare | Sbloccabile appena lo sweep importanti+forma di #7 è completato |
 | 9 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
 | 10 | Prima linea di codice applicativo | ADR di stack (da promulgare) | Bloccante: dipende da #8 |
 
@@ -56,3 +56,4 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 | 2026-04-29 | TALOS — prima esposizione bozza, trascrizione verbatim, 24 lacune (Iterating Round 1) | ADR-0012 | Leader (CHG-2026-04-29-004) |
 | 2026-04-29 | TALOS — Round 2 Q&A: chiuse 6 critiche (Tesseract, scraping, Keepa primario, Referral lookup+override, criteri completamento, Samsung-only modulare); aperta L11b. 19 aperte (2 critiche residue) | ADR-0012 | Leader (CHG-2026-04-29-005) |
 | 2026-04-29 | TALOS — Round 3 Q&A: chiuse L04 (formula VGP) + L21 (Keepa out-of-scope); aperta L04b critica (normalizzazione scale). 18 aperte (1 critica). Direttiva concisione registrata come memory | ADR-0012 | Leader (CHG-2026-04-29-006) |
+| 2026-04-29 | TALOS — Round 4 Q&A: chiusa L04b (normalizzazione min-max [0,1] dei tre termini VGP). 17 aperte, **0 critiche residue**. Vision pronta per sweep finale → Frozen | ADR-0012 | Leader (CHG-2026-04-29-007) |

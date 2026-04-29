@@ -4,7 +4,7 @@ owner: Leader
 started: 2026-04-29
 last_iteration: 2026-04-29
 frozen_at: —
-qa_rounds: 3
+qa_rounds: 4
 codename: TALOS
 tagline: Scaler 500k
 ---
@@ -20,6 +20,7 @@ tagline: Scaler 500k
 >
 > **Round 2 (2026-04-29):** chiuse 6 lacune (L06, L08, L11, L12, L18, L20), aperta L11b condizionale.
 > **Round 3 (2026-04-29):** chiuse L04 (formula VGP fornita), L21 (out-of-scope: piano Keepa è gestito esternamente dal Leader; Talos consuma le API). Aperta L04b (osservazione tecnica su normalizzazione delle scale nei termini della formula VGP). **18 lacune aperte** (1 critica: L04b).
+> **Round 4 (2026-04-29):** chiusa L04b — il Leader decide di **normalizzare i tre termini su [0,1]** prima dei pesi 40/40/20 (*"tutti i dati devono pesare e collaborare"*). Nessuna critica residua: **17 lacune aperte** (0 critiche, 13 importanti, 4 di forma). Sweep importanti+forma → Frozen.
 >
 > **Pipeline (ADR-0012):** Draft → **Iterating (qui)** → Frozen → proposta scomposizione (in chat) → validazione Leader → ADR di stack + ROADMAP.
 
@@ -118,7 +119,7 @@ Idea plausibile per ottenere sempre match perfetti:
 
 L'algoritmo di ranking è l'**unico ed esclusivo decisore**. L'analisi è **totalmente cieca**: ignora se un ASIN è un flagship o un accessorio; decide unicamente in base al **massimo coefficiente matematico di guadagno (VGP Score)**.
 
-> **[L04 — CHIUSA Round 3 (2026-04-29)]** — formula VGP fornita dal Leader (vedi sezione 6.3 Formula VGP). Pesi: ROI 40% / Velocità 40% / Cash Profit 20%. **L04b aperta (CRITICA)** sull'effetto delle scale non normalizzate.
+> **[L04 — CHIUSA Round 3 (2026-04-29)]** — formula VGP fornita dal Leader (vedi sezione 6.3 Formula VGP). Pesi: ROI 40% / Velocità 40% / Cash Profit 20%. **L04b CHIUSA Round 4 (2026-04-29)** — i tre termini sono normalizzati su [0,1] prima dei pesi.
 
 #### 4.1.5 Reattività Vettoriale
 
@@ -300,11 +301,23 @@ Qty_Final = Floor(Qty_Target / 5) * 5
 VGP = ???
 ```
 
-**Formula VGP (chiusa Round 3 — risposta verbatim del Leader):**
+**Formula VGP (chiusa Round 3 — risposta verbatim del Leader; normalizzazione chiusa Round 4):**
+
+Forma canonica con normalizzazione preliminare dei tre termini:
 
 ```
-VGP_Score = (ROI_Percentuale * 0.4) + (Velocita_Rotazione_Mensile * 0.4) + (Cash_Profit_Assoluto * 0.2)
+VGP_Score = (norm(ROI_Percentuale) * 0.4)
+          + (norm(Velocita_Rotazione_Mensile) * 0.4)
+          + (norm(Cash_Profit_Assoluto) * 0.2)
 ```
+
+dove `norm(x)` è la **normalizzazione min-max su [0,1] calcolata sul listino della sessione corrente**:
+
+```
+norm(x_i) = (x_i - min(x)) / (max(x) - min(x))
+```
+
+con `min(x)` e `max(x)` calcolati sull'insieme degli ASIN candidati della singola sessione di analisi (coerente con la natura Stateless di Talos: nessuna persistenza cross-sessione delle statistiche di normalizzazione).
 
 Variabili:
 - **ROI_Percentuale** — Rapporto tra utile e costo (es. `0.15` per il 15%). Peso 40% — *"garantisce la salute del capitale"*.
@@ -313,7 +326,7 @@ Variabili:
 
 Pesi sommano a 1.0 ✓.
 
-> **[LACUNA L04b — CRITICA, APERTA Round 3]** — *Osservazione tecnica non-minuteria.* I tre termini hanno scale non comparabili: `ROI_Percentuale` ∈ [0.08, ~0.5], `Velocita_Rotazione_Mensile` ∈ [tipicamente 0.5–10], `Cash_Profit_Assoluto` ∈ [decine di €, su High-Ticket centinaia]. Senza normalizzazione, il termine `Cash_Profit_Assoluto * 0.2` domina in valore assoluto la somma anche con peso minore (es. ROI=0.15·0.4=0.06 vs Profit=80·0.2=16). Conseguenza: i pesi dichiarati 40/40/20 **non riflettono il contributo effettivo** al ranking; il VGP attuale è di fatto un ranking per Cash_Profit_Assoluto, con ROI e Velocità trascurabili. **Domanda al Leader:** (a) accetti la formula così (Cash Profit dominante per costruzione)? oppure (b) normalizziamo i tre termini su [0,1] (min-max o z-score sul listino di sessione) prima di applicare i pesi? Se (b), confermare la metrica di normalizzazione preferita.
+> **[L04b — CHIUSA Round 4 (2026-04-29)]** — Risposta Leader (verbatim): *"la decisione è quella di normalizzare i tre termini. tutti i dati devono pesare e collaborare"*. Decisione: **normalizzazione min-max su [0,1] sul listino di sessione** prima dei pesi 40/40/20. Conseguenza: i tre termini hanno contributo massimo identico (0.4, 0.4, 0.2 rispettivamente) e il ranking riflette i pesi dichiarati. Edge case noto: con `max(x) == min(x)` su un termine (es. tutto il listino ha lo stesso ROI), `norm` diventa 0/0 — convenzione: il termine vale 0 per tutti gli ASIN (il termine non discrimina, l'ordinamento dipende dagli altri due). La scelta tra min-max e z-score è risolta a favore di min-max: garantisce dominio [0,1] esatto e interpretabilità dei pesi; z-score è alternativa di sensibilità (non scelta) da rivalutare solo se emergono outlier che distorcono il ranking, in fase implementativa sotto ADR di stack.
 
 ### 6.4 Ambiente operativo
 
@@ -386,13 +399,12 @@ Nessun deadline temporale dichiarato esplicitamente.
 
 > Sezione live in `Iterating`. Scende verso 0 prima del `Frozen`.
 >
-> **Round 3:** chiuse L04 (formula VGP), L21 (Keepa out-of-scope). Aperta L04b (normalizzazione scale VGP). **18 aperte (1 critica).**
+> **Round 4:** chiusa L04b (normalizzazione min-max su [0,1] dei tre termini VGP). **17 aperte, 0 critiche residue.** Resta da fare lo sweep di importanti+forma per arrivare al Frozen.
 
 ### Lacune Aperte
 
 | # | Priorità | Lacuna | Sez. | Round |
 |---|---|---|---|---|
-| **L04b** | **CRITICA** | Normalizzazione scale termini VGP: pesi 40/40/20 dichiarati ≠ contributo effettivo (Cash_Profit_Assoluto domina per scala) | 6.3 | 3 |
 | **L11b** | COND. | Formula manuale Fee_FBA (attiva solo se Keepa non espone il campo) | 6.3 (F1) | 2 |
 | L01 | IMPO | Stateless vs Storico/Panchina: confermare semantica | 1 | 1 |
 | L02 | IMPO | Capitale di partenza `x` | 2 | 1 |
@@ -411,12 +423,13 @@ Nessun deadline temporale dichiarato esplicitamente.
 | L19 | FORMA | "DOCS" = `.docx`? | 4.3 | 1 |
 | L22 | FORMA | Storico ordini: solo interno o sync Seller Central? | 4.1.10 | 1 |
 
-**Totale aperte:** 18 (1 critica, 13 importanti, 4 di forma).
+**Totale aperte:** 17 (0 critiche, 13 importanti, 4 di forma — più L11b condizionale).
 
 ### Lacune Chiuse
 
 | # | Round | Decisione |
 |---|---|---|
+| **L04b** | **4** | **Normalizzazione min-max su [0,1] dei tre termini VGP sul listino di sessione, poi applicazione dei pesi 40/40/20** |
 | L04 | 3 | Formula VGP fornita: `(ROI*0.4)+(Vel*0.4)+(Cash_Profit*0.2)` |
 | L21 | 3 | Keepa: piano gestito esternamente dal Leader, out-of-scope per Talos |
 | L06 | 2 | MVP Samsung-only + interface `BrandExtractor` modulare (delega) |
@@ -483,6 +496,16 @@ Nessun deadline temporale dichiarato esplicitamente.
 
 ---
 
+### Round 4 — 2026-04-29 — Chiusura L04b (normalizzazione VGP)
+
+| # | Lacuna | Risposta Leader (verbatim) | Decisione | Stato |
+|---|---|---|---|---|
+| 4.1 | **L04b** Normalizzazione VGP | *"la decisione è quella di normalizzare i tre termini. tutti i dati devono pesare e collaborare"* | Normalizzazione **min-max su [0,1]** dei tre termini sul listino della singola sessione, poi applicazione dei pesi 40/40/20. Edge case `max==min` → termine vale 0. Coerente con natura Stateless di Talos | ✅ chiusa |
+
+**Esito Round 4:** **0 critiche residue**, 17 aperte (13 importanti + 4 di forma + L11b condizionale). Il dominio matematico del decisore VGP è pienamente specificato. Prossimo passo: sweep delle importanti+forma → Frozen.
+
+---
+
 ## 11. Refs
 
 > Riferimenti esterni (link, documenti, ispirazioni) che il Leader vuole conservare come contesto.
@@ -503,3 +526,4 @@ Nessun deadline temporale dichiarato esplicitamente.
 | 2026-04-29 | **Iterating** | Esposizione iniziale del Leader; trascrizione verbatim; 24 lacune raccolte (CHG-2026-04-29-004) |
 | 2026-04-29 | **Iterating** | Round 2 Q&A: chiuse 6 lacune critiche (L06, L08, L11, L12, L18, L20), aperta L11b condizionale; 19 aperte (CHG-2026-04-29-005) |
 | 2026-04-29 | **Iterating** | Round 3: chiuse L04 (formula VGP) + L21 (Keepa out-of-scope); aperta L04b (normalizzazione scale); direttiva concisione registrata; 18 aperte (CHG-2026-04-29-006) |
+| 2026-04-29 | **Iterating** | Round 4: chiusa L04b (normalizzazione min-max [0,1] dei tre termini VGP); 0 critiche residue; 17 aperte (CHG-2026-04-29-007) |

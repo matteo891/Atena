@@ -9,6 +9,16 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.7.3] — 2026-04-29 — TALOS Iterating Round 4 (normalizzazione VGP)
+
+### Changed
+- `PROJECT-RAW.md`: chiusa L04b (normalizzazione **min-max su [0,1]** dei tre termini VGP sul listino di sessione, prima dei pesi 40/40/20); `qa_rounds: 4`; **17 aperte, 0 critiche residue** ([CHG-2026-04-29-007](docs/changes/2026-04-29-007-talos-iterating-round-4.md))
+- `docs/STATUS.md`, `ROADMAP.md`: Round 4 registrato; vision pronta per sweep finale → Frozen
+- `memory/MEMORY.md` + `memory/feedback_concisione_documentale.md`: ricreati (erano referenziati in CHG-006 ma assenti su filesystem — directory memory `~/.claude/...` fuori dal repo, non versionata)
+
+### Added
+- `docs/changes/2026-04-29-007-talos-iterating-round-4.md`
+
 ## [0.7.2] — 2026-04-29 — TALOS Iterating Round 3 (formula VGP)
 
 ### Changed
