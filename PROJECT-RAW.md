@@ -1,10 +1,10 @@
 ---
-status: Iterating
+status: Frozen
 owner: Leader
 started: 2026-04-29
 last_iteration: 2026-04-29
-frozen_at: —
-qa_rounds: 5
+frozen_at: 2026-04-29
+qa_rounds: 6
 codename: TALOS
 tagline: Scaler 500k
 ---
@@ -12,7 +12,7 @@ tagline: Scaler 500k
 # PROJECT-RAW — Vision del Progetto: TALOS (Scaler 500k)
 
 > **Documento governato da [ADR-0012](docs/decisions/ADR-0012-project-vision-capture.md).**
-> Status corrente: `Iterating` — il Leader ha esposto la prima bozza completa il 2026-04-29; trascrizione integrale + raccolta lacune in corso.
+> Status corrente: **`Frozen`** dal 2026-04-29 (Round 6 — dichiarazione esplicita del Leader: *"dichiaro frozen"*). Da questo punto in poi ogni modifica passa per **Errata Corrige** (ADR-0009) o **transizione documentata a `Iterating`** con motivazione.
 >
 > **Nota del Leader (verbatim, 2026-04-29):** *"Nessuna lacuna lasciata aperta. Il dominio funzionale e matematico è stato definito con rigore assoluto."*
 >
@@ -21,9 +21,10 @@ tagline: Scaler 500k
 > **Round 2 (2026-04-29):** chiuse 6 lacune (L06, L08, L11, L12, L18, L20), aperta L11b condizionale.
 > **Round 3 (2026-04-29):** chiuse L04 (formula VGP fornita), L21 (out-of-scope: piano Keepa è gestito esternamente dal Leader; Talos consuma le API). Aperta L04b (osservazione tecnica su normalizzazione delle scale nei termini della formula VGP). **18 lacune aperte** (1 critica: L04b).
 > **Round 4 (2026-04-29):** chiusa L04b — il Leader decide di **normalizzare i tre termini su [0,1]** prima dei pesi 40/40/20 (*"tutti i dati devono pesare e collaborare"*). Nessuna critica residua: **17 lacune aperte** (0 critiche, 13 importanti, 4 di forma). Sweep importanti+forma → Frozen.
-> **Round 5 (2026-04-29):** sweep finale completato. Chiuse tutte le 17 residue (default proposti da Claude accettati al 100% tranne L02 = Opzione (a) budget di sessione e L14 = Streamlit). Fornita anche la formula manuale Fee_FBA per L11b (non più condizionale, ma incisa). **0 lacune aperte. Vision matematicamente e architetturalmente specificata.** Pronta per dichiarazione esplicita di `Frozen` da parte del Leader.
+> **Round 5 (2026-04-29):** sweep finale completato. Chiuse tutte le 17 residue (default proposti da Claude accettati al 100% tranne L02 = Opzione (a) budget di sessione e L14 = Streamlit). Fornita anche la formula manuale Fee_FBA per L11b (non più condizionale, ma incisa). **0 lacune aperte.**
+> **Round 6 (2026-04-29):** **`Frozen` dichiarato esplicitamente dal Leader** (verbatim: *"dichiaro frozen"*). La vision è ora congelata. Sblocca lo step [6] di ADR-0012: proposta di scomposizione in ADR di stack + task ROADMAP, in chat, soggetta a validazione del Leader.
 >
-> **Pipeline (ADR-0012):** Draft → **Iterating (qui, sweep completato)** → Frozen (in attesa dichiarazione esplicita Leader) → proposta scomposizione (in chat) → validazione Leader → ADR di stack + ROADMAP.
+> **Pipeline (ADR-0012):** Draft → Iterating → **Frozen (qui, dal 2026-04-29)** → proposta scomposizione (prossimo step, in chat) → validazione Leader → ADR di stack + ROADMAP.
 
 ---
 
@@ -556,6 +557,20 @@ Nessuna.
 
 ---
 
+### Round 6 — 2026-04-29 — Dichiarazione `Frozen`
+
+> Risposta verbatim del Leader: *"dichiaro frozen"*
+
+| # | Evento | Note |
+|---|---|---|
+| 6.1 | Dichiarazione `Iterating → Frozen` da parte del Leader | Atto formale richiesto da ADR-0012 step [5]. Dopo questa dichiarazione, ogni modifica alla vision passa per Errata Corrige (ADR-0009) o transizione documentata a `Iterating` con motivazione esplicita |
+| 6.2 | `frontmatter.status: Iterating → Frozen` + `frozen_at: 2026-04-29` | |
+| 6.3 | Sblocco step [6] di ADR-0012 | Claude può ora proporre in chat la scomposizione della vision in ADR di stack + task ROADMAP, soggetta a validazione del Leader |
+
+**Esito Round 6:** la vision di TALOS è **`Frozen`**. Stato congelato e immutabile salvo Errata Corrige o ri-apertura formale. La pipeline ADR-0012 entra nello step [6].
+
+---
+
 ## 11. Refs
 
 > Riferimenti esterni (link, documenti, ispirazioni) che il Leader vuole conservare come contesto.
@@ -578,3 +593,4 @@ Nessuna.
 | 2026-04-29 | **Iterating** | Round 3: chiuse L04 (formula VGP) + L21 (Keepa out-of-scope); aperta L04b (normalizzazione scale); direttiva concisione registrata; 18 aperte (CHG-2026-04-29-006) |
 | 2026-04-29 | **Iterating** | Round 4: chiusa L04b (normalizzazione min-max [0,1] dei tre termini VGP); 0 critiche residue; 17 aperte (CHG-2026-04-29-007) |
 | 2026-04-29 | **Iterating** | Round 5: sweep finale, chiuse tutte le 17 residue (default + L02=(a) + L14=Streamlit + formula Fee_FBA verbatim per L11b); 0 aperte (CHG-2026-04-29-008) |
+| 2026-04-29 | **Frozen** | Round 6: dichiarazione esplicita del Leader (*"dichiaro frozen"*). Vision congelata, sblocco step [6] ADR-0012 (CHG-2026-04-29-009) |

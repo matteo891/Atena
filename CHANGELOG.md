@@ -9,6 +9,18 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-04-29 — TALOS Vision `Frozen`
+
+Pietra miliare del progetto. La vision di TALOS (Scaler 500k) è ufficialmente **`Frozen`** dopo 6 round di Iterating e 26 lacune chiuse. Sblocca lo step [6] di ADR-0012: proposta di scomposizione in ADR di stack.
+
+### Changed
+- `PROJECT-RAW.md`: `frontmatter.status: Iterating → Frozen`, `frozen_at: 2026-04-29`, `qa_rounds: 5 → 6`; header e pipeline note allineati; nuovo blocco Round 6 nel Q&A Log con dichiarazione verbatim del Leader; cronologia stati aggiornata ([CHG-2026-04-29-009](docs/changes/2026-04-29-009-talos-frozen-declaration.md))
+- `docs/STATUS.md`: ESP-006 chiusa, ESP-007 (proposta scomposizione) aperta, TAG-001 (milestone tag) suggerito; Nota al Prossimo Claude allineata al regime post-Frozen (Errata Corrige obbligatoria per modifiche, niente edit diretti)
+- `ROADMAP.md`: obiettivo #7 marcato Completato; #8 In corso
+
+### Added
+- `docs/changes/2026-04-29-009-talos-frozen-declaration.md`
+
 ## [0.7.4] — 2026-04-29 — TALOS Iterating Round 5 (sweep finale, 0 lacune aperte)
 
 ### Changed
