@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-007
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: <pending>
+status: Committed
+commit: 0cd9f1f
 adr_ref: ADR-0012
 ---
 
@@ -79,5 +79,5 @@ Test manuali documentati (governance — ADR-0011).
 - ADR: ADR-0012
 - Vision: `PROJECT-RAW.md`
 - Memory: `feedback_concisione_documentale.md` (ricreata)
-- Commit: `<pending>`
+- Commit: `0cd9f1f`
 - Issue: ESP-004 (chiusa con questo CHG) → ESP-005 (sweep finale aperta)
