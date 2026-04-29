@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `[da aggiornare post-commit CHG-005]`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `b05ecbe`
 > **Sessione corrente:** TALOS — Iterating **Round 2**: chiuse 6 lacune critiche (L06, L08, L11, L12, L18, L20), 1 nuova condizionale (L11b). **19 aperte** (2 critiche residue: L04 formula VGP, L21 Keepa).
 
 ---
@@ -27,7 +27,7 @@ Governance hardened (ADR 0001–0012) + vision in `Iterating` **Round 2** su **T
 | Vision capture protocol — ADR-0012 + PROJECT-RAW.md template Draft | 0012 | [CHG-003](changes/2026-04-29-003-vision-capture-adr.md) | `7b7ef17` |
 | Restore point `milestone/vision-protocol-v0.6.0` | 0003 | — | tag su `55ea55f` |
 | **TALOS — Esposizione Round 1: trascrizione verbatim + 24 lacune** | 0012 | [CHG-004](changes/2026-04-29-004-talos-exposition-iterating.md) | `44d53e7` |
-| **TALOS — Round 2 Q&A: 6 critiche chiuse, L11b condizionale aperta** | 0012 | [CHG-005](changes/2026-04-29-005-talos-iterating-round-2.md) | [commit corrente] |
+| **TALOS — Round 2 Q&A: 6 critiche chiuse, L11b condizionale aperta** | 0012 | [CHG-005](changes/2026-04-29-005-talos-iterating-round-2.md) | `b05ecbe` |
 
 ---
 

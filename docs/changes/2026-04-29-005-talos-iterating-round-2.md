@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-005
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: b05ecbe
 adr_ref: ADR-0012
 ---
 
@@ -87,6 +87,6 @@ Header del file aggiornato per riflettere lo stato corrente: 19 aperte, 2 critic
 
 - ADR: [ADR-0012](../decisions/ADR-0012-project-vision-capture.md)
 - Vision file: [PROJECT-RAW.md](../../PROJECT-RAW.md)
-- Commit: [da aggiornare post-commit]
+- Commit: `b05ecbe`
 - Restore point: tag `milestone/vision-protocol-v0.6.0` su `55ea55f`
 - Issue / Task: ESP-002 (Round 2 Q&A) → parzialmente chiusa, evolve in ESP-003 (Round 3 con L04 + L21)
