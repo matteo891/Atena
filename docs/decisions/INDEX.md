@@ -21,6 +21,7 @@ Grafo relazionale di tutti gli ADR ratificati. Aggiornare **prima** della ratifi
 | [ADR-0009](ADR-0009-errata-corrige-hardening-patch.md) | Errata Corrige & Hardening Patch | Active | meta | 2026-04-29 | ADR-0001 | Modifica di ADR Active senza supersessione |
 | [ADR-0010](ADR-0010-self-briefing-hardening.md) | Self-Briefing Hardening & STATUS Anchoring | Active | process | 2026-04-29 | ADR-0001, ADR-0004, ADR-0006, ADR-0008, ADR-0009 | Step 0 self-briefing, STATUS.md, sequenza re-briefing canonica |
 | [ADR-0011](ADR-0011-operational-policies.md) | Operational Policies — Push, Branch, Test Validity | Active | process | 2026-04-29 | ADR-0002, ADR-0003, ADR-0006 | Push immediato, branch policy fase governance, test manuali documentati |
+| [ADR-0012](ADR-0012-project-vision-capture.md) | Project Vision Capture & Distillation | Active | process | 2026-04-29 | ADR-0001, ADR-0008, ADR-0009, ADR-0010 | `PROJECT-RAW.md`, pipeline raw → ADR/ROADMAP, regola "lacune mai completate" |
 
 ¹ ADR-0004 mantiene status `Active` con **hardening patch** applicata da ADR-0010 sulla sezione "Flusso di Re-Briefing" (vedi ADR-0009 per il meccanismo, sezione `## Errata` di ADR-0004 per il dettaglio).
 
@@ -71,12 +72,19 @@ ADR-0001 [meta] — La Volontà
     │       ├── governa: Step 0 del Self-Briefing
     │       ├── governa: header freshness e anchoring di STATUS.md
     │       └── governa: sequenza canonica di re-briefing
-    └── ADR-0011 [process] — Operational Policies
-            ├── dipende da ADR-0002 (test gate, esteso)
-            ├── dipende da ADR-0003 (restore points, push integrato)
-            ├── governa: push immediato post-commit
-            ├── governa: branch policy fase governance (single-branch su main)
-            └── governa: ammissibilità test manuali documentati
+    ├── ADR-0011 [process] — Operational Policies
+    │       ├── dipende da ADR-0002 (test gate, esteso)
+    │       ├── dipende da ADR-0003 (restore points, push integrato)
+    │       ├── governa: push immediato post-commit
+    │       ├── governa: branch policy fase governance (single-branch su main)
+    │       └── governa: ammissibilità test manuali documentati
+    └── ADR-0012 [process] — Project Vision Capture
+            ├── dipende da ADR-0001 (autorità architetturale)
+            ├── dipende da ADR-0008 (anti-allucinazione, lacune mai completate)
+            ├── dipende da ADR-0009 (errata corrige post-Frozen)
+            ├── dipende da ADR-0010 (anchoring esteso al Q&A Log)
+            ├── governa: PROJECT-RAW.md (root)
+            └── governa: pipeline raw → proposta → validazione Leader → ADR/ROADMAP
 ```
 
 ---
@@ -102,6 +110,7 @@ ADR-0001 [meta] — La Volontà
 | .gitnexus/ | ADR-0007 | Database knowledge graph ⚠ ISS-001 |
 | docs/STATUS.md | ADR-0008, ADR-0010, ADR-0004 | Stato corrente — header freshness + claim ancorati obbligatori |
 | CLAUDE.md | ADR-0001, ADR-0008, ADR-0010 | Rules of Engagement; Self-Briefing con Step 0 |
+| PROJECT-RAW.md | ADR-0012 | Vision raw del progetto; stati Draft/Iterating/Frozen; lacune mai completate |
 
 ---
 

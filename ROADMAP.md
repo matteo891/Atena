@@ -13,10 +13,13 @@ Tracker operativo del progetto. Ogni voce deve essere tracciabile a un ADR valid
 | 1 | Inizializzazione infrastruttura dogmatica | — | Completato |
 | 2 | Promulgazione ADR fondativi (0001–0004) | ADR-0001–0004 | Completato |
 | 3 | Promulgazione ADR enforcement + anti-allucinazione (0005–0008) | ADR-0005–0008 | Completato |
-| 4 | Hardening governance v0.5.0 — fix audit (B1–B5, M1–M9, P1–P3) | ADR-0009, ADR-0010, ADR-0011 | Completato |
-| 5 | Verdetto: sistema governance a prova di bomba per fase pre-codice | tutti 0001–0011 | Pronto — in attesa di approvazione Leader del CHG-002 |
-| 6 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
-| 7 | Definizione stack tecnologico (ISS-002) → primo ADR di architettura | Da promulgare | Bloccante per fase codice |
+| 4 | Hardening governance v0.5.0 — fix audit (B1–B5, M1–M9, P1–P3) | ADR-0009, ADR-0010, ADR-0011 | Completato (commit `416ab87`) |
+| 5 | Verdetto: sistema governance a prova di bomba per fase pre-codice | tutti 0001–0011 | Confermato — sistema in produzione |
+| 6 | Vision capture protocol — ADR-0012 + PROJECT-RAW.md template `Draft` | ADR-0012 | Completato (CHG-2026-04-29-003) |
+| 7 | Esposizione bozza dal Leader → riempimento PROJECT-RAW.md `Draft → Iterating` | ADR-0012 | In attesa — Leader esporrà la bozza nella prossima sessione |
+| 8 | `Frozen` PROJECT-RAW.md → proposta scomposizione (Claude) → validazione Leader → ADR di stack | ADR-0012, ADR di stack da promulgare | Successivo a #7 |
+| 9 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
+| 10 | Prima linea di codice applicativo | ADR di stack (da promulgare) | Bloccante: dipende da #8 |
 
 ---
 
@@ -32,11 +35,12 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 
 | # | Tema | ADR necessario | Note |
 |---|------|---------------|------|
-| A | Stack tecnologico | Da promulgare | Da definire dal Leader (fonte ISS-002) |
+| A | Stack tecnologico | Da promulgare | Da definire dal Leader, popolato dalla scomposizione del PROJECT-RAW Frozen (ADR-0012) |
 | B | Struttura directory codice applicativo | Da promulgare | Dipende dallo stack |
 | C | CI/CD pipeline | Da promulgare | Dipende dallo stack |
 | D | Branch policy v2 (multi-branch / PR / branch protection) | Da promulgare | Rinviata da ADR-0011; rivedere all'introduzione del primo modulo applicativo |
 | E | GitNexus operativo da PC del Leader | ADR-0007 (esistente, in attesa) | Eseguire `gitnexus analyze` post-fork |
+| F | Task operativi derivati dal PROJECT-RAW Frozen | Da promulgare individualmente | Popolati post-step [7] della pipeline ADR-0012 |
 
 ---
 
@@ -47,4 +51,5 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 | 2026-04-29 | Inizializzazione infrastruttura | — | Leader |
 | 2026-04-29 | Promulgazione ADR fondativi 0001–0004 + protocolli operativi | ADR-0001–0004 | Leader |
 | 2026-04-29 | Promulgazione ADR 0005–0008 + git hooks + enforcement + anti-allucinazione | ADR-0005–0008 | Leader |
-| 2026-04-29 | Hardening governance v0.5.0 — ADR-0009/0010/0011 + errata + hardening patch + hook rinforzati | ADR-0009, ADR-0010, ADR-0011 | In attesa di approvazione Leader (CHG-2026-04-29-002) |
+| 2026-04-29 | Hardening governance v0.5.0 — ADR-0009/0010/0011 + errata + hardening patch + hook rinforzati | ADR-0009, ADR-0010, ADR-0011 | Leader (CHG-2026-04-29-002, commit `416ab87`) |
+| 2026-04-29 | Vision capture protocol — ADR-0012 + PROJECT-RAW.md template Draft | ADR-0012 | Leader (CHG-2026-04-29-003) |

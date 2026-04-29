@@ -9,6 +9,19 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-04-29 — Vision Capture Protocol
+
+### Added
+- `ADR-0012`: Project Vision Capture & Distillation — protocollo formale per esporre, affinare e congelare la bozza concettuale del progetto via `PROJECT-RAW.md` ([CHG-2026-04-29-003](docs/changes/2026-04-29-003-vision-capture-adr.md))
+- `PROJECT-RAW.md` (root): template vuoto in stato `Draft`, 11 sezioni fisse, 16 lacune iniziali precompilate, Q&A Log vuoto, regola "lacune mai completate" applicata
+- `docs/changes/2026-04-29-003-vision-capture-adr.md` — change document della promulgazione
+
+### Changed
+- `docs/decisions/INDEX.md`: aggiunto ADR-0012 al registro, grafo dipendenze esteso, `PROJECT-RAW.md` registrato in "Aree di Codice Coperte"
+- `docs/decisions/FILE-ADR-MAP.md`: `PROJECT-RAW.md` mappato sotto ADR-0012; ROADMAP esteso con dipendenza secondaria ADR-0012
+- `ROADMAP.md`: obiettivo #6 (vision capture protocol) completato; #7 (esposizione Leader → Iterating) in attesa; #8 (Frozen → scomposizione → ADR di stack) successivo; meta-blocco F aggiunto
+- `docs/STATUS.md`: stato vision capture, prossima azione = esposizione bozza Leader
+
 ## [0.5.0] — 2026-04-29 — Governance Hardening
 
 Audit completo del sistema di governance richiesto dal Leader. Rilevati 5 buchi seri (B1–B5), 9 sviste minori (M1–M9) e 3 policy mancanti (P1–P3). Risolti integralmente in questo release.

@@ -15,7 +15,8 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | File / Pattern | ADR Primario | ADR Secondari | Note |
 |---|---|---|---|
 | `CLAUDE.md` | ADR-0001 | ADR-0008, ADR-0010 (Step 0 + sequenza re-briefing) | Rules of Engagement; modificare solo con ADR di supporto |
-| `ROADMAP.md` | ADR-0001 | — | Aggiornare ad ogni ADR ratificato |
+| `PROJECT-RAW.md` | ADR-0012 | ADR-0008 (lacune), ADR-0009 (errata post-Frozen) | Vision raw; modifica diretta solo in stato Draft/Iterating; post-Frozen via Errata Corrige |
+| `ROADMAP.md` | ADR-0001 | ADR-0012 (popolato da scomposizione validata del Frozen) | Aggiornare ad ogni ADR ratificato; task da Frozen popolano i meta-blocchi futuri |
 | `CHANGELOG.md` | ADR-0003, ADR-0004 | ADR-0005 | Checkpoint log + change summary con link CHG |
 | `docs/STATUS.md` | ADR-0008 | ADR-0004, ADR-0010 (header freshness + anchoring) | Fonte di verità sullo stato corrente; aggiornare a fine sessione con modifiche |
 | `docs/decisions/ADR-*.md` | ADR-0001 | ADR-0009 (errata corrige + hardening patch) | Ogni ADR segue TEMPLATE.md; vedi INDEX.md |
