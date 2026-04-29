@@ -2,8 +2,8 @@
 id: CHG-2026-04-29-002
 date: 2026-04-29
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 416ab87
 adr_ref: ADR-0009, ADR-0010, ADR-0011, ADR-0003 (errata), ADR-0004 (hardening patch), ADR-0006 (hook update)
 ---
 
@@ -129,6 +129,6 @@ L'ordine di scrittura ha rispettato le dipendenze del pre-commit hook: prima il 
 - ADR: [ADR-0009](../decisions/ADR-0009-errata-corrige-hardening-patch.md), [ADR-0010](../decisions/ADR-0010-self-briefing-hardening.md), [ADR-0011](../decisions/ADR-0011-operational-policies.md)
 - Errata: ADR-0003, CHG-001, FILE-ADR-MAP
 - Hardening patch: ADR-0004
-- Commit: [da aggiornare post-commit]
+- Commit: `416ab87`
 - Checkpoint successivo: `milestone/governance-hardening-v0.5.0` (proposta — richiede approvazione Leader)
 - Issue / Task: ISS-001 invariata (GitNexus rinviato), ISS-002 invariata (stack tech)

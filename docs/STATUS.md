@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `[da aggiornare post-commit]`
+> **Ultimo aggiornamento:** 2026-04-29 — commit `416ab87`
 > **Sessione corrente:** Hardening governance v0.5.0 — promulgazione ADR-0009/0010/0011, errata su ADR-0003 e CHG-001, hardening patch su ADR-0004, rinforzo hook.
 
 ---
