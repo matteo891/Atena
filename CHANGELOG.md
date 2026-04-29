@@ -9,6 +9,22 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.7.4] — 2026-04-29 — TALOS Iterating Round 5 (sweep finale, 0 lacune aperte)
+
+### Changed
+- `PROJECT-RAW.md`: chiuse tutte le 17 lacune residue in un colpo (L01, L02, L03, L05, L07, L09, L09b, L10, L11b, L13, L14, L15, L16, L17, L19, L22, L24); default proposti accettati al 100% tranne L02 = Opzione (a) budget di sessione e L14 = Streamlit; **formula manuale Fee_FBA fornita verbatim dal Leader** e incisa in sez. 6.3 Formula 1 per L11b; tabelle 8.1/8.2 popolate con rischi+mitigazioni; refusi L09 (Veto ROI = R-08) e L09b (Tetris = R-06) corretti inline; `qa_rounds: 5`; **0 lacune aperte (26/26 chiuse)** ([CHG-2026-04-29-008](docs/changes/2026-04-29-008-talos-iterating-round-5-sweep-finale.md))
+- `docs/STATUS.md`, `ROADMAP.md`: Round 5 registrato; ESP-005 chiusa, ESP-006 (transizione Frozen) aperta
+- Vision pronta per dichiarazione esplicita di `Iterating → Frozen` da parte del Leader
+
+### Added
+- `docs/changes/2026-04-29-008-talos-iterating-round-5-sweep-finale.md`
+
+## [0.7.3+1] — 2026-04-29 — Fork transition
+
+### Changed
+- `git remote origin` riallineato da `santacrocefrancesco00-ux/Atena` (repo del padre, non scrivibile dal Leader operativo `matteo891`) a `matteo891/Atena` (fork operativo)
+- `docs/STATUS.md`: link al repository aggiornato di conseguenza (commit `2abe28e`)
+
 ## [0.7.3] — 2026-04-29 — TALOS Iterating Round 4 (normalizzazione VGP)
 
 ### Changed
