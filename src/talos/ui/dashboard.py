@@ -444,6 +444,52 @@ def try_delete_category_referral_fee(
     return True, None
 
 
+def compare_session_kpis(
+    loaded: LoadedSession,
+    replayed: SessionResult,
+) -> dict[str, dict[str, float]]:
+    """Confronto KPI originale (loaded) vs replay (replayed).
+
+    Helper puro testabile senza Streamlit. Espone i KPI chiave per
+    rendering side-by-side: budget, saturazione, budget_t1, cart_count,
+    panchina_count.
+
+    Differenza vs leggere direttamente i campi: normalizza i tipi
+    (Decimal/float) e centralizza le derivazioni (saturazione del
+    LoadedSession non e' precalcolata, va dedotta da
+    `sum(unit_cost * qty) / budget`).
+
+    :returns: dict con chiavi `original` / `replayed`, valori dict con
+        chiavi `budget`, `saturation`, `budget_t1`, `cart_count`,
+        `panchina_count`.
+    """
+    original_budget = float(loaded.summary.budget_eur)
+    original_total = 0.0
+    for row in loaded.cart_rows:
+        cost = row.get("cost_total")
+        if isinstance(cost, (int, float)):
+            original_total += float(cost)
+    original_saturation = min(original_total / original_budget, 1.0) if original_budget > 0 else 0.0
+    return {
+        "original": {
+            "budget": original_budget,
+            "saturation": original_saturation,
+            # `budget_t1` non e' nel LoadedSession (non persistito): NaN
+            # placeholder per il confronto. Frontend rendera' "—".
+            "budget_t1": float("nan"),
+            "cart_count": float(len(loaded.cart_rows)),
+            "panchina_count": float(len(loaded.panchina_rows)),
+        },
+        "replayed": {
+            "budget": float(replayed.cart.budget),
+            "saturation": float(replayed.cart.saturation),
+            "budget_t1": float(replayed.budget_t1),
+            "cart_count": float(len(replayed.cart.items)),
+            "panchina_count": float(len(replayed.panchina)),
+        },
+    }
+
+
 def try_replay_session(
     factory: sessionmaker[Session],
     session_id: int,
@@ -600,21 +646,21 @@ def _render_loaded_session_detail(
         st.caption("Panchina: vuota.")
 
     if factory is not None:
-        _render_replay_what_if(factory, s.id, original_budget=float(s.budget_eur))
+        _render_replay_what_if(factory, loaded)
 
 
 def _render_replay_what_if(
     factory: sessionmaker[Session],
-    session_id: int,
-    *,
-    original_budget: float,
+    loaded: LoadedSession,
 ) -> None:
-    """Sub-expander "What-if Re-allocate" (CHG-057).
+    """Sub-expander "What-if Re-allocate" + compare side-by-side (CHG-057+059).
 
     Permette al CFO di modificare `budget` o `locked_in` e ottenere
     un nuovo `SessionResult` via `replay_session`, senza ri-eseguire
-    enrichment. Pattern UX: input → bottone → metric/tabelle nuove.
+    enrichment. Mostra confronto KPI originale vs replay.
     """
+    session_id = loaded.summary.id
+    original_budget = float(loaded.summary.budget_eur)
     with st.expander("What-if — Re-allocate questa sessione"):
         st.caption(
             "Modifica budget o locked-in e ottieni un nuovo Cart senza ricaricare il listino. "
@@ -623,7 +669,7 @@ def _render_replay_what_if(
         new_budget = st.number_input(
             "Budget override (EUR)",
             min_value=100.0,
-            value=float(original_budget),
+            value=original_budget,
             step=500.0,
             format="%.2f",
             key=f"replay_budget_{session_id}",
@@ -644,7 +690,58 @@ def _render_replay_what_if(
             if err is not None or replayed is None:
                 st.error(err or "Replay fallito.")
             else:
-                _render_replay_result(replayed)
+                _render_compare_view(loaded, replayed)
+
+
+def _render_compare_view(loaded: LoadedSession, replayed: SessionResult) -> None:
+    """Render side-by-side dei KPI originale (loaded) vs replay (replayed) — CHG-059."""
+    st.success("Replay completato (in memoria). Confronto:")
+    kpis = compare_session_kpis(loaded, replayed)
+    col_orig, col_rep = st.columns(2)
+
+    with col_orig:
+        st.markdown("**Originale**")
+        st.metric("Budget (EUR)", f"€ {kpis['original']['budget']:,.2f}")
+        st.metric("Saturazione", f"{kpis['original']['saturation']:.1%}")
+        st.metric("Budget T+1", "—")  # non persistito
+        st.metric(
+            "# Cart / Panchina",
+            f"{int(kpis['original']['cart_count'])} / {int(kpis['original']['panchina_count'])}",
+        )
+        if loaded.cart_rows:
+            st.dataframe(pd.DataFrame(loaded.cart_rows), use_container_width=True)
+
+    with col_rep:
+        st.markdown("**Replay**")
+        st.metric(
+            "Budget (EUR)",
+            f"€ {kpis['replayed']['budget']:,.2f}",
+            delta=f"{kpis['replayed']['budget'] - kpis['original']['budget']:+,.2f}",
+        )
+        sat_delta_pp = (kpis["replayed"]["saturation"] - kpis["original"]["saturation"]) * 100
+        st.metric(
+            "Saturazione",
+            f"{kpis['replayed']['saturation']:.1%}",
+            delta=f"{sat_delta_pp:+.1f} pp",
+        )
+        st.metric("Budget T+1 (R-07)", f"€ {kpis['replayed']['budget_t1']:,.2f}")
+        st.metric(
+            "# Cart / Panchina",
+            f"{int(kpis['replayed']['cart_count'])} / {int(kpis['replayed']['panchina_count'])}",
+            delta=int(kpis["replayed"]["cart_count"] - kpis["original"]["cart_count"]),
+        )
+        if replayed.cart.items:
+            cart_view = [
+                {
+                    "asin": ci.asin,
+                    "qty": ci.qty,
+                    "cost_total": ci.cost_total,
+                    "vgp_score": ci.vgp_score,
+                    "locked": ci.locked,
+                }
+                for ci in replayed.cart.items
+            ]
+            st.dataframe(pd.DataFrame(cart_view), use_container_width=True)
 
 
 def _render_replay_result(replayed: SessionResult) -> None:
