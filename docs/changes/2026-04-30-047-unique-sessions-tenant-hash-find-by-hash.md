@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-047
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 89fb471
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -173,4 +173,4 @@ nuova migration + `find_session_by_hash`.
 - Successore atteso: `upsert_session` con `ON CONFLICT DO UPDATE` (decisione
   Leader semantica); UI integration `find_session_by_hash` pre-save +
   warning duplicate
-- Commit: `[pending]`
+- Commit: `89fb471`
