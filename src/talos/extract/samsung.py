@@ -26,6 +26,7 @@ riga 223) e loggare l'evento canonico `extract.kill_switch`
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from enum import StrEnum
@@ -37,6 +38,8 @@ from rapidfuzz import fuzz, process
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_WHITELIST_YAML = Path(__file__).parent / "samsung_whitelist.yaml"
 
@@ -301,6 +304,19 @@ class SamsungExtractor:
                 mismatched_fields.append(field_name)
         confidence = score / max_weight if max_weight > 0 else 0.0
         if model_mismatch_hard:
+            # Telemetria CHG-2026-05-01-005: R-05 KILL-SWITCH HARDWARE.
+            # Catalogo ADR-0021 evento canonico `extract.kill_switch`.
+            # Il caller (orchestrator + vgp.score) forza vgp_score=0.
+            _logger.debug(
+                "extract.kill_switch",
+                extra={
+                    "asin": "<n/a>",
+                    "reason": "model_mismatch",
+                    "mismatch_field": "model",
+                    "expected": supplier.model,
+                    "actual": amazon.model,
+                },
+            )
             return MatchResult(
                 status=MatchStatus.MISMATCH,
                 confidence=confidence,

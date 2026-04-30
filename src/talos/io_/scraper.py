@@ -1,7 +1,12 @@
 """AmazonScraper — Playwright + selectors.yaml + cadence umana (ADR-0017 canale 2).
 
 CHG-2026-05-01-002 inaugura il secondo canale della fallback chain
-ADR-0017. Decisioni di design (D2 ratificata "default" Leader
+ADR-0017. CHG-2026-05-01-005 attiva la telemetria: emette
+`scrape.selector_fail` (catalogo ADR-0021) quando tutti i
+selettori (CSS+XPath) di un campo falliscono, anche con
+`missing_ok=True` (segnale di drift selettori).
+
+Decisioni di design (D2 ratificata "default" Leader
 2026-04-30 sera, memory `project_io_extract_design_decisions.md`):
 
 - D2.a Selector fallback: B = CSS -> XPath (2 livelli, no aria).
@@ -17,6 +22,7 @@ da ratificare nell'integratore CHG-2026-05-01-005 (richiede
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -26,6 +32,8 @@ import yaml
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -252,6 +260,17 @@ class AmazonScraper:
             value = page.query_selector_xpath_text(xpath)
             if value is not None and value.strip():
                 return value.strip()
+        # Tutti i selettori (CSS + XPath) hanno fallito per questo campo.
+        # Telemetria CHG-2026-05-01-005: evento canonico ADR-0021,
+        # emesso anche con missing_ok=True (segnale di drift selettori).
+        _logger.debug(
+            "scrape.selector_fail",
+            extra={
+                "asin": asin,
+                "selector_name": field,
+                "html_snippet_hash": "<no-html>",
+            },
+        )
         if missing_ok:
             return None
         raise SelectorMissError(asin, field=field, attempted=attempted)

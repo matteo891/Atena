@@ -26,6 +26,7 @@ attivato dall'integratore CHG-2026-05-01-005).
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
@@ -36,6 +37,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from numpy.typing import NDArray
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_OCR_CONFIDENCE_THRESHOLD = 70
 DEFAULT_TESSERACT_LANG = "ita+eng"
@@ -257,6 +260,18 @@ class OcrPipeline:
         valid_conf = [c for c in raw.word_confidences if c >= 0]
         confidence = float(sum(valid_conf)) / len(valid_conf) if valid_conf else 0.0
         status = OcrStatus.OK if confidence >= self._confidence_threshold else OcrStatus.AMBIGUOUS
+        if status is OcrStatus.AMBIGUOUS:
+            # Telemetria CHG-2026-05-01-005: evento canonico ADR-0021.
+            # Il caller (fallback chain) deve mostrare la riga al CFO.
+            _logger.debug(
+                "ocr.below_confidence",
+                extra={
+                    "file": "<image>",
+                    "confidence": confidence,
+                    "threshold": self._confidence_threshold,
+                    "text_extracted": raw.text,
+                },
+            )
         return OcrResult(
             text=raw.text,
             confidence=confidence,

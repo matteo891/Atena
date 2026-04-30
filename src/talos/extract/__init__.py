@@ -14,6 +14,7 @@ Vedi memory `project_io_extract_design_decisions.md` per il
 pacchetto D1-D5 ratificato dal Leader.
 """
 
+from talos.extract.asin_master_writer import AsinMasterInput, upsert_asin_master
 from talos.extract.samsung import (
     DEFAULT_COLOR_FUZZY_THRESHOLD,
     DEFAULT_CONFIDENCE_AMBIGUO_THRESHOLD,
@@ -33,9 +34,11 @@ __all__ = [
     "DEFAULT_CONFIDENCE_SICURO_THRESHOLD",
     "DEFAULT_FIELD_WEIGHTS",
     "DEFAULT_WHITELIST_YAML",
+    "AsinMasterInput",
     "MatchResult",
     "MatchStatus",
     "SamsungEntities",
     "SamsungExtractor",
     "load_whitelist",
+    "upsert_asin_master",
 ]

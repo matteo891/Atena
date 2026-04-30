@@ -4,6 +4,10 @@ CHG-2026-05-01-001 inaugura `src/talos/io_/`. Adapter pattern:
 `KeepaApiAdapter` Protocol isola la libreria community per
 sostituibilita' futura e testabilita' senza network.
 
+CHG-2026-05-01-005 attiva la telemetria: emette `keepa.miss`
+(catalogo ADR-0021) prima di sollevare `KeepaMissError`, e
+`keepa.rate_limit_hit` prima di `KeepaRateLimitExceededError`.
+
 Decisioni di design (D1 ratificata Leader 2026-04-30 sera, "default"):
 - D1.a Cache: solo `@st.cache_data(ttl=600)` lato Streamlit
   (ADR-0016), no sqlite locale qui dentro.
@@ -18,6 +22,7 @@ Decisioni di design (D1 ratificata Leader 2026-04-30 sera, "default"):
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -32,6 +37,8 @@ from tenacity import (
 if TYPE_CHECKING:
     from collections.abc import Callable
     from decimal import Decimal
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_RETRY_MAX_ATTEMPTS = 5
 DEFAULT_RETRY_WAIT_MIN_S = 1.0
@@ -201,6 +208,7 @@ class KeepaClient:
         """
         product = self._fetch_with_retry(asin)
         if product.buybox_eur is None:
+            self._emit_miss(asin, field="buybox")
             raise KeepaMissError(asin, field="buybox")
         return product.buybox_eur
 
@@ -208,6 +216,7 @@ class KeepaClient:
         """Ritorna il Best Sellers Rank intero. Solleva su miss/limit/transient."""
         product = self._fetch_with_retry(asin)
         if product.bsr is None:
+            self._emit_miss(asin, field="bsr")
             raise KeepaMissError(asin, field="bsr")
         return product.bsr
 
@@ -219,8 +228,22 @@ class KeepaClient:
         """
         product = self._fetch_with_retry(asin)
         if product.fee_fba_eur is None:
+            self._emit_miss(asin, field="fee_fba")
             raise KeepaMissError(asin, field="fee_fba")
         return product.fee_fba_eur
+
+    @staticmethod
+    def _emit_miss(asin: str, *, field: str) -> None:
+        """Emette evento canonico `keepa.miss` (catalogo ADR-0021).
+
+        Attivato in CHG-2026-05-01-005. Campi: asin, error_type
+        (= il `field` mancante), retry_count (=0 perche' miss e'
+        deterministico, non transient).
+        """
+        _logger.debug(
+            "keepa.miss",
+            extra={"asin": asin, "error_type": field, "retry_count": 0},
+        )
 
     def _fetch_with_retry(self, asin: str) -> KeepaProduct:
         """Applica retry esponenziale solo su KeepaTransientError.
@@ -245,6 +268,14 @@ class KeepaClient:
         """Singola query: rate-limit check + adapter dispatch."""
         acquired = self._limiter.try_acquire("keepa", blocking=False)
         if not acquired:
+            # Telemetria CHG-2026-05-01-005: evento canonico ADR-0021.
+            _logger.debug(
+                "keepa.rate_limit_hit",
+                extra={
+                    "requests_in_window": self._rate_limit_per_minute,
+                    "limit": self._rate_limit_per_minute,
+                },
+            )
             raise KeepaRateLimitExceededError(
                 asin,
                 rate_limit_per_minute=self._rate_limit_per_minute,
