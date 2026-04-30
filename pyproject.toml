@@ -36,6 +36,8 @@ dependencies = [
     # `apt install tesseract-ocr tesseract-ocr-ita tesseract-ocr-eng`
     # (scope CHG-005 integratore + README dev setup).
     "pytesseract>=0.3.13,<1",
+    # Estrattore Samsung NLP (ADR-0017 + R-05) — CHG-2026-05-01-004
+    "rapidfuzz>=3.0,<4",
     "pydantic-settings>=2.14.0",
 ]
 

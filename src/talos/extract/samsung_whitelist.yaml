@@ -1,0 +1,80 @@
+# Whitelist Samsung 5G + attributi canonici (ADR-0017 + R-05)
+#
+# Versione 1 — inaugurato CHG-2026-05-01-004.
+#
+# Convenzione (D4.b ratificata "default" Leader 2026-04-30 sera):
+# YAML versionato in src/talos/extract/. Patch operativa rapida
+# per aggiungere modelli/colori/RAM-ROM canonici senza redeploy.
+#
+# `models_5g` = lista bianca ammessa per estrazione modello.
+# Solo i modelli qui dentro sono considerati Samsung 5G valid
+# (R-05 implicito: modelli non in whitelist -> model=None ->
+# verosimile MISMATCH a valle).
+#
+# `ram_gb_canonical` / `rom_gb_canonical` = valori ammessi.
+# Lookup pattern "8GB RAM" / "256GB" filtra solo se il valore
+# numerico estratto e' nella whitelist (evita falsi positivi su
+# numeri casuali del titolo es. modello "S24+").
+#
+# `colors_canonical` = nomi colore Samsung ufficiali. Il match
+# usa rapidfuzz partial_ratio (D4.a) con soglia configurabile;
+# varianti minori (capitalizzazione, accenti, abbreviazioni)
+# matchano la voce canonica.
+
+models_5g:
+  # Galaxy S — flagship
+  - "Galaxy S24 Ultra"
+  - "Galaxy S24+"
+  - "Galaxy S24"
+  - "Galaxy S23 Ultra"
+  - "Galaxy S23 FE"
+  - "Galaxy S23+"
+  - "Galaxy S23"
+  - "Galaxy S22 Ultra"
+  - "Galaxy S22+"
+  - "Galaxy S22"
+  # Galaxy A — mid-range 5G
+  - "Galaxy A55"
+  - "Galaxy A54"
+  - "Galaxy A35"
+  - "Galaxy A34"
+  - "Galaxy A25"
+  - "Galaxy A15"
+  # Galaxy Z — foldable
+  - "Galaxy Z Fold5"
+  - "Galaxy Z Fold4"
+  - "Galaxy Z Flip5"
+  - "Galaxy Z Flip4"
+
+ram_gb_canonical:
+  - 4
+  - 6
+  - 8
+  - 12
+  - 16
+
+rom_gb_canonical:
+  - 64
+  - 128
+  - 256
+  - 512
+  - 1024
+
+colors_canonical:
+  - "Titanium Black"
+  - "Titanium Gray"
+  - "Titanium Violet"
+  - "Titanium Yellow"
+  - "Phantom Black"
+  - "Phantom White"
+  - "Phantom Silver"
+  - "Onyx Black"
+  - "Marble Gray"
+  - "Cobalt Violet"
+  - "Cream"
+  - "Lavender"
+  - "Lime"
+  - "Awesome Black"
+  - "Awesome White"
+  - "Awesome Lilac"
+  - "Awesome Iceblue"
