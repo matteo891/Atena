@@ -82,8 +82,9 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/formulas/cash_profit.py` | ADR-0018 | ADR-0019 | `cash_profit_eur` verbatim F2 (Cash_Inflow − Costo_Fornitore) — CHG-2026-04-30-026 |
 | `src/talos/formulas/roi.py` | ADR-0018 | ADR-0019 | `roi` come frazione decimale (Cash_Profit / Costo_Fornitore); gate scalare del Veto R-08 — CHG-2026-04-30-026 |
 | `src/talos/formulas/compounding.py` | ADR-0018 | ADR-0019 | `compounding_t1(budget_t, cash_profits)` verbatim F3 (`Budget_T+1 = Budget_T + Somma(Cash_Profit)`); chiude catena scalare delle formule — CHG-2026-04-30-032 |
-| `src/talos/vgp/__init__.py` | ADR-0018 | ADR-0013 | Package marker `vgp/` (inaugurato CHG-2026-04-30-027); re-export `is_vetoed_by_roi`, `DEFAULT_ROI_VETO_THRESHOLD` |
+| `src/talos/vgp/__init__.py` | ADR-0018 | ADR-0013 | Package marker `vgp/` (inaugurato CHG-2026-04-30-027); re-export `is_vetoed_by_roi`, `DEFAULT_ROI_VETO_THRESHOLD`, `min_max_normalize` (CHG-2026-04-30-034) |
 | `src/talos/vgp/veto.py` | ADR-0018 | ADR-0019 | `is_vetoed_by_roi(roi, threshold=0.08)` — predicato scalare R-08 verbatim — CHG-2026-04-30-027 |
+| `src/talos/vgp/normalize.py` | ADR-0018 | ADR-0019 | `min_max_normalize(series, kill_mask)` — primitiva vettoriale L04b; primo modulo Talos su `pd.Series` (apre l'era pandas/numpy) — CHG-2026-04-30-034 |
 | `src/talos/persistence/` | ADR-0015 | ADR-0013, ADR-0019 | SQLAlchemy 2.0 + RLS bootstrap |
 | `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (URL letta via `TalosSettings.db_url` — CHG-2026-04-30-020 + CHG-2026-04-30-030) |
 | `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
