@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `<pending CHG-013>` (vgp_results — nucleo decisore). Tag: `milestone/stack-frozen-v0.9.0` + `checkpoint/2026-04-30-01`. Catena CHG odierna: 001→002→...→013. Tabelle Allegato A coperte: 5/10
+> **Ultimo aggiornamento:** 2026-04-30 — commit `047bb46` (CHG-013 vgp_results — nucleo decisore). Tag: `milestone/stack-frozen-v0.9.0` + `checkpoint/2026-04-30-01`. Catena CHG odierna: 001→002→...→013. Tabelle Allegato A coperte: 5/10
 > **Sessione corrente:** TALOS — **Step [6] ADR-0012 completato.** Promulgazione del cluster ADR di stack 0013–0021 (9 ADR architettura/process: project structure, linguaggio, persistenza, UI, acquisizione dati, algoritmo VGP/Tetris, test strategy, CI/CD, logging). Validazione bulk Leader (Opzione A) + override puntuali ricevuti e incisi. Sblocco fase codice.
 
 ---
@@ -51,7 +51,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **Errata Corrige ADR-0015: regola "DEFAULT in Allegato A → NOT NULL (nullable=False) nell'ORM"** ratificata dal Leader | 0015, 0009 | [CHG-2026-04-30-010](changes/2026-04-30-010-errata-adr-0015-default-implies-not-null.md) | `3a4414f` |
 | **Terza tabella: `ListinoItem` (primo con FK → sessions ON DELETE CASCADE + relationship bidirezionale + indice + revision `d6ab9ffde2a2`). 12 test unit.** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-011](changes/2026-04-30-011-listino-items-model-with-fk.md) | `02a8787` |
 | **Quarta tabella: `ConfigOverride` (primo con RLS Zero-Trust + indice UNIQUE composito 4 col + revision `027a145f76a8`). 15 test unit.** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-012](changes/2026-04-30-012-config-overrides-model-with-rls.md) | `2498326` |
-| **Quinta tabella: `VgpResult` (nucleo decisore, 15 col, doppia FK CASCADE, indice `(session_id, vgp_score DESC)` + revision `c9527f017d5c`). 16 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-013](changes/2026-04-30-013-vgp-results-model.md) | `<pending>` |
+| **Quinta tabella: `VgpResult` (nucleo decisore, 15 col, doppia FK CASCADE, indice `(session_id, vgp_score DESC)` + revision `c9527f017d5c`). 16 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-013](changes/2026-04-30-013-vgp-results-model.md) | `047bb46` |
 
 ---
 

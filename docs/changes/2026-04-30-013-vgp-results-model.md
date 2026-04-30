@@ -3,7 +3,7 @@ id: CHG-2026-04-30-013
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 047bb46
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019, ADR-0018
 ---
 
@@ -163,4 +163,4 @@ Nuovi test (16):
 - ADR: ADR-0015 (Allegato A — schema), ADR-0018 (consumatore: pipeline VGP popola e legge questi campi), ADR-0014 (mypy + ruff strict), ADR-0013 (struttura `models/`), ADR-0019 (test unit + schema-aware)
 - Predecessore: CHG-2026-04-30-012 (`config_overrides` + RLS)
 - Successore atteso: prossima tabella Allegato A — `cart_items` (carrello finale del Tetris) o `panchina_items` (R-09 archiviazione). Entrambe FK doppia analoga
-- Commit: `<pending>`
+- Commit: `047bb46`
