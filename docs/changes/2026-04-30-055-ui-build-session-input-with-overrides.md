@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-055
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: d8f74c1
 adr_ref: ADR-0016, ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -196,4 +196,4 @@ ma inerti (fail-safe documentato).
 - Successore atteso: caching `@st.cache_data` per la mappa overrides;
   attivazione completa con `io_/extract` (popola `category_node`);
   warning UI "override fantasma" se misalignment tenant ↔ listino.
-- Commit: pending (backfill).
+- Commit: `d8f74c1`.
