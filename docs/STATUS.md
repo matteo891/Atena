@@ -192,6 +192,8 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 - **Test manuali documentati ammessi per governance (ADR-0011), non per codice applicativo (richiede test automatici).**
 - **Tutti gli ADR sono `Active`.** ADR-0004 è `Active¹` (hardening patch).
 - **Header `Ultimo aggiornamento` di STATUS.md obbligatorio (ADR-0010).** Aggiornare data + commit hash post-commit. Ogni claim ancorato.
+- **Stima MVP 2026-04-30 (post `milestone/first-formula-v1.0.0`):** ~30-35% verso prima build USABILE dall'utente CFO finale. Fondamento tecnico ~95% (governance/schema/persistence/config/formule scalari); percorso utente ~5-10% (manca tutto il flusso "input listino → carrello → cruscotto"). Breakdown per area in `memory/project_mvp_progress_estimate.md`.
+- **Ordine consigliato per il prossimo blocco strategico** (raccomandato in chat dal Claude precedente, non vincolante): vettoriale VGP (`vgp/normalize.py` + `vgp/score.py` Numpy/pandas) → Tetris allocator (`tetris/`) → orchestratore minimale headless (workflow integratore senza UI) → io_/extract (file readers + scraping Amazon Playwright + Keepa + OCR Tesseract) → UI Streamlit come ultimo strato. Razionale: costruire il "motore" su DataFrame sintetici (testabili in golden Samsung) prima dell'acquisizione reale, e prima di esporlo via UI.
 
 ---
 
