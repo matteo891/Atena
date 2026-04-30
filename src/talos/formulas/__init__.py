@@ -9,16 +9,19 @@ Catena del valore (incrementata progressivamente):
 - CHG-2026-04-30-022: `fee_fba_manual` (L11b verbatim, primo modulo).
 - CHG-2026-04-30-025: `cash_inflow_eur` (F1, primo consumatore di fee_fba).
 - CHG-2026-04-30-026: `cash_profit_eur` (F2) + `roi` (gate Veto R-08).
+- CHG-2026-04-30-032: `compounding_t1` (F3, chiude la catena scalare).
 """
 
 from talos.formulas.cash_inflow import cash_inflow_eur
 from talos.formulas.cash_profit import cash_profit_eur
+from talos.formulas.compounding import compounding_t1
 from talos.formulas.fee_fba import fee_fba_manual
 from talos.formulas.roi import roi
 
 __all__ = [
     "cash_inflow_eur",
     "cash_profit_eur",
+    "compounding_t1",
     "fee_fba_manual",
     "roi",
 ]
