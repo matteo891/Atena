@@ -3,7 +3,7 @@ id: CHG-2026-04-30-012
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 2498326
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -163,4 +163,4 @@ Nuovi test (15):
 - ADR: ADR-0015 (Allegato A — schema + RLS Zero-Trust + indice unique), ADR-0014 (mypy + ruff strict), ADR-0013 (struttura `models/`), ADR-0019 (test unit invarianti + schema-aware sui file migration)
 - Predecessore: CHG-2026-04-30-011 (`listino_items` + FK)
 - Successore atteso: prossima tabella Allegato A — probabilmente `vgp_results` (FK doppia: session_id + listino_item_id, modello con più colonne dell'Allegato A — il nucleo del decisore)
-- Commit: `<pending>`
+- Commit: `2498326`
