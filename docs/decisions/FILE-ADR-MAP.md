@@ -63,6 +63,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `pyproject.toml` | ADR-0013, ADR-0014 | — | uv + ruff + mypy + pytest config |
 | `uv.lock` | ADR-0013, ADR-0014 | — | Versionato; aggiornato con `uv sync` |
 | `scripts/setup-dev.sh` | ADR-0013 | — | Bootstrap ambiente dev (futuro) |
+| `scripts/db_bootstrap.py` | ADR-0015 | ADR-0014 | Bootstrap ruoli + GRANT/REVOKE + FORCE RLS Zero-Trust (idempotente) — CHG-2026-04-30-021 |
 
 ### Moduli Applicativi (`src/talos/<area>/`)
 
