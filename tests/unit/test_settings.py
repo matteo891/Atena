@@ -179,3 +179,47 @@ def test_keepa_rate_limit_negative_rejected(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("TALOS_KEEPA_RATE_LIMIT_PER_MINUTE", "-5")
     with pytest.raises(ValidationError, match="keepa_rate_limit_per_minute"):
         TalosSettings()
+
+
+# ---------------------------------------------------------------------------
+# Campi OCR Tesseract (CHG-2026-05-01-003)
+# ---------------------------------------------------------------------------
+
+
+def test_ocr_threshold_default_70(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Senza env var, `ocr_confidence_threshold=70` (verbatim ADR-0017)."""
+    monkeypatch.delenv("TALOS_OCR_CONFIDENCE_THRESHOLD", raising=False)
+    settings = TalosSettings()
+    assert settings.ocr_confidence_threshold == 70
+
+
+def test_ocr_threshold_override_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TALOS_OCR_CONFIDENCE_THRESHOLD=80` -> soglia override 80."""
+    monkeypatch.setenv("TALOS_OCR_CONFIDENCE_THRESHOLD", "80")
+    settings = TalosSettings()
+    assert settings.ocr_confidence_threshold == 80
+
+
+@pytest.mark.parametrize("boundary", [0, 100])
+def test_ocr_threshold_boundaries_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+    boundary: int,
+) -> None:
+    """Validator: 0 e 100 sono i confini inclusivi della scala Tesseract."""
+    monkeypatch.setenv("TALOS_OCR_CONFIDENCE_THRESHOLD", str(boundary))
+    settings = TalosSettings()
+    assert settings.ocr_confidence_threshold == boundary
+
+
+def test_ocr_threshold_negative_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validator: soglia negativa -> ValidationError."""
+    monkeypatch.setenv("TALOS_OCR_CONFIDENCE_THRESHOLD", "-1")
+    with pytest.raises(ValidationError, match="ocr_confidence_threshold"):
+        TalosSettings()
+
+
+def test_ocr_threshold_above_100_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validator: soglia > 100 fuori scala Tesseract -> ValidationError."""
+    monkeypatch.setenv("TALOS_OCR_CONFIDENCE_THRESHOLD", "101")
+    with pytest.raises(ValidationError, match="ocr_confidence_threshold"):
+        TalosSettings()

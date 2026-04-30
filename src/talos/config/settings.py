@@ -95,6 +95,18 @@ class TalosSettings(BaseSettings):
             "esplicito (R-01 NO SILENT DROPS), non silenziamento."
         ),
     )
+    ocr_confidence_threshold: int = Field(
+        default=70,
+        description=(
+            "Soglia di confidenza Tesseract OCR (0-100, "
+            "env: TALOS_OCR_CONFIDENCE_THRESHOLD). Default 70 "
+            "(verbatim ADR-0017). Sotto soglia -> status AMBIGUO "
+            "(R-01 NO SILENT DROPS), riga listino marcata e "
+            "mostrata al CFO per validazione manuale. Override "
+            "runtime possibile via `config_overrides` "
+            "(key 'ocr_confidence_threshold')."
+        ),
+    )
 
     @field_validator("roi_veto_threshold")
     @classmethod
@@ -116,6 +128,18 @@ class TalosSettings(BaseSettings):
             msg = (
                 f"keepa_rate_limit_per_minute invalido: {v}. "
                 "Deve essere intero positivo (richieste/minuto)."
+            )
+            raise ValueError(msg)
+        return v
+
+    @field_validator("ocr_confidence_threshold")
+    @classmethod
+    def _check_ocr_threshold(cls, v: int) -> int:
+        """Soglia confidence Tesseract: intero in [0, 100]."""
+        if not 0 <= v <= 100:  # noqa: PLR2004 — intervallo Tesseract verbatim
+            msg = (
+                f"ocr_confidence_threshold invalido: {v}. "
+                "Deve essere intero in [0, 100] (scala Tesseract)."
             )
             raise ValueError(msg)
         return v
