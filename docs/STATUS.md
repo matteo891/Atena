@@ -241,6 +241,31 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 - **Stima MVP 2026-04-30 (post `milestone/first-formula-v1.0.0`):** ~30-35% verso prima build USABILE dall'utente CFO finale. Fondamento tecnico ~95% (governance/schema/persistence/config/formule scalari); percorso utente ~5-10% (manca tutto il flusso "input listino → carrello → cruscotto"). Breakdown per area in `memory/project_mvp_progress_estimate.md`.
 - **Ordine consigliato per il prossimo blocco strategico** (raccomandato in chat dal Claude precedente, non vincolante): vettoriale VGP (`vgp/normalize.py` + `vgp/score.py` Numpy/pandas) → Tetris allocator (`tetris/`) → orchestratore minimale headless (workflow integratore senza UI) → io_/extract (file readers + scraping Amazon Playwright + Keepa + OCR Tesseract) → UI Streamlit come ultimo strato. Razionale: costruire il "motore" su DataFrame sintetici (testabili in golden Samsung) prima dell'acquisizione reale, e prima di esporlo via UI.
 
+### 🔄 Handoff sessione 2026-04-30 PM (post `45b4757` + handoff governance)
+
+> **Per il prossimo Claude.** La sessione PM 2026-04-30 ha macinato **18 CHG consecutivi (034..051)**. Lo stato attuale e' radicalmente diverso da quello descritto sopra (pre-sessione). Leggi questo blocco **come priorita'** dopo Self-Briefing.
+
+- **Stima MVP refresh (post CHG-051): ~88-92%** verso build CFO produttivo (era ~30-35% pre-sessione). Memory aggiornata: `memory/project_mvp_progress_estimate.md`.
+- **Catena CHG-034..051**: vettoriale VGP + Tetris + formule + orchestrator + UI MVP + persistenza CRUD-light + idempotency + UX duplicate-aware + telemetria 4/10 + L10/L12 chiuse. Memory: `memory/project_session_handoff_2026-04-30-pm.md` (decisioni Leader, bug fix nascosti, prossimi step in priorita').
+- **Decisione Leader CHG-039 (gap ADR orchestrator)**: ratificata **opzione A** = file top-level `src/talos/orchestrator.py` (no directory). NON aprire un `orchestrator/` cluster senza riautorizzazione.
+- **Prossimo step strategico atteso**: **`io_/extract` Samsung** — ADR-0017 (Playwright + Tesseract + Keepa + NLP filter R-05). E' BIG, 4-5 CHG, **richiede sessione dedicata**. Non iniziarla come "9o CHG di una mega-sessione". Sblocca 4 eventi canonici dormienti del catalogo ADR-0021.
+- **Alternative per scope contenuto** (in ordine di valore): (β) `upsert_session` decisione Leader semantica (delete-recreate vs update-only); (γ) integrazione orchestrator + Referral_Fee per categoria (post io_/extract); (y) `load_session_full`; (z) migrazione `structlog.bind` context tracing; (q) refactor UI multi-page ADR-0016.
+- **Pattern operativi imparati durante la sessione (rispettare per coerenza)**:
+  1. **Graceful degrade UI**: `fetch_*_or_none`/`fetch_*_or_empty` catturano `Exception` generico → `None`/`{}`.
+  2. **Unit-of-Work**: i repository (`save_session_result`, `set_config_override_*`) NON committano. Caller via `session_scope`.
+  3. **Stringhe letterali per eventi canonici** (es. `"tetris.skipped_budget"`): governance test fa grep, costanti importate non lasciano traccia.
+  4. **CHAR(10) padding ASIN**: confronti su `vgp_result.asin` falliscono senza `.strip()`. Quirk Postgres documentato.
+  5. **`_listino_hash` privato importato dalla UI**: deroga consapevole (UI + repository sono "di sessione").
+- **3 bug fix nascosti durante la sessione (per allerta)**:
+  1. CHG-041: `allocate_tetris` Pass 2 ora skippa `qty_final=0` (era no-op visivo). Sentinella in golden test.
+  2. CHG-046: `test_log_events_catalog` regex `^\s*continue\b` aveva `re.MULTILINE` mancante. Bug latente da CHG-006.
+  3. CHG-050: `idx_config_unique` UNIQUE NULL handling: migration `e8b80f77961b` ricrea con `NULLS NOT DISTINCT` (Postgres 15+).
+- **Quality gate al termine sessione**: 380 unit/gov/golden + 72 integration = **452 PASS**, ruff/mypy strict puliti.
+- **Tag**: 4 milestone (`stack-frozen-v0.9.0`, `first-formula-v1.0.0`, `pipeline-e2e-v1.1.0`, `crud-and-telemetry-v1.2.0`) + 9 checkpoint.
+- **Indice GitNexus stale ~50 commit** al termine sessione → `npx -y gitnexus analyze` (Node v22) come prima azione operativa post-briefing.
+- **Container Postgres**: `talos-pg-test` postgres:16-alpine host:55432 tmpfs. Migrations head: `e8b80f77961b`.
+- **Memory utili da consultare**: `feedback_concisione_documentale.md`, `project_f1_referral_structure_confirmed.md`, `project_mvp_progress_estimate.md` (refresh PM), `project_session_handoff_2026-04-30-pm.md` (questa sessione).
+
 ---
 
 ## Issues Noti
