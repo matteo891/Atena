@@ -9,6 +9,27 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-04-30 — Settima tabella Allegato A: panchina_items (R-09 archivio)
+
+`PanchinaItem` (tabella `panchina_items`) è la settima delle 10 tabelle dell'Allegato A. R-09 archivio degli ASIN con `vgp_score > 0` non scelti per saturazione del budget. Schema isomorfo a `cart_items` ma snello (4 colonne, no `unit_cost_eur`/`locked_in`). Revision Alembic `618105641c27`.
+
+### Added
+- `src/talos/persistence/models/panchina_item.py` — `class PanchinaItem(Base)` con 4 colonne (id BigInt PK, session_id+vgp_result_id BigInt FK CASCADE, qty_proposed Integer NOT NULL). Relationship triple aggiornate.
+- `migrations/versions/618105641c27_create_panchina_items.py` — Alembic revision (catena: `Revises: fa6408788e73`).
+- `tests/unit/test_panchina_item_model.py` — 10 test invarianti
+- `docs/changes/2026-04-30-015-panchina-items-model.md`
+
+### Changed
+- `src/talos/persistence/models/analysis_session.py` — relationship `panchina_items: Mapped[list[PanchinaItem]]` aggiunta
+- `src/talos/persistence/models/vgp_result.py` — relationship `panchina_items: Mapped[list[PanchinaItem]]` aggiunta
+- `src/talos/persistence/models/__init__.py` — re-export `PanchinaItem`
+- `src/talos/persistence/__init__.py` — re-export `PanchinaItem`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (14 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **102 passed** (era 92, +10)
+- `alembic upgrade --sql` → DDL + 2 FK CASCADE coerenti con Allegato A
+
 ## [0.18.0] — 2026-04-30 — Sesta tabella Allegato A: cart_items (carrello Tetris)
 
 `CartItem` (tabella `cart_items`) è la sesta delle 10 tabelle dell'Allegato A. Output principale della sessione: il carrello finale del Tetris allocator. Doppia FK CASCADE + flag `locked_in` (R-04 Manual Override) con default `false` (NOT NULL implicito da regola CHG-010). Revision Alembic `fa6408788e73`.

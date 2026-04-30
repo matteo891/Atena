@@ -10,6 +10,7 @@ from talos.persistence.models.asin_master import AsinMaster
 from talos.persistence.models.cart_item import CartItem
 from talos.persistence.models.config_override import ConfigOverride
 from talos.persistence.models.listino_item import ListinoItem
+from talos.persistence.models.panchina_item import PanchinaItem
 from talos.persistence.models.vgp_result import VgpResult
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "CartItem",
     "ConfigOverride",
     "ListinoItem",
+    "PanchinaItem",
     "VgpResult",
 ]
