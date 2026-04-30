@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-023
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: TBD
+status: Committed
+commit: d962445
 adr_ref: ADR-0010, ADR-0009, ADR-0008, ADR-0003
 ---
 
@@ -91,4 +91,4 @@ Niente test runtime: la modifica è documentale e non tocca codice eseguibile.
 - ADR: ADR-0010 (oggetto dell'errata), ADR-0009 (meccanismo errata corrige), ADR-0008 (regola "STATUS prevalente"), ADR-0003 (governa i tag — oggetto del fail)
 - Predecessore: CHG-2026-04-30-022 (formula L11b — chiusura sessione applicativa); errore di rappresentazione emerso al passaggio successivo
 - Successore atteso: applicazione della verifica reciproca al prossimo Self-Briefing
-- Commit: TBD (in attesa di permesso esplicito Leader)
+- Commit: `d962445`
