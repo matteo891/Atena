@@ -28,8 +28,10 @@ from talos.formulas import (
 )
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
 from talos.persistence import (
+    LoadedSession,
     create_app_engine,
     list_recent_sessions,
+    load_session_by_id,
     make_session_factory,
     save_session_result,
     session_scope,
@@ -190,19 +192,77 @@ def fetch_recent_sessions_or_empty(
     ]
 
 
+def fetch_loaded_session_or_none(
+    factory: sessionmaker[Session],
+    session_id: int,
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> LoadedSession | None:
+    """Carica una sessione storica via `load_session_by_id` con error handling.
+
+    Ritorna `None` se non esiste, tenant mismatch, o query fallisce.
+    """
+    try:
+        with session_scope(factory) as db:
+            return load_session_by_id(db, session_id, tenant_id=tenant_id)
+    except Exception:  # noqa: BLE001 - graceful UI fallback
+        return None
+
+
 def _render_history(
     factory: sessionmaker[Session],
     *,
     tenant_id: int,
     limit: int = 20,
 ) -> None:
-    """Expander con lista delle sessioni precedenti per il tenant."""
+    """Expander con lista delle sessioni precedenti + form ricarica per id."""
     with st.expander("Storico Sessioni (lista recente)"):
         rows = fetch_recent_sessions_or_empty(factory, limit=limit, tenant_id=tenant_id)
         if not rows:
             st.caption("Nessuna sessione precedente trovata.")
             return
         st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+        st.divider()
+        st.caption("Ricarica una sessione storica (incolla l'id dalla colonna sopra)")
+        col_id, col_btn = st.columns([3, 1])
+        # rows[0]["id"] e' tipato `object` dal dict literal; cast esplicito.
+        first_id = int(str(rows[0]["id"]))
+        sid_input = col_id.number_input(
+            "ID sessione",
+            min_value=1,
+            value=first_id,
+            step=1,
+            key="load_sid_input",
+        )
+        if col_btn.button("Carica dettaglio", key="load_session_btn"):
+            loaded = fetch_loaded_session_or_none(factory, int(sid_input), tenant_id=tenant_id)
+            if loaded is None:
+                st.error(f"Sessione id={sid_input} non trovata o non accessibile.")
+            else:
+                _render_loaded_session_detail(loaded)
+
+
+def _render_loaded_session_detail(loaded: LoadedSession) -> None:
+    """Render del dettaglio di una `LoadedSession` (post-`load_session_by_id`)."""
+    s = loaded.summary
+    st.subheader(f"Dettaglio Sessione id={s.id}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Budget (EUR)", f"€ {float(s.budget_eur):,.2f}")
+    col2.metric("Velocity Target", f"{s.velocity_target} gg")
+    col3.metric("# Cart / Panchina", f"{s.n_cart_items} / {s.n_panchina_items}")
+
+    if loaded.cart_rows:
+        st.caption("Cart")
+        st.dataframe(pd.DataFrame(loaded.cart_rows), use_container_width=True)
+    else:
+        st.caption("Cart: nessun item allocato.")
+
+    if loaded.panchina_rows:
+        st.caption("Panchina (idonei scartati per cassa)")
+        st.dataframe(pd.DataFrame(loaded.panchina_rows), use_container_width=True)
+    else:
+        st.caption("Panchina: vuota.")
 
 
 def _render_panchina_table(panchina: pd.DataFrame) -> None:

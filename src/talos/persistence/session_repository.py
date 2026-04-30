@@ -73,6 +73,25 @@ class SessionSummary:
     n_panchina_items: int
 
 
+@dataclass(frozen=True)
+class LoadedSession:
+    """Sessione ricaricata dal DB per UI dettaglio (CHG-2026-04-30-045).
+
+    Contiene il riepilogo della sessione + le righe di `cart_items` e
+    `panchina_items` arricchite con i campi rilevanti dei `vgp_results`
+    (asin, vgp_score, roi). Pensata per `st.dataframe` UI.
+
+    Differenza vs `SessionResult` (orchestrator): questo e' il **read-side**
+    del DB, niente `pd.DataFrame` enriched ne' `Cart` con metodi
+    `saturation`/`remaining`. Ricostruzione full e' scope CHG futuro
+    (`load_session_full` se serve).
+    """
+
+    summary: SessionSummary
+    cart_rows: list[dict[str, object]]
+    panchina_rows: list[dict[str, object]]
+
+
 def _listino_hash(listino_raw: pd.DataFrame) -> str:
     """sha256 deterministico del listino raw (32 bytes hex = 64 char).
 
@@ -191,6 +210,96 @@ def save_session_result(
         db_session.flush()
 
         return int(analysis_session.id)
+
+
+def load_session_by_id(
+    db_session: Session,
+    session_id: int,
+    *,
+    tenant_id: int = 1,
+) -> LoadedSession | None:
+    """Ricarica una sessione dal DB. Ritorna `None` se non esiste o tenant mismatch.
+
+    :param db_session: SQLAlchemy `Session` aperta.
+    :param session_id: id `AnalysisSession` da caricare.
+    :param tenant_id: filtro tenant (la sessione deve appartenervi). Default 1.
+    :returns: `LoadedSession` con summary + cart_rows + panchina_rows
+        oppure `None` se la sessione non esiste o appartiene a un altro tenant.
+    :raises ValueError: se `session_id <= 0`.
+    """
+    if session_id <= 0:
+        msg = f"session_id invalido: {session_id}. Deve essere > 0."
+        raise ValueError(msg)
+
+    with with_tenant(db_session, tenant_id):
+        asession = db_session.get(AnalysisSession, session_id)
+        if asession is None or asession.tenant_id != tenant_id:
+            return None
+
+        # Conteggi per il summary.
+        n_cart = db_session.scalar(
+            select(func.count()).select_from(CartItem).where(CartItem.session_id == session_id),
+        )
+        n_panch = db_session.scalar(
+            select(func.count())
+            .select_from(PanchinaItem)
+            .where(PanchinaItem.session_id == session_id),
+        )
+        summary = SessionSummary(
+            id=int(asession.id),
+            started_at=asession.started_at,
+            ended_at=asession.ended_at,
+            budget_eur=asession.budget_eur,
+            velocity_target=asession.velocity_target,
+            listino_hash=asession.listino_hash,
+            n_cart_items=int(n_cart or 0),
+            n_panchina_items=int(n_panch or 0),
+        )
+
+        # Cart rows (JOIN con vgp_results per asin/score).
+        cart_stmt = (
+            select(CartItem, VgpResult.asin, VgpResult.vgp_score, VgpResult.roi_pct)
+            .join(VgpResult, CartItem.vgp_result_id == VgpResult.id)
+            .where(CartItem.session_id == session_id)
+            .order_by(CartItem.id.asc())
+        )
+        cart_rows: list[dict[str, object]] = []
+        for cart_item, asin, vgp_score, roi_pct in db_session.execute(cart_stmt).all():
+            cart_rows.append(
+                {
+                    "asin": (asin or "").strip(),  # CHAR(10) padding
+                    "qty": cart_item.qty,
+                    "unit_cost_eur": float(cart_item.unit_cost_eur),
+                    "cost_total": float(cart_item.unit_cost_eur) * cart_item.qty,
+                    "vgp_score": float(vgp_score) if vgp_score is not None else 0.0,
+                    "roi": float(roi_pct) if roi_pct is not None else 0.0,
+                    "locked": bool(cart_item.locked_in),
+                },
+            )
+
+        # Panchina rows (JOIN con vgp_results).
+        panch_stmt = (
+            select(PanchinaItem, VgpResult.asin, VgpResult.vgp_score, VgpResult.roi_pct)
+            .join(VgpResult, PanchinaItem.vgp_result_id == VgpResult.id)
+            .where(PanchinaItem.session_id == session_id)
+            .order_by(VgpResult.vgp_score.desc())
+        )
+        panchina_rows: list[dict[str, object]] = []
+        for panch, asin, vgp_score, roi_pct in db_session.execute(panch_stmt).all():
+            panchina_rows.append(
+                {
+                    "asin": (asin or "").strip(),
+                    "qty_proposed": panch.qty_proposed,
+                    "vgp_score": float(vgp_score) if vgp_score is not None else 0.0,
+                    "roi": float(roi_pct) if roi_pct is not None else 0.0,
+                },
+            )
+
+        return LoadedSession(
+            summary=summary,
+            cart_rows=cart_rows,
+            panchina_rows=panchina_rows,
+        )
 
 
 def list_recent_sessions(

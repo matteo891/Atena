@@ -28,8 +28,10 @@ from talos.persistence.session import (
     with_tenant,
 )
 from talos.persistence.session_repository import (
+    LoadedSession,
     SessionSummary,
     list_recent_sessions,
+    load_session_by_id,
     save_session_result,
 )
 
@@ -41,6 +43,7 @@ __all__ = [
     "CartItem",
     "ConfigOverride",
     "ListinoItem",
+    "LoadedSession",
     "LockedInItem",
     "PanchinaItem",
     "SessionSummary",
@@ -48,6 +51,7 @@ __all__ = [
     "VgpResult",
     "create_app_engine",
     "list_recent_sessions",
+    "load_session_by_id",
     "make_session_factory",
     "save_session_result",
     "session_scope",
