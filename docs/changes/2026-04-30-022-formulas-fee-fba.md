@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-022
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: TBD
+status: Committed
+commit: 750b70d
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -113,4 +113,4 @@ Niente test parametrizzato pesante: la formula è semplice, snapshot bastano.
 - Predecessore: CHG-2026-04-30-021 (DB bootstrap — chiude la fase infrastruttura DB; questo CHG inaugura la fase logica applicativa)
 - Vision verbatim: PROJECT-RAW.md sez. 6.3 Formula 1 (L11b CHIUSA Round 5)
 - Successore atteso: F1 `cash_inflow.py` (consuma `fee_fba` + buy_box + referral_fee)
-- Commit: TBD (in attesa di permesso esplicito Leader)
+- Commit: `750b70d`
