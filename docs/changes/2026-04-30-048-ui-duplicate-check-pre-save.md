@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-048
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 82d274f
 adr_ref: ADR-0016, ADR-0015, ADR-0014, ADR-0019
 ---
 
@@ -159,4 +159,4 @@ controparte UI-level (CHG-048).
 - Successore atteso: `upsert_session` con `ON CONFLICT DO UPDATE`
   (decisione Leader semantica) + bottone "Forza nuova"; comparison view
   sessione corrente vs storica
-- Commit: `[pending]`
+- Commit: `82d274f`
