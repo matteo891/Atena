@@ -3,7 +3,7 @@ id: CHG-2026-04-30-014
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 9a587cc
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019, ADR-0018
 ---
 
@@ -91,4 +91,4 @@ Nuovi test (13): 9 invarianti strutturali (tablename, metadata, 6 colonne, PK, 2
 - Predecessore: CHG-2026-04-30-013 (`vgp_results` — nucleo decisore)
 - Tag intermedio: `checkpoint/2026-04-30-02` su `37fdc7e` (post CHG-013)
 - Successore atteso: prossima tabella Allegato A — probabilmente `panchina_items` (R-09 archiviazione, schema isomorfo a `cart_items` con `qty_proposed`)
-- Commit: `<pending>`
+- Commit: `9a587cc`
