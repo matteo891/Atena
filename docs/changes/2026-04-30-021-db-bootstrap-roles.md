@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-021
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: TBD
+status: Committed
+commit: aee694c
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -160,4 +160,4 @@ Lancia lo script via `subprocess.run` con env var di test (password fittizie + c
 - Predecessore: CHG-2026-04-30-020 (DB lifecycle — `with_tenant(role=...)` ora è effettivamente utile in prod)
 - Lezione applicata: CHG-2026-04-30-019 (NO BYPASSRLS su `talos_app`)
 - Successore atteso: CHG-022 `config/` pydantic-settings (centralizza env var); primo vertical slice formula
-- Commit: TBD (in attesa di permesso esplicito Leader)
+- Commit: `aee694c`

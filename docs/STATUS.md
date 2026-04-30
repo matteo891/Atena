@@ -3,8 +3,8 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `ddb3229` (CHG-020 DB lifecycle: `engine.py` + `session.py` + `with_tenant()`). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→020. **Tabelle Allegato A coperte: 10/10** ✓ + **175 test PASS** (163 unit/governance + 12 integration).
-> **Sessione corrente:** TALOS — sblocco fase moduli applicativi: `persistence/` ora ha le 3 primitive richieste (engine factory, sessionmaker, RLS context manager `with_tenant`). Successivi: bootstrap ruoli (CHG-021), config layer pydantic-settings (CHG-022), poi vertical slice formula (es. F1 ROI).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `aee694c` (CHG-021 `scripts/db_bootstrap.py`: ruoli Zero-Trust + FORCE RLS + 9 integration test). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→021. **Tabelle Allegato A coperte: 10/10** ✓ + **184 test PASS** (163 unit/governance + 21 integration).
+> **Sessione corrente:** TALOS — Zero-Trust DB ora completo end-to-end: ruoli `talos_admin/talos_app/talos_audit` materializzati, `with_tenant(role='talos_app')` ora utilizzabile in prod, `audit_log` effettivamente append-only via REVOKE. Successivi: config layer pydantic-settings (CHG-022) → primo vertical slice applicativo.
 
 ---
 
@@ -61,6 +61,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **`alembic upgrade head` reale verde su Postgres 16-alpine** (10 revision in catena, RLS attiva su 3 tabelle, funzione + 9 trigger creati, 6 FK CASCADE + 2 FK NO ACTION verbatim Allegato A) | 0015 | (no CHG — validazione runtime) | (container ephemeral `talos-pg-test`) |
 | **`tests/integration/` inaugurata: 4 test RLS (`tenant_isolation` + FORCE + ruolo non-superuser) + 4 test audit trigger I/U/D con before/after JSONB. Env-var `TALOS_DB_URL` con skip module-level se assente. Pattern fixture transazionale + rollback.** | 0019, 0015, 0011 | [CHG-2026-04-30-019](changes/2026-04-30-019-integration-tests-postgres.md) | `35190c3` |
 | **DB lifecycle: `engine.py` (factory + URL precedence + pool conditional) + `session.py` (`make_session_factory` + `session_scope` + `with_tenant` Zero-Trust). 11 test unit + 4 integration (commit/rollback + `current_setting` + RLS effettivo via role switch).** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-020](changes/2026-04-30-020-persistence-engine-session.md) | `ddb3229` |
+| **DB bootstrap roles: `scripts/db_bootstrap.py` (idempotente, psycopg.sql injection-safe). Materializza la matrice ADR-0015: `talos_admin` (BYPASSRLS, DBA), `talos_app` (NOBYPASSRLS, pool app), `talos_audit` (read-only). FORCE RLS su 3 tabelle. 9 integration test (attributi, GRANT/REVOKE, idempotenza, login).** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-021](changes/2026-04-30-021-db-bootstrap-roles.md) | `aee694c` |
 
 ---
 
@@ -96,10 +97,10 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-018~~ | ~~modello `audit_log` + funzione PL/pgSQL + 3 trigger AFTER~~ | Chiuso 2026-04-30 — schema Allegato A 10/10 completo | — |
 | ~~CHG-019~~ | ~~tests/integration/ con RLS + audit runtime~~ | Chiuso 2026-04-30 — 8 integration PASS su Postgres reale | — |
 | ~~CHG-020~~ | ~~DB lifecycle: engine + session + with_tenant~~ | Chiuso 2026-04-30 — 11 unit + 4 integration verdi | — |
-| **CHECKPOINT-03** | Tag `checkpoint/2026-04-30-03` proposto | In attesa autorizzazione | Soglia ≥5 commit significativi raggiunta (CHG-014→020 = 7 commit). Restore point pre-prossimo modulo |
-| **CHG-021** | `scripts/db-bootstrap.sh` (ruoli + GRANT/REVOKE) | Prossimo candidato | Sblocca `with_tenant(..., role='talos_app')` in prod. NO BYPASSRLS lezione CHG-019 |
-| **CHG-022** | `config/` pydantic-settings | Successivo a CHG-021 | Centralizza env var (TALOS_DB_URL, KEEPA_API_KEY, ecc.) |
-| **NEXT** | **Prossimi step possibili** | In attesa | (a) CHG-021 db-bootstrap; (b) CHG-022 config; (c) primo vertical slice formula (`formulas/roi.py` con golden); (d) integration job CI; (e) milestone tag `milestone/db-lifecycle-v1.0.0` |
+| ~~CHG-021~~ | ~~scripts/db_bootstrap.py: ruoli + FORCE RLS~~ | Chiuso 2026-04-30 — 9 integration verdi | — |
+| **CHECKPOINT-03** | Tag `checkpoint/2026-04-30-03` proposto | In attesa autorizzazione | Soglia ≥5 commit significativi raggiunta (CHG-014→021 = 8 commit). Restore point pre-config layer |
+| **CHG-022** | `config/` pydantic-settings | Prossimo candidato | Centralizza env var (TALOS_DB_URL, password ruoli, KEEPA_API_KEY, ecc.) — riduce sparsing di `os.getenv()` |
+| **NEXT** | **Prossimi step possibili** | In attesa | (a) CHG-022 config layer; (b) primo vertical slice formula (`formulas/roi.py` con golden); (c) integration job CI (.github/workflows con service Postgres); (d) milestone tag `milestone/db-zero-trust-v1.0.0` |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
