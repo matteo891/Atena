@@ -3,7 +3,7 @@ id: CHG-2026-04-30-009
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 16a4f77
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -117,4 +117,4 @@ Nuovi test (11): `test_table_name_matches_allegato_a`, `test_table_registered_in
 - ADR: ADR-0015 (Allegato A — schema), ADR-0014 (mypy + ruff strict), ADR-0013 (struttura `models/`), ADR-0019 (test unit invarianti)
 - Predecessore: CHG-2026-04-30-008 (sessions model + initial migration)
 - Successore atteso: prossima tabella Allegato A — probabilmente `listino_items` (FK a `sessions(id)` + nullable FK a `asin_master(asin)`), primo modello con FK
-- Commit: `<pending>`
+- Commit: `16a4f77`
