@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-046
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: cdeae5e
 adr_ref: ADR-0021, ADR-0019, ADR-0018, ADR-0014
 ---
 
@@ -192,4 +192,4 @@ modificato).
   `compute_vgp_score` (`vgp.veto_roi_failed` count, `vgp.kill_switch_zero`
   count) + `panchina.archived` per panchina; migrazione a
   `structlog.bind(session_id, tenant_id, asin)` per context tracing
-- Commit: `[pending]`
+- Commit: `cdeae5e`
