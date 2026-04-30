@@ -2,6 +2,11 @@
 
 Test puri (no I/O verso DB reale): usano `sqlite:///:memory:` come URL
 test-only — `create_engine` non apre connessioni finché non serve.
+
+Da CHG-2026-04-30-030 la URL fluisce via `TalosSettings`; l'autouse
+fixture `_clear_settings_cache` garantisce che ogni test ricostruisca
+il singleton (altrimenti la prima istanza vince e i `monkeypatch.setenv`
+successivi vengono ignorati).
 """
 
 from __future__ import annotations
@@ -9,9 +14,16 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import Engine, text
 
+from talos.config import get_settings
 from talos.persistence import create_app_engine
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.fixture(autouse=True)
+def _clear_settings_cache() -> None:
+    """Resetta il singleton `get_settings` prima di ogni test."""
+    get_settings.cache_clear()
 
 
 def test_explicit_url_takes_priority_over_env(monkeypatch: pytest.MonkeyPatch) -> None:

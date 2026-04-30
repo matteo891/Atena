@@ -1,17 +1,17 @@
 """Engine factory per app Talos (ADR-0015).
 
-Single source di verità per la URL del DB: stessa env var `TALOS_DB_URL`
-che usa `migrations/env.py`. Il `config/` layer (pydantic-settings, CHG
-futuro) sostituirà la lettura diretta di env var senza cambiare la firma
-pubblica `create_app_engine(url=None)`.
+URL del DB letta via `TalosSettings.db_url` (CHG-2026-04-30-030); env
+var canonica `TALOS_DB_URL` mappata dal config layer. `migrations/env.py`
+e `scripts/db_bootstrap.py` restano su `os.getenv` per scope separato.
 """
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import create_engine
+
+from talos.config import get_settings
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -20,9 +20,9 @@ if TYPE_CHECKING:
 def create_app_engine(url: str | None = None) -> Engine:
     """Crea l'engine SQLAlchemy 2.0 sync per l'app.
 
-    `url` esplicito ha priorità; in alternativa fallback su env var
-    `TALOS_DB_URL`. Se nessuno dei due è settato, solleva `RuntimeError`
-    con istruzioni operative.
+    `url` esplicito ha priorità; in alternativa fallback su
+    `TalosSettings.db_url` (env var `TALOS_DB_URL`). Se nessuno dei due
+    è settato, solleva `RuntimeError` con istruzioni operative.
 
     Pool conservativo (5+10) per dialetti con `QueuePool` (Postgres):
     app Streamlit single-process, traffico interno; aggiustabile quando
@@ -31,7 +31,7 @@ def create_app_engine(url: str | None = None) -> Engine:
     quando il dialect li supporta.
     `pool_pre_ping=True` copre il caso di connessioni dormienti.
     """
-    resolved = url or os.getenv("TALOS_DB_URL")
+    resolved = url or get_settings().db_url
     if not resolved:
         msg = (
             "TALOS_DB_URL non settato e nessun url esplicito passato a "
