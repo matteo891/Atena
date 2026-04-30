@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-051
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 45b4757
 adr_ref: ADR-0015, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -186,4 +186,4 @@ sbloccata da CHG-051 (primitiva pronta).
 - Successore atteso: integrazione `run_session` con merge override
   per categoria (post `io_/extract` per `asin_master.category_node`);
   DELETE API; lookup hierarchy automatica
-- Commit: `[pending]`
+- Commit: `45b4757`
