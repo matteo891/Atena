@@ -9,6 +9,28 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
+
+`AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
+
+### Added
+- `src/talos/persistence/models/audit_log.py` — `class AuditLog(Base)` con 8 colonne (id BigInt PK, actor/table_name TEXT NOT NULL, op CHAR(1) NOT NULL, row_id BigInt NULL, before_data/after_data JSONB NULL, at TIMESTAMPTZ default NOW NOT NULL). No FK. Type hint JSONB: `Mapped[dict[str, Any] | None]`.
+- `migrations/versions/6e03f2a4f5a3_create_audit_log_with_triggers.py` — Alembic revision (catena: `Revises: e7a92c0260fa`). `op.create_table` + `op.execute` per: funzione PL/pgSQL `record_audit_log()` (cattura `session_user`, mappa `TG_OP` su 'I'/'U'/'D', serializza OLD/NEW via `row_to_json(...)::jsonb`) + 3 trigger `AFTER INSERT OR UPDATE OR DELETE ON {table}` su tabelle critiche. Downgrade simmetrico.
+- `tests/unit/test_audit_log_model.py` — 19 test invarianti incluso 4 schema-aware sul file di migration (funzione, mapping I/U/D, 3 trigger, downgrade).
+- `docs/changes/2026-04-30-018-audit-log-model-with-triggers.md`
+
+### Changed
+- `src/talos/persistence/models/__init__.py` — re-export `AuditLog`
+- `src/talos/persistence/__init__.py` — re-export `AuditLog`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (17 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **153 passed** (era 134, +19)
+- `alembic upgrade --sql` → DDL + funzione PL/pgSQL + 3 trigger coerenti con Allegato A
+
+### Out-of-scope (esplicitamente dichiarato in CHG)
+- Ruoli `talos_admin`/`talos_app`/`talos_audit` e `GRANT INSERT` / `REVOKE UPDATE,DELETE` su `audit_log`: richiedono setup di bootstrap esterno (futuro CHG su `scripts/db-bootstrap.sh`). In sviluppo locale (utente superuser/admin) la tabella è scrivibile da chiunque — append-only effettivo solo in produzione.
+
 ## [0.21.0] — 2026-04-30 — Nona tabella Allegato A: locked_in (R-04 Manual Override + RLS)
 
 `LockedInItem` (tabella `locked_in`) è la nona delle 10 tabelle dell'Allegato A. R-04 Manual Override: ASIN che il CFO ha forzato a Priorità ∞. Standalone (no FK). Terza tabella con RLS Zero-Trust — pattern riusato verbatim da `config_overrides` (CHG-012) e `storico_ordini` (CHG-016). Revision Alembic `e7a92c0260fa`.
