@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-052
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: 4c710ea
 adr_ref: ADR-0015, ADR-0014, ADR-0019
 ---
 
@@ -211,4 +211,4 @@ puramente additiva — nessun simbolo esistente toccato in semantica).
   CHG-2026-04-30-039 (orchestrator + `SessionResult`).
 - Successori attesi: re-allocate hypothetical da load_session_full;
   compare runs UI; export CSV/JSON.
-- Commit: pending (backfill).
+- Commit: `4c710ea`.

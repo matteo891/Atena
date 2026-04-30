@@ -3,8 +3,8 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `45b4757` (feat: Referral_Fee per categoria L12). Tag: 4 milestone + 9 checkpoint. Catena CHG odierna: 001→...→**051**. **Tabelle Allegato A coperte: 10/10** ✓ + **452 test PASS** (380 unit/gov/golden + 72 integration). **Indice GitNexus** (1907 / 2203 — stale ~50 commit; reindex consigliato).
-> **Sessione corrente:** TALOS — **🎛️ L10 + L12 CHIUSE OPERATIVAMENTE**: `config_repository` esteso con `list_category_referral_fees(db, *, tenant_id) -> dict[str, Decimal]`. UI sidebar expander "Referral Fee per categoria" con dataframe override esistenti + form input + bottone Salva. Pattern testato e dispiegabile. Merge automatico nell'orchestratore (override category vs listino_raw) e' scope post `io_/extract`.
+> **Ultimo aggiornamento:** 2026-04-30 sera — commit `4c710ea` (feat: load_session_full round-trip CHG-052). Tag: 4 milestone + 9 checkpoint. Catena CHG odierna: 001→...→**052**. **Tabelle Allegato A coperte: 10/10** ✓ + **460 test PASS** (380 unit/gov/golden + 80 integration). **Indice GitNexus** fresh (2873 / 3505 — reindex 2026-04-30 sera).
+> **Sessione corrente:** TALOS sera (modalità "macina" autorizzata) — **CRUD-light READ completo**: `load_session_full(db, session_id, *, tenant_id=1) -> SessionResult | None` ricostruisce cart/panchina/budget_t1/enriched_df da DB. Round-trip canonico (drift Decimal→float documentato < 1 EUR su budget_t1). Sblocca consumer programmatici (re-allocate, compare, export) senza ri-esecuzione pipeline.
 
 ---
 
@@ -96,6 +96,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **🎛️ Configurabilità persistente: `config_repository.py` con `get/set_config_override_numeric` (UPSERT `pg_insert.on_conflict_do_update`). SCOPE_GLOBAL/CATEGORY/ASIN. UI: sidebar pre-carica soglia veto ROI da DB tenant + bottone "Salva soglia ROI come default tenant". Bug fix migration `e8b80f77961b`: `idx_config_unique` ricreato con `NULLS NOT DISTINCT` (Postgres 15+). L10 PROJECT-RAW Round 5 chiusa operativamente. 7 test integration (None on missing, roundtrip, UPSERT overwrites, filter tenant, float-to-decimal, invalid scope, default scope). 445 PASS.** | 0015, 0016, 0014, 0019 | [CHG-2026-04-30-050](changes/2026-04-30-050-config-overrides-runtime-veto-roi.md) | `1bdac33` |
 | **🎯 Tag `checkpoint/2026-04-30-09`** — 4 CHG significativi post checkpoint-08 (CHG-047..050) + milestone v1.2.0 | 0003 | (nessun CHG) | tag su `894c291` |
 | **🛒 Referral Fee per categoria (L12 chiusa): `list_category_referral_fees(db, *, tenant_id) -> dict[str, Decimal]` + UI expander "Referral Fee per categoria" con dataframe + form input categoria/fee + bottone Salva. `KEY_REFERRAL_FEE_PCT="referral_fee_pct"` costante. Refactor `continue` defensive → dict comprehension (governance). Merge in orchestrator scope post `io_/extract`. 7 test integration (empty/mapping/tenant filter/exclude keys/exclude global/UI floats/UI no factory). 452 PASS.** | 0015, 0016, 0014, 0019 | [CHG-2026-04-30-051](changes/2026-04-30-051-referral-fee-per-category.md) | `45b4757` |
+| **🔄 CRUD-light READ completo: `load_session_full(db, session_id, *, tenant_id=1) -> SessionResult \| None`. Ricostruisce cart/panchina/budget_t1/enriched_df da DB (round-trip canonico, drift Decimal→float `< 1 EUR` su budget_t1 documentato). 13 colonne enriched_df persistite; `fee_fba_eur`/`cash_inflow_eur`/`q_m` ricalcolabili on-demand. 8 test integration round-trip. 460 PASS (380 + 80).** | 0015, 0014, 0019 | [CHG-2026-04-30-052](changes/2026-04-30-052-load-session-full-round-trip.md) | `4c710ea` |
 
 ---
 
@@ -171,6 +172,8 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-049~~ | ~~telemetria vgp.veto_roi_failed/kill_switch_zero/panchina.archived~~ | Chiuso 2026-04-30 — 438 PASS, catalogo 4/10 eventi viventi | — |
 | ~~MILESTONE-1.2.0~~ | ~~`milestone/crud-and-telemetry-v1.2.0`~~ | Creato e pushato su `6654795`. Restore point CRUD+telemetria | — |
 | ~~CHG-050~~ | ~~config_overrides runtime + UI persistente soglia ROI~~ | Chiuso 2026-04-30 — 445 PASS, configurabilità persistente | — |
+| ~~CHG-051~~ | ~~Referral_Fee per categoria L12~~ | Chiuso 2026-04-30 — 452 PASS, lookup persistente per categoria | — |
+| ~~CHG-052~~ | ~~load_session_full round-trip SessionResult~~ | Chiuso 2026-04-30 sera — 460 PASS, CRUD-light READ canonico | — |
 | **NEXT** | **Prossimi step possibili** | Configurabilità aperta | (e) **lookup `Referral_Fee` per categoria** (estensione config_repository con `set/get_text` o numeric per categoria — pattern testato); (β) `upsert_session` decisione Leader semantica; (z) migrazione a `structlog.bind(session_id, tenant_id)` context tracing; (q) refactor UI multi-page ADR-0016; (r) **`io_/extract` Samsung** (Playwright + Tesseract + Keepa) — last big block; (s) golden Samsung 1000 ASIN; (y) `load_session_full`; chiusi: (a/a'/a''/b/b''/c/d/d'/f/g/h/i/j/k/l/m/n/p/t/u/v/x/α) |
 | ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
