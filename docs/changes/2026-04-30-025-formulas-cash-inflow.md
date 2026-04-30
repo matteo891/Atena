@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-025
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 2fb60a8
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -129,4 +129,4 @@ Niente integration: la formula è pura, no I/O.
 - Predecessore: CHG-2026-04-30-022 (`fee_fba_manual` — primo modulo applicativo, isolato; questo CHG lo collega alla catena del valore)
 - Vision verbatim: PROJECT-RAW.md sez. 6.3 Formula 1
 - Successore atteso: F2 Cash Profit + ROI in CHG separato (sblocca veto R-08)
-- Commit: [da aggiornare post-commit]
+- Commit: `2fb60a8`
