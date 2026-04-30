@@ -71,10 +71,10 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 
 | File / Pattern | ADR Primario | ADR Secondari | Note |
 |---|---|---|---|
-| `src/talos/io_/` | ADR-0017 | ADR-0013, ADR-0021 (logging mismatch) | Keepa client, scraper, OCR |
-| `src/talos/io_/keepa_client.py` | ADR-0017 | ADR-0021 | Wrapper isolato libreria community `keepa` |
-| `src/talos/io_/scraper.py` | ADR-0017 | ADR-0021 | Playwright + selectors.yaml + cadence umana |
-| `src/talos/io_/ocr.py` | ADR-0017 | ADR-0021 | pytesseract + soglia 70 + status AMBIGUO |
+| `src/talos/io_/` | ADR-0017 | ADR-0013, ADR-0021 (logging mismatch) | Keepa client, scraper, OCR — inaugurato CHG-2026-05-01-001 |
+| `src/talos/io_/keepa_client.py` | ADR-0017 | ADR-0014, ADR-0019, ADR-0021 | Skeleton `KeepaClient` adapter pattern + rate limit hard `pyrate-limiter` + retry esponenziale `tenacity` + errori R-01 espliciti (`KeepaMissError`, `KeepaRateLimitExceededError`, `KeepaTransientError`); `_LiveKeepaAdapter` skeleton (`NotImplementedError` + TODO mapping CSV idx); test mock-only senza network — CHG-2026-05-01-001 |
+| `src/talos/io_/scraper.py` | ADR-0017 | ADR-0021 | Playwright + selectors.yaml + cadence umana (atteso CHG-2026-05-01-002) |
+| `src/talos/io_/ocr.py` | ADR-0017 | ADR-0021 | pytesseract + soglia 70 + status AMBIGUO (atteso CHG-2026-05-01-003) |
 | `src/talos/extract/` | ADR-0017 | ADR-0013 | SamsungExtractor + interface BrandExtractor |
 | `src/talos/vgp/` | ADR-0018 | ADR-0013, ADR-0019 (golden+hypothesis), ADR-0021 | normalize, score, veto |
 | `src/talos/tetris/` | ADR-0018 | ADR-0013, ADR-0019, ADR-0021 | allocator, panchina (R-04..R-09) |
@@ -102,7 +102,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/observability/` | ADR-0021 | ADR-0008, ADR-0019 (test catalogo) | structlog config + catalogo eventi |
 | `src/talos/config/` | ADR-0013 | ADR-0014 | pydantic-settings + override layer |
 | `src/talos/config/__init__.py` | ADR-0013 | — | Re-export `TalosSettings`, `get_settings` (inaugurato CHG-2026-04-30-029) |
-| `src/talos/config/settings.py` | ADR-0014 | ADR-0019 | `TalosSettings(BaseSettings)` env_prefix `TALOS_`; campi `db_url`, `roi_veto_threshold`, `db_url_superuser`, `admin_password`, `app_password`, `audit_password`; validator (0,1] su soglia; `get_settings` singleton via `lru_cache` — CHG-2026-04-30-029 + CHG-2026-04-30-031 |
+| `src/talos/config/settings.py` | ADR-0014 | ADR-0019 | `TalosSettings(BaseSettings)` env_prefix `TALOS_`; campi `db_url`, `roi_veto_threshold`, `db_url_superuser`, `admin_password`, `app_password`, `audit_password`, `keepa_api_key`, `keepa_rate_limit_per_minute`; validator (0,1] su soglia + validator > 0 su rate limit; `get_settings` singleton via `lru_cache` — CHG-2026-04-30-029 + CHG-2026-04-30-031 + CHG-2026-05-01-001 |
 | `selectors.yaml` | ADR-0017 | — | Configurazione vivente Amazon scraping |
 | `.streamlit/config.toml` | ADR-0016 | — | Theme dark default |
 

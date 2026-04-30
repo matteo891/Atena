@@ -77,6 +77,24 @@ class TalosSettings(BaseSettings):
             "Richiesta da scripts/db_bootstrap.py."
         ),
     )
+    keepa_api_key: str | None = Field(
+        default=None,
+        description=(
+            "API key Keepa (env: TALOS_KEEPA_API_KEY). Opzionale: "
+            "module-import non deve fallire in test/CI senza chiave. "
+            "Errore esplicito al call site di KeepaClient.fetch_*. "
+            "ADR-0017."
+        ),
+    )
+    keepa_rate_limit_per_minute: int = Field(
+        default=60,
+        description=(
+            "Limite hard di richieste Keepa per minuto "
+            "(env: TALOS_KEEPA_RATE_LIMIT_PER_MINUTE). Default 60 "
+            "(esempio ADR-0017). Eccedere il limite -> errore "
+            "esplicito (R-01 NO SILENT DROPS), non silenziamento."
+        ),
+    )
 
     @field_validator("roi_veto_threshold")
     @classmethod
@@ -86,6 +104,18 @@ class TalosSettings(BaseSettings):
             msg = (
                 f"roi_veto_threshold invalido: {v}. "
                 "Deve essere in (0, 1] (frazione decimale, default 0.08)."
+            )
+            raise ValueError(msg)
+        return v
+
+    @field_validator("keepa_rate_limit_per_minute")
+    @classmethod
+    def _check_keepa_rate_limit(cls, v: int) -> int:
+        """Rate limit positivo intero. Zero/negativo non ha senso operativo."""
+        if v <= 0:
+            msg = (
+                f"keepa_rate_limit_per_minute invalido: {v}. "
+                "Deve essere intero positivo (richieste/minuto)."
             )
             raise ValueError(msg)
         return v

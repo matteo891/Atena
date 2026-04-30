@@ -22,8 +22,12 @@ dependencies = [
     "pandas>=2.2.0,<3",
     # UI cruscotto militare (ADR-0016) — CHG-2026-04-30-040
     "streamlit>=1.40.0,<2",
+    # Acquisizione Keepa (ADR-0017, canale 1) — CHG-2026-05-01-001
+    "keepa>=1.4.0,<2",
+    "tenacity>=8.0.0,<10",
+    "pyrate-limiter>=3.0.0,<5",
     # Le altre dipendenze applicative entreranno modulo per modulo:
-    #   Keepa/Playwright/Tesseract → ADR-0017
+    #   Playwright/Tesseract → ADR-0017
     "pydantic-settings>=2.14.0",
 ]
 

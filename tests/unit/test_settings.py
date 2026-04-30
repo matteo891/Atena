@@ -132,3 +132,50 @@ def test_db_url_superuser_independent_from_db_url(
     settings = TalosSettings()
     assert settings.db_url is None
     assert settings.db_url_superuser == "postgresql://postgres:x@h/p"
+
+
+# ---------------------------------------------------------------------------
+# Campi Keepa (CHG-2026-05-01-001)
+# ---------------------------------------------------------------------------
+
+
+def test_keepa_api_key_default_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Senza env var, `keepa_api_key` e' None (test/CI senza chiave)."""
+    monkeypatch.delenv("TALOS_KEEPA_API_KEY", raising=False)
+    settings = TalosSettings()
+    assert settings.keepa_api_key is None
+
+
+def test_keepa_api_key_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TALOS_KEEPA_API_KEY` letta come stringa."""
+    monkeypatch.setenv("TALOS_KEEPA_API_KEY", "abc123secret")
+    settings = TalosSettings()
+    assert settings.keepa_api_key == "abc123secret"
+
+
+def test_keepa_rate_limit_default_60(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Senza env var, `keepa_rate_limit_per_minute=60` (esempio ADR-0017)."""
+    monkeypatch.delenv("TALOS_KEEPA_RATE_LIMIT_PER_MINUTE", raising=False)
+    settings = TalosSettings()
+    assert settings.keepa_rate_limit_per_minute == 60
+
+
+def test_keepa_rate_limit_override_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TALOS_KEEPA_RATE_LIMIT_PER_MINUTE=30` -> rate limit 30/min."""
+    monkeypatch.setenv("TALOS_KEEPA_RATE_LIMIT_PER_MINUTE", "30")
+    settings = TalosSettings()
+    assert settings.keepa_rate_limit_per_minute == 30
+
+
+def test_keepa_rate_limit_zero_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validator: rate_limit=0 -> ValidationError."""
+    monkeypatch.setenv("TALOS_KEEPA_RATE_LIMIT_PER_MINUTE", "0")
+    with pytest.raises(ValidationError, match="keepa_rate_limit_per_minute"):
+        TalosSettings()
+
+
+def test_keepa_rate_limit_negative_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validator: rate_limit negativo -> ValidationError."""
+    monkeypatch.setenv("TALOS_KEEPA_RATE_LIMIT_PER_MINUTE", "-5")
+    with pytest.raises(ValidationError, match="keepa_rate_limit_per_minute"):
+        TalosSettings()
