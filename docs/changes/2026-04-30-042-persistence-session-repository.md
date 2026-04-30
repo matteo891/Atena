@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-042
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 98ca62a
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -209,4 +209,4 @@ Unit-of-Work coerente.
 - Successore atteso: `load_session_by_id` + `list_recent_sessions` (UI
   storico); upsert idempotente con `UNIQUE(listino_hash)`; integrazione
   `save_session_result` nella dashboard Streamlit (`if st.button("Salva")`)
-- Commit: `[pending]`
+- Commit: `98ca62a`
