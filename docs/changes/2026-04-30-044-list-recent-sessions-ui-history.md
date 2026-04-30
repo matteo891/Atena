@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-044
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: d2a502a
 adr_ref: ADR-0015, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -164,4 +164,4 @@ i nuovi simboli `SessionSummary`, `list_recent_sessions`,
   (UI persistence integration)
 - Successore atteso: CHG-045 `load_session_by_id` + bottone "Ricarica
   sessione" UI; `UNIQUE(listino_hash)` migration + upsert
-- Commit: `[pending]`
+- Commit: `d2a502a`
