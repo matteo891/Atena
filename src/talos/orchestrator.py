@@ -81,10 +81,24 @@ REQUIRED_INPUT_COLUMNS: Final[tuple[str, ...]] = (
     "match_status",
 )
 
+# Colonna OPZIONALE del listino raw: nome canonico Keepa per la categoria
+# del prodotto. Se presente + `referral_fee_overrides` non None, l'orchestratore
+# risolve `referral_fee` via lookup. Pattern lookup-friendly per L12 (CHG-053).
+CATEGORY_NODE_COLUMN: Final[str] = "category_node"
+
 
 @dataclass(frozen=True)
 class SessionInput:
-    """Input per `run_session`. Dataclass frozen = immutabile = cacheable."""
+    """Input per `run_session`. Dataclass frozen = immutabile = cacheable.
+
+    `referral_fee_overrides` (CHG-2026-04-30-053): se non None, e il
+    `listino_raw` ha una colonna `category_node`, ogni riga risolve
+    `referral_fee` come `overrides[category_node]` (fallback al
+    `referral_fee_pct` raw se la categoria non e' nella mappa o se la
+    colonna `category_node` e' assente). Pattern: il caller carica la
+    mappa via `list_category_referral_fees(db, tenant_id=...)` e la
+    passa qui senza dover preprocessare il listino.
+    """
 
     listino_raw: pd.DataFrame
     budget: float
@@ -92,6 +106,7 @@ class SessionInput:
     velocity_target_days: int = DEFAULT_VELOCITY_TARGET_DAYS
     veto_roi_threshold: float = DEFAULT_ROI_VETO_THRESHOLD
     lot_size: int = DEFAULT_LOT_SIZE
+    referral_fee_overrides: dict[str, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -128,17 +143,48 @@ def _empty_scored_df() -> pd.DataFrame:
     )
 
 
+def _resolve_referral_fee(
+    row: pd.Series,
+    overrides: dict[str, float] | None,
+) -> float:
+    """Risolve la `referral_fee` per una riga del listino (CHG-2026-04-30-053).
+
+    Lookup hierarchy per L12 PROJECT-RAW Round 5:
+    1. Se `overrides` e' fornito + colonna `category_node` presente +
+       `category_node` nella mappa overrides → `overrides[category_node]`.
+    2. Altrimenti → `row["referral_fee_pct"]` (raw del listino).
+
+    Pattern: il caller carica la mappa via
+    `list_category_referral_fees(db, tenant_id=...)` (CHG-051) e la passa
+    qui senza preprocessare il listino. La colonna `category_node` e'
+    opzionale: i listini "legacy" senza categoria continuano a
+    funzionare con il `referral_fee_pct` raw.
+    """
+    if overrides and CATEGORY_NODE_COLUMN in row.index:
+        cat = row[CATEGORY_NODE_COLUMN]
+        if cat is not None and cat in overrides:
+            return float(overrides[cat])
+    return float(row["referral_fee_pct"])
+
+
 def _enrich_listino(
     listino_raw: pd.DataFrame,
     *,
     velocity_target_days: int,
     lot_size: int,
+    referral_fee_overrides: dict[str, float] | None = None,
 ) -> pd.DataFrame:
     """Aggiunge le colonne calcolate al listino raw via funzioni scalari.
 
     Single-source-of-truth: ogni cella deriva esattamente dallo stesso
     codice testato in CHG-022/025/026/038. Se una formula cambia, il
     test di quella formula scoppia e l'enrichment automaticamente.
+
+    `referral_fee_overrides` (CHG-053): mappa `category_node →
+    referral_fee_pct`. Vedi `_resolve_referral_fee` per la lookup hierarchy.
+    Aggiunge la colonna `referral_fee_resolved` (sempre, anche senza
+    overrides — nel quale caso e' identica a `referral_fee_pct`) per
+    audit trail.
 
     Performance note: `apply` row-wise e' ~10-100x piu' lento del
     vettoriale puro su 10k righe. Vincolo 8.1 ADR-0018 (<500ms su 10k)
@@ -147,11 +193,15 @@ def _enrich_listino(
     """
     out = listino_raw.copy()
     out["fee_fba_eur"] = out["buy_box_eur"].apply(fee_fba_manual)
+    out["referral_fee_resolved"] = out.apply(
+        lambda r: _resolve_referral_fee(r, referral_fee_overrides),
+        axis=1,
+    )
     out["cash_inflow_eur"] = out.apply(
         lambda r: cash_inflow_eur(
             buy_box_eur=float(r["buy_box_eur"]),
             fee_fba_eur=float(r["fee_fba_eur"]),
-            referral_fee_rate=float(r["referral_fee_pct"]),
+            referral_fee_rate=float(r["referral_fee_resolved"]),
         ),
         axis=1,
     )
@@ -227,6 +277,7 @@ def run_session(inp: SessionInput) -> SessionResult:
         inp.listino_raw,
         velocity_target_days=inp.velocity_target_days,
         lot_size=inp.lot_size,
+        referral_fee_overrides=inp.referral_fee_overrides,
     )
 
     # Step 2: VGP score (R-05 + R-08 applicati internamente).
