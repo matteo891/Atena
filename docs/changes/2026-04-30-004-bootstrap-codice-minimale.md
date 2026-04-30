@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-004
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Pending Leader approval
-commit: <pending>
+status: Committed
+commit: b7f78d4
 adr_ref: ADR-0013, ADR-0014, ADR-0019, ADR-0021, ADR-0006
 ---
 
@@ -119,5 +119,5 @@ Test manuali documentati (ADR-0011) — verifiche strutturali integrative:
 - ADR: ADR-0013 (struttura), ADR-0014 (linguaggio + quality gates), ADR-0019 (test strategy), ADR-0021 (observability stub), ADR-0006 (hook governance — gancio applicativo via errata CHG-003)
 - Predecessore: CHG-2026-04-30-003 (Errata Corrige ADR-0006 — hooks v2)
 - Successore atteso: CHG dedicato al primo modulo di sostanza (probabilmente `persistence/` per partire dal "fondo" → ADR-0015 + plugin mypy)
-- Commit: `<pending — in attesa permesso Leader>`
+- Commit: `b7f78d4`
 - Issue: HARD-STOP risolto (CHG-003); fase codice attiva

@@ -9,6 +9,33 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-04-30 — Primo commit di codice applicativo (bootstrap minimale)
+
+Sblocco fase codice. Concretizzazione dei path vincolanti di ADR-0013 (`src-layout`) e attivazione del quality gate di ADR-0014. Zero funzionalità di prodotto: solo l'ossatura installabile e testabile su cui costruire i moduli successivi modulo per modulo.
+
+### Added
+- `pyproject.toml` — Python 3.11-3.12, dev tools (ruff/mypy/pytest/hypothesis/pytest-cov), config completi di tutti i tool secondo ADR-0014 (ruff `select=ALL` con 7 ignore motivati, mypy `strict=true`, pytest marker `unit/integration/golden/governance/slow`)
+- `uv.lock` (310 righe) — lock riproducibile da `uv sync --all-groups`
+- `src/talos/__init__.py` — `__version__ = "0.1.0"`
+- `src/talos/observability/__init__.py` — stub modulo (configure_logging arriverà in CHG dedicato a ADR-0021)
+- `tests/conftest.py` — skeleton
+- `tests/unit/test_smoke.py` — 2 test: `test_talos_importable`, `test_talos_version_exposed`
+- `tests/governance/test_no_root_imports.py` — implementa il "Test di Conformità" di ADR-0013 (vieta `from src.` / `import src.`)
+- `scripts/hooks/pre-commit-app` — pre-commit applicativo (ruff check + ruff format check + mypy + pytest unit+governance), invocato dal `pre-commit` di governance via gancio CHG-003
+- `scripts/setup-dev.sh` — onboarding idempotente (install uv → install Python 3.11 → uv sync → setup-hooks)
+- `README.md` — setup, struttura, workflow, comandi rapidi
+- `docs/changes/2026-04-30-004-bootstrap-codice-minimale.md`
+
+### Changed
+- `.gitignore` esteso con esclusioni standard Python: `__pycache__/`, `*.py[cod]`, `.venv/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.coverage*`, `htmlcov/`
+
+### Quality gate verde end-to-end
+- `ruff check src/ tests/` → All checks passed
+- `ruff format --check src/ tests/` → 5 files already formatted
+- `mypy src/` → no issues found in 2 source files
+- `pytest tests/unit tests/governance -q` → 3 passed
+- **`bash scripts/hooks/pre-commit-app`** invocato automaticamente dal `pre-commit` governance al commit reale → PASS
+
 ## [0.9.1] — 2026-04-30 — Errata Corrige ADR-0006 (hooks v2)
 
 Hardening governance pre-bootstrap codice. **Errata Corrige di ADR-0006** (meccanismo ADR-0009) per allineare testo + hook eseguibili alle estensioni già ratificate da ADR-0014 e ADR-0020 nella validazione bulk del giorno (CHG-2026-04-30-001) ma rimaste "side-decision sotto-dichiarate". Errata corrige secondarie su ADR-0014 e ADR-0020 per allineamento testuale dello stato corrente.

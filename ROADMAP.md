@@ -20,7 +20,8 @@ Tracker operativo del progetto. Ogni voce deve essere tracciabile a un ADR valid
 | 8 | Step [6] ADR-0012: proposta scomposizione (Claude in chat) → validazione Leader → ADR di stack | ADR-0012 → ADR-0013…0021 | **Completato.** Validazione bulk Leader (Opzione A) 2026-04-30. 9 ADR di stack promulgati (CHG-2026-04-30-001) |
 | 9 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
 | 10 | Clone `Atena-Core` (purezza infrastrutturale post `milestone/stack-frozen-v0.9.0`) | ADR-0003 | **In corso** — Leader cloning post-tag (HARD STOP attivo) |
-| 11 | Bootstrap primo modulo applicativo (`pyproject.toml` + `src/talos/` + `tests/{unit,governance}/` + `scripts/hooks/pre-commit-app` + `scripts/setup-dev.sh` + `README.md`) | ADR-0013, ADR-0014, ADR-0019, ADR-0021 | **Pronto per commit** (CHG-2026-04-30-004) — quality gate verde, in attesa permesso Leader |
+| 11 | Bootstrap primo modulo applicativo (`pyproject.toml` + `src/talos/` + `tests/{unit,governance}/` + `scripts/hooks/pre-commit-app` + `scripts/setup-dev.sh` + `README.md`) | ADR-0013, ADR-0014, ADR-0019, ADR-0021 | **Completato** (CHG-2026-04-30-004, commit `b7f78d4`) |
+| 12 | Primo modulo di sostanza (da decidere col Leader: CI/logging/persistenza) | TBD | Prossimo passo |
 
 ---
 
@@ -69,3 +70,4 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 | 2026-04-30 | Integrazione tooling GitNexus condiviso nel repo (CLAUDE.md/AGENTS.md gemelli + skills committate + .gitignore esclusione runtime + git rm --cached lock SQLite) | ADR-0007 | Leader (CHG-2026-04-30-002) |
 | 2026-04-30 | Milestone tag `milestone/stack-frozen-v0.9.0` — restore point pre-codice (purezza infrastrutturale, fonte di clone per `Atena-Core`) | ADR-0003 | Leader (post CHG-2026-04-30-002) |
 | 2026-04-30 | Errata Corrige ADR-0006 (Git Hooks Enforcement) + side-effect su ADR-0014/0020: hooks v2 con pre-commit-app wiring (graceful skip se assente) e bypass cumulativo `commit-msg` per il bot reindex GitNexus (`[skip ci]` + author `github-actions[bot]`) | ADR-0006, ADR-0014, ADR-0020, ADR-0009 | Leader (CHG-2026-04-30-003) |
+| 2026-04-30 | **Primo commit di codice applicativo** — bootstrap minimale: `pyproject.toml` + `uv.lock` + `src/talos/` scaffold (incluso `observability/` stub) + `tests/{unit,governance}/` con smoke + ADR-0013 enforcement + `scripts/hooks/pre-commit-app` (ruff+format+mypy+pytest) + `scripts/setup-dev.sh` idempotente + `README.md` + `.gitignore` esteso. Quality gate end-to-end PASS (pre-commit-app invocato dal hook governance al commit reale) | ADR-0013, ADR-0014, ADR-0019, ADR-0021, ADR-0006 | Leader (CHG-2026-04-30-004) |
