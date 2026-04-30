@@ -16,6 +16,7 @@ Modulo non importato dalla pipeline core: per lanciare l'app
 from talos.ui.dashboard import (
     DEFAULT_BUDGET_EUR,
     DEFAULT_TENANT_ID,
+    fetch_existing_session_for_listino,
     fetch_loaded_session_or_none,
     fetch_recent_sessions_or_empty,
     get_session_factory_or_none,
@@ -26,6 +27,7 @@ from talos.ui.dashboard import (
 __all__ = [
     "DEFAULT_BUDGET_EUR",
     "DEFAULT_TENANT_ID",
+    "fetch_existing_session_for_listino",
     "fetch_loaded_session_or_none",
     "fetch_recent_sessions_or_empty",
     "get_session_factory_or_none",

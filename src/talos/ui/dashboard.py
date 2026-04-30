@@ -29,13 +29,16 @@ from talos.formulas import (
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
 from talos.persistence import (
     LoadedSession,
+    SessionSummary,
     create_app_engine,
+    find_session_by_hash,
     list_recent_sessions,
     load_session_by_id,
     make_session_factory,
     save_session_result,
     session_scope,
 )
+from talos.persistence.session_repository import _listino_hash
 from talos.tetris import InsufficientBudgetError
 from talos.vgp import DEFAULT_ROI_VETO_THRESHOLD
 
@@ -209,6 +212,28 @@ def fetch_loaded_session_or_none(
         return None
 
 
+def fetch_existing_session_for_listino(
+    factory: sessionmaker[Session],
+    listino_raw: pd.DataFrame,
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> SessionSummary | None:
+    """Calcola l'hash del listino e cerca una sessione gia' persistita.
+
+    Ritorna `None` se nessuna sessione del tenant ha quel hash, o se la
+    query fallisce (graceful UI). Usato pre-save per warning duplicate.
+    """
+    try:
+        listino_hash = _listino_hash(listino_raw)
+    except Exception:  # noqa: BLE001 - graceful UI fallback
+        return None
+    try:
+        with session_scope(factory) as db:
+            return find_session_by_hash(db, listino_hash=listino_hash, tenant_id=tenant_id)
+    except Exception:  # noqa: BLE001 - graceful UI fallback
+        return None
+
+
 def _render_history(
     factory: sessionmaker[Session],
     *,
@@ -364,7 +389,15 @@ def main() -> None:
         )
         return
 
-    if st.button("Salva sessione su DB", key="save_session_btn"):
+    # Pre-save check: questo listino esiste gia' come sessione persistita?
+    existing = fetch_existing_session_for_listino(
+        factory,
+        inp.listino_raw,
+        tenant_id=DEFAULT_TENANT_ID,
+    )
+    if existing is not None:
+        _render_existing_session_warning(factory, existing)
+    elif st.button("Salva sessione su DB", key="save_session_btn"):
         success, sid, err = try_persist_session(
             factory,
             session_input=inp,
@@ -377,6 +410,34 @@ def main() -> None:
             st.error(f"Persistenza fallita: {err}")
 
     _render_history(factory, tenant_id=DEFAULT_TENANT_ID)
+
+
+def _render_existing_session_warning(
+    factory: sessionmaker[Session],
+    existing: SessionSummary,
+) -> None:
+    """Warning quando il listino corrente e' gia' stato eseguito.
+
+    Mostra info riassuntive + bottone "Apri sessione esistente". Il
+    save (`save_session_result`) e' bloccato dall'UNIQUE INDEX
+    `ux_sessions_tenant_hash`; un futuro `upsert_session` sbloccera'
+    il bottone "Forza nuova".
+    """
+    st.warning(
+        f"Sessione gia' presente nel DB con questo listino. "
+        f"id = `{existing.id}` — eseguita {existing.started_at.isoformat(timespec='minutes')}, "
+        f"cart={existing.n_cart_items}, panchina={existing.n_panchina_items}.",
+    )
+    st.caption(
+        "Salvataggio bloccato dall'UNIQUE INDEX `ux_sessions_tenant_hash` "
+        "(CHG-2026-04-30-047). Per ri-salvare serve `upsert_session` (scope futuro).",
+    )
+    if st.button("Apri sessione esistente", key="open_existing_btn"):
+        loaded = fetch_loaded_session_or_none(factory, existing.id)
+        if loaded is None:
+            st.error(f"Impossibile caricare la sessione id={existing.id}.")
+        else:
+            _render_loaded_session_detail(loaded)
 
 
 if __name__ == "__main__":  # pragma: no cover - run via streamlit CLI
