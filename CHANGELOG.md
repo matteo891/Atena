@@ -9,6 +9,27 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-04-30 — Quinta tabella Allegato A: vgp_results (nucleo decisore)
+
+`VgpResult` (tabella `vgp_results`) è la quinta delle 10 tabelle dell'Allegato A. **Nucleo del decisore VGP**. Primo modello con **doppia FK** (entrambe ON DELETE CASCADE) e primo con **indice composito direzionale** `(session_id, vgp_score DESC)` per supportare le query "top-N per session" del Tetris allocator. Revision Alembic `c9527f017d5c` in catena.
+
+### Added
+- `src/talos/persistence/models/vgp_result.py` — `class VgpResult(Base)` con 15 colonne dell'Allegato A: id BigInt PK, session_id/listino_item_id BigInt FK NOT NULL ON DELETE CASCADE, asin CHAR(10) NOT NULL, 7 campi `Numeric` con precision/scale specifici (`roi_pct`/`8,4`, `velocity_monthly`/`12,4`, `cash_profit_eur`/`12,2`, `roi_norm`/`velocity_norm`/`cash_profit_norm`/`vgp_score` `6,4`), `veto_roi_passed`/`kill_switch_triggered` Boolean nullable, `qty_target`/`qty_final` Integer nullable. `__table_args__` con `Index("idx_vgp_session_score", "session_id", text("vgp_score DESC"))`. Relationship `session: Mapped[AnalysisSession]` + `listino_item: Mapped[ListinoItem]`.
+- `migrations/versions/c9527f017d5c_create_vgp_results.py` — Alembic revision (catena: `Revises: 027a145f76a8`). `op.create_table` con 2 `sa.ForeignKey(..., ondelete="CASCADE")` + `op.create_index(..., ["session_id", sa.text("vgp_score DESC")])`.
+- `tests/unit/test_vgp_result_model.py` — 16 test invarianti (14 strutturali + 1 schema-aware per `vgp_score DESC` + 2 relationship + 2 costruzioni runtime)
+- `docs/changes/2026-04-30-013-vgp-results-model.md`
+
+### Changed
+- `src/talos/persistence/models/analysis_session.py` — aggiunta relationship `vgp_results: Mapped[list[VgpResult]] = relationship(back_populates="session", passive_deletes=True)`. Forward reference `VgpResult` in `TYPE_CHECKING`.
+- `src/talos/persistence/models/listino_item.py` — aggiunta relationship `vgp_results: Mapped[list[VgpResult]] = relationship(back_populates="listino_item", passive_deletes=True)`. Forward reference `VgpResult` in `TYPE_CHECKING`.
+- `src/talos/persistence/models/__init__.py` — re-export anche `VgpResult`
+- `src/talos/persistence/__init__.py` — re-export anche `VgpResult`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (12 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **79 passed** (era 63, +16)
+- `alembic upgrade --sql` → DDL + 2 FK CASCADE + `CREATE INDEX idx_vgp_session_score ON vgp_results (session_id, vgp_score DESC)` coerenti con Allegato A
+
 ## [0.16.0] — 2026-04-30 — Quarta tabella Allegato A: config_overrides (primo con RLS + UNIQUE INDEX)
 
 `ConfigOverride` (tabella `config_overrides`) è la quarta delle 10 tabelle dell'Allegato A. **Primo modello con Row-Level Security (RLS) Zero-Trust attiva** + **primo con indice UNIQUE composito a 4 colonne**. Pattern RLS ratificato per le 3 tabelle che lo richiedono nell'Allegato A (`storico_ordini`, `locked_in`, `config_overrides`). Revision Alembic `027a145f76a8` in catena.

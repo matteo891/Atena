@@ -14,6 +14,14 @@ from talos.persistence.models import (
     AsinMaster,
     ConfigOverride,
     ListinoItem,
+    VgpResult,
 )
 
-__all__ = ["AnalysisSession", "AsinMaster", "Base", "ConfigOverride", "ListinoItem"]
+__all__ = [
+    "AnalysisSession",
+    "AsinMaster",
+    "Base",
+    "ConfigOverride",
+    "ListinoItem",
+    "VgpResult",
+]

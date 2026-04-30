@@ -22,6 +22,7 @@ from talos.persistence.base import Base
 
 if TYPE_CHECKING:
     from talos.persistence.models.listino_item import ListinoItem
+    from talos.persistence.models.vgp_result import VgpResult
 
 
 class AnalysisSession(Base):
@@ -67,6 +68,10 @@ class AnalysisSession(Base):
 
     # ── Relationships ────────────────────────────────────────────────────
     listino_items: Mapped[list[ListinoItem]] = relationship(
+        back_populates="session",
+        passive_deletes=True,
+    )
+    vgp_results: Mapped[list[VgpResult]] = relationship(
         back_populates="session",
         passive_deletes=True,
     )
