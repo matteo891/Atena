@@ -284,6 +284,52 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 - **Container Postgres**: `talos-pg-test` postgres:16-alpine host:55432 tmpfs. Migrations head: `e8b80f77961b`.
 - **Memory utili da consultare**: `feedback_concisione_documentale.md`, `project_f1_referral_structure_confirmed.md`, `project_mvp_progress_estimate.md` (refresh PM), `project_session_handoff_2026-04-30-pm.md` (questa sessione).
 
+### 🔄 Handoff sessione 2026-04-30 sera (post `3550027` — CHG-052..059 + checkpoint-10)
+
+> **Per il prossimo Claude (post `/clear`).** La sessione sera 2026-04-30 ha macinato **8 CHG consecutivi (052..059)** in autorizzazione "macina" del Leader. Lo stato è ulteriormente avanzato rispetto al blocco PM sopra. Leggi questo blocco **insieme** al PM, in ordine: prima PM (catena 034..051), poi questo (catena 052..059).
+
+- **Stima MVP refresh (post CHG-059): ~90-94%** verso build CFO produttivo. Memory: `project_mvp_progress_estimate.md` (aggiornato sera). Delta marginale rispetto al PM perché i loop UI/CRUD non aumentano il "% verso produzione reale", aumentano solo la qualità/usabilità del flusso esistente. **`io_/extract` resta il blocco strategico singolo (~19% MVP produttivo, 0% completato).**
+- **Modalità "macina" del Leader era una clausola di sessione**: *"NON salvarla come memory feedback. Default ADR-0002 (permesso esplicito) resta valido nelle prossime sessioni."* → **default ADR-0002 reattivato dalla sessione successiva**. Permesso esplicito Leader prima di ogni commit.
+- **Catena CHG-052..059** (memory: `project_session_handoff_2026-04-30-evening.md` — leggi PRIMA di proporre next):
+  - **CHG-052** `4c710ea`: `load_session_full(db, sid, *, tenant_id)` round-trip canonico SessionResult da DB
+  - **CHG-053** `1178389`: orchestrator `referral_fee_overrides` + `_resolve_referral_fee` lookup hierarchy (chiude L12 lato pipeline)
+  - **CHG-054** `9a3b0c3`: `delete_config_override` + UI bottoni Reset (triade CRUD config_overrides chiusa)
+  - **CHG-055** `d8f74c1`: `build_session_input(factory, listino_raw, ...)` UI wiring (loop CFO→DB→UI→orchestrator chiuso)
+  - **CHG-056** `e7c2666`: `replay_session(loaded, *, locked_in_override, budget_override)` what-if (no re-enrichment)
+  - **`checkpoint/2026-04-30-10`** su `1c2631c`
+  - **CHG-057** `92bd63b`: UI `try_replay_session` + sub-expander "What-if Re-allocate"
+  - **CHG-058** `a40b825`: telemetria `session.replayed` (errata catalogo ADR-0021, ora 5/11 viventi)
+  - **CHG-059** `3550027`: UI `compare_session_kpis` side-by-side originale vs replay con delta
+- **Quality gate baseline al re-entry (HEAD `2b8d99c` post-backfill)**:
+  - **494 PASS** (394 unit/gov/golden + 100 integration)
+  - ruff/format/mypy strict puliti, working tree clean, push aggiornato
+  - Container Postgres `talos-pg-test` UP al close (8h). Se DOWN al re-entry: `docker run -d --rm --name talos-pg-test -e POSTGRES_PASSWORD=test -p 55432:5432 --tmpfs /var/lib/postgresql/data postgres:16-alpine && sleep 3 && TALOS_DB_URL='postgresql+psycopg://postgres:test@localhost:55432/postgres' uv run alembic upgrade head`
+  - **Indice GitNexus stale ~22 commit** → `npx -y gitnexus analyze` Node v22 come prima azione operativa post-briefing
+  - **Tag**: 4 milestone + 10 checkpoint
+- **Pattern operativi NUOVI introdotti (rispettare per coerenza, dettagli in memory sera)**:
+  1. **Drift Decimal→float documentato come tolerance**: Numeric(12,4) round-trip `<1 EUR` su budget. Test usano `abs(...) < tolerance`, no byte-exact.
+  2. **Pre-check + execute** invece di `Result.rowcount` (mypy strict): `select(.id) → if None: return False; else: execute → return True`. Estendere a futuri DELETE.
+  3. **`x or None`** normalizza dict vuoto a None esplicito (intent più chiaro).
+  4. **NaN come placeholder type-safe**: `float("nan")` per campi non persistiti (vs `None` che richiede union types).
+  5. **Lazy import** per spezzare cicli `persistence ↔ orchestrator ↔ tetris` (pattern coerente con orchestrator).
+  6. **Helper UI puri testabili senza Streamlit**: ogni helper UI con logica derivativa = funzione pura + test unit (no `streamlit` import nei test).
+  7. **Errata corrige additiva ammessa per cataloghi** (CHG-058 ADR-0021): aggiungere voce non altera semantica esistenti, no supersessione.
+- **6 bug fix nascosti sera (per allerta, dettagli in memory sera)**:
+  1. CHG-052 tolerance test inizialmente troppo strette (`1e-6` per drift `1e-5`).
+  2. CHG-054 mypy `Result.rowcount` non tipato → refactor a pre-check.
+  3. CHG-055 ruff FURB110: `x if x else None` → `x or None`.
+  4. CHG-058 governance test catalogo: stringa letterale obbligatoria (no costante).
+  5. CHG-059 mypy `sum(genexpr)` "expected bool" → loop esplicito + isinstance narrow.
+  6. CHG-059 line length f-string >100 char → variabile separata.
+- **Catalogo eventi canonici ADR-0021 (errata CHG-058)**: ora 5/11 viventi (`tetris.skipped_budget`, `vgp.veto_roi_failed`, `vgp.kill_switch_zero`, `panchina.archived`, `session.replayed`). 6 dormienti si attiveranno con i rispettivi moduli (`io_/extract` ne attiva 4: `extract.kill_switch`, `keepa.miss`, `keepa.rate_limit_hit`, `scrape.selector_fail`, `ocr.below_confidence`).
+- **🚨 PROSSIMO BLOCCO STRATEGICO ATTESO: `io_/extract` Samsung (ADR-0017)** — sessione dedicata, 4-5 CHG. **5 decisioni di sostanza Leader pre-flight obbligatorie** (eccezione 2 ADR-0002), formula come opzioni A/B/C e attendi prima di toccare codice:
+  1. **Keepa client** (`io_/keepa_client.py`): API key da `TalosSettings.keepa_api_key`? rate-limit strategy (token bucket vs rolling window)? retry/circuit breaker? cache locale (sqlite/parquet) + TTL?
+  2. **Playwright** (`io_/scraper.py`): browser engine? user-agent rotation? cookie persistence? selector strategy con fallback chain (CSS → XPath → aria)? login Amazon (rischio TOS)?
+  3. **Tesseract OCR** (`io_/ocr.py`): lingua (`-l ita+eng`)? image preprocessing (deskew, threshold, dpi)? soglia confidence per `ocr.below_confidence`? PDF Samsung via pdftoppm o tesseract diretto?
+  4. **NLP filter R-05** (`extract/samsung.py`): regex set rule-based vs spaCy modello italiano vs custom? confidence soglia? `extract.kill_switch` event obbligatorio (catalogo ADR-0021).
+  5. **`asin_master` populator** (`extract/asin_master_writer.py`): UPSERT `ON CONFLICT (asin) DO UPDATE` o pre-check? conflict resolution (overwrite/ignore/merge)? trigger audit (CHG-018)?
+- **Memory aggiunta sera**: `project_session_handoff_2026-04-30-evening.md` (questa sessione, leggere DOPO il PM e PRIMA di proporre next).
+
 ---
 
 ## Issues Noti
