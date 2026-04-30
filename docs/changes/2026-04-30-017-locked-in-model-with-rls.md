@@ -3,7 +3,7 @@ id: CHG-2026-04-30-017
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 099dd60
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019, ADR-0018
 ---
 
@@ -85,4 +85,4 @@ Nuovi test (15): set colonne, PK, **`test_no_foreign_keys` esplicito** (lock-in 
 - Predecessore: CHG-2026-04-30-016 (`storico_ordini`)
 - Pattern RLS riusato da: CHG-2026-04-30-012 (`config_overrides`), CHG-2026-04-30-016 (`storico_ordini`)
 - Successore atteso: ultima tabella Allegato A — `audit_log` (append-only, REVOKE UPDATE/DELETE su talos_app)
-- Commit: `<pending>`
+- Commit: `099dd60`
