@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-026
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 3c64074
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -164,4 +164,4 @@ Totale 7 + 8 = 15 nuovi test (non 13 come dichiarato sopra — riconto preciso p
 - Predecessore: CHG-2026-04-30-025 (`cash_inflow_eur` — F1, secondo anello). Catena: F1 → F2 → ROI → R-08 (futuro).
 - Vision verbatim: PROJECT-RAW.md sez. 6.3 Formula 2 + sez. 6.3 Formula VGP riga "ROI_Percentuale — Rapporto tra utile e costo (es. 0.15 per il 15%)"
 - Successore atteso: Veto R-08 (gate funzionale + soglia configurabile + telemetria canonica) in CHG separato; oppure F4/Q_m + Velocità per chiudere il VGP score completo
-- Commit: [da aggiornare post-commit]
+- Commit: `3c64074`
