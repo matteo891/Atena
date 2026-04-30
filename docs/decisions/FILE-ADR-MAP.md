@@ -76,6 +76,8 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/extract/` | ADR-0017 | ADR-0013 | SamsungExtractor + interface BrandExtractor |
 | `src/talos/vgp/` | ADR-0018 | ADR-0013, ADR-0019 (golden+hypothesis), ADR-0021 | normalize, score, veto |
 | `src/talos/tetris/` | ADR-0018 | ADR-0013, ADR-0019, ADR-0021 | allocator, panchina (R-04..R-09) |
+| `src/talos/tetris/__init__.py` | ADR-0018 | ADR-0013 | Package marker `tetris/` (inaugurato CHG-2026-04-30-036); re-export `allocate_tetris`, `Cart`, `CartItem`, `InsufficientBudgetError`, `SATURATION_THRESHOLD` |
+| `src/talos/tetris/allocator.py` | ADR-0018 | ADR-0019 | `allocate_tetris(vgp_df, budget, locked_in, ...)` greedy + `Cart`/`CartItem` dataclasses + `InsufficientBudgetError` per R-04 fail-fast; R-06 saturazione 99.9% verbatim PROJECT-RAW riga 224 — CHG-2026-04-30-036 |
 | `src/talos/formulas/` | ADR-0018 | ADR-0019 | F1..F5 + fee_fba (L11b verbatim) |
 | `src/talos/formulas/fee_fba.py` | ADR-0018 | ADR-0019 | `fee_fba_manual` verbatim L11b + R-01 NO SILENT DROPS — CHG-2026-04-30-022 (primo modulo applicativo Talos) |
 | `src/talos/formulas/cash_inflow.py` | ADR-0018 | ADR-0019 | `cash_inflow_eur` verbatim F1 (BuyBox − Fee_FBA − BuyBox·Referral_Fee) — CHG-2026-04-30-025 (primo consumatore architetturale di `fee_fba_manual`) |
