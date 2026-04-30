@@ -3,8 +3,8 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 sera — commit `4c710ea` (feat: load_session_full round-trip CHG-052). Tag: 4 milestone + 9 checkpoint. Catena CHG odierna: 001→...→**052**. **Tabelle Allegato A coperte: 10/10** ✓ + **460 test PASS** (380 unit/gov/golden + 80 integration). **Indice GitNexus** fresh (2873 / 3505 — reindex 2026-04-30 sera).
-> **Sessione corrente:** TALOS sera (modalità "macina" autorizzata) — **CRUD-light READ completo**: `load_session_full(db, session_id, *, tenant_id=1) -> SessionResult | None` ricostruisce cart/panchina/budget_t1/enriched_df da DB. Round-trip canonico (drift Decimal→float documentato < 1 EUR su budget_t1). Sblocca consumer programmatici (re-allocate, compare, export) senza ri-esecuzione pipeline.
+> **Ultimo aggiornamento:** 2026-04-30 sera — commit `1178389` (feat: orchestrator referral_fee_overrides CHG-053). Tag: 4 milestone + 9 checkpoint. Catena CHG odierna: 001→...→**053**. **Tabelle Allegato A coperte: 10/10** ✓ + **467 test PASS** (387 unit/gov/golden + 80 integration). **Indice GitNexus** fresh (2873 / 3505 — reindex 2026-04-30 sera).
+> **Sessione corrente:** TALOS sera (modalità "macina" autorizzata) — Round CHG-052 (`load_session_full`) + CHG-053 (orchestrator `referral_fee_overrides` + lookup hierarchy + colonna `referral_fee_resolved`). **L12 chiusa anche lato pipeline** — manca solo aggancio UI (passare overrides ricavati a `run_session`), scope post `io_/extract`.
 
 ---
 
@@ -97,6 +97,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **🎯 Tag `checkpoint/2026-04-30-09`** — 4 CHG significativi post checkpoint-08 (CHG-047..050) + milestone v1.2.0 | 0003 | (nessun CHG) | tag su `894c291` |
 | **🛒 Referral Fee per categoria (L12 chiusa): `list_category_referral_fees(db, *, tenant_id) -> dict[str, Decimal]` + UI expander "Referral Fee per categoria" con dataframe + form input categoria/fee + bottone Salva. `KEY_REFERRAL_FEE_PCT="referral_fee_pct"` costante. Refactor `continue` defensive → dict comprehension (governance). Merge in orchestrator scope post `io_/extract`. 7 test integration (empty/mapping/tenant filter/exclude keys/exclude global/UI floats/UI no factory). 452 PASS.** | 0015, 0016, 0014, 0019 | [CHG-2026-04-30-051](changes/2026-04-30-051-referral-fee-per-category.md) | `45b4757` |
 | **🔄 CRUD-light READ completo: `load_session_full(db, session_id, *, tenant_id=1) -> SessionResult \| None`. Ricostruisce cart/panchina/budget_t1/enriched_df da DB (round-trip canonico, drift Decimal→float `< 1 EUR` su budget_t1 documentato). 13 colonne enriched_df persistite; `fee_fba_eur`/`cash_inflow_eur`/`q_m` ricalcolabili on-demand. 8 test integration round-trip. 460 PASS (380 + 80).** | 0015, 0014, 0019 | [CHG-2026-04-30-052](changes/2026-04-30-052-load-session-full-round-trip.md) | `4c710ea` |
+| **🛒 L12 chiusa lato pipeline: `SessionInput.referral_fee_overrides: dict[str, float] \| None` + `_resolve_referral_fee(row, overrides)` lookup hierarchy (overrides[category_node] → fallback referral_fee_pct raw) + colonna `referral_fee_resolved` (audit trail). Behavioral change zero per caller esistenti (default None + listini senza category_node). Loop CFO→config_overrides→run_session chiuso (manca aggancio UI). 7 test unit. 467 PASS (387 + 80).** | 0018, 0014, 0019 | [CHG-2026-04-30-053](changes/2026-04-30-053-orchestrator-referral-fee-overrides.md) | `1178389` |
 
 ---
 
@@ -174,6 +175,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-050~~ | ~~config_overrides runtime + UI persistente soglia ROI~~ | Chiuso 2026-04-30 — 445 PASS, configurabilità persistente | — |
 | ~~CHG-051~~ | ~~Referral_Fee per categoria L12~~ | Chiuso 2026-04-30 — 452 PASS, lookup persistente per categoria | — |
 | ~~CHG-052~~ | ~~load_session_full round-trip SessionResult~~ | Chiuso 2026-04-30 sera — 460 PASS, CRUD-light READ canonico | — |
+| ~~CHG-053~~ | ~~orchestrator referral_fee_overrides + lookup hierarchy~~ | Chiuso 2026-04-30 sera — 467 PASS, L12 chiusa lato pipeline | — |
 | **NEXT** | **Prossimi step possibili** | Configurabilità aperta | (e) **lookup `Referral_Fee` per categoria** (estensione config_repository con `set/get_text` o numeric per categoria — pattern testato); (β) `upsert_session` decisione Leader semantica; (z) migrazione a `structlog.bind(session_id, tenant_id)` context tracing; (q) refactor UI multi-page ADR-0016; (r) **`io_/extract` Samsung** (Playwright + Tesseract + Keepa) — last big block; (s) golden Samsung 1000 ASIN; (y) `load_session_full`; chiusi: (a/a'/a''/b/b''/c/d/d'/f/g/h/i/j/k/l/m/n/p/t/u/v/x/α) |
 | ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |

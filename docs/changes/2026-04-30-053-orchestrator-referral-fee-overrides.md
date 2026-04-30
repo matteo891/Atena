@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-053
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: 1178389
 adr_ref: ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -219,4 +219,4 @@ di `category_node`).
 - Successore atteso: UI integration (`dashboard.py` carica overrides +
   passa a `run_session`) post `io_/extract`; lookup hierarchy
   ASIN-level; vettorializzazione.
-- Commit: pending (backfill).
+- Commit: `1178389`.
