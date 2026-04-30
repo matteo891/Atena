@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-020
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: TBD
+status: Committed
+commit: ddb3229
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -142,4 +142,4 @@ Per evitare side-effect persistenti: i primi due test fanno cleanup esplicito (D
 - ADR: ADR-0015 (Zero-Trust + RLS — `with_tenant` realizza il SET LOCAL della policy), ADR-0014 (mypy strict), ADR-0013 (struttura `persistence/`), ADR-0019 (test pattern)
 - Predecessore: CHG-2026-04-30-019 (`tests/integration/` infrastruttura — riusa la stessa fixture pattern)
 - Successore atteso: CHG-021 `scripts/db-bootstrap.sh` (ruoli + GRANT/REVOKE) → sblocca `with_tenant(..., role='talos_app')` in prod; CHG-022 `config/` pydantic-settings
-- Commit: TBD (in attesa di permesso esplicito Leader)
+- Commit: `ddb3229`
