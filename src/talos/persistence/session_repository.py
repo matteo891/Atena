@@ -302,6 +302,63 @@ def load_session_by_id(
         )
 
 
+def find_session_by_hash(
+    db_session: Session,
+    *,
+    listino_hash: str,
+    tenant_id: int = 1,
+) -> SessionSummary | None:
+    """Cerca una `AnalysisSession` per `(tenant_id, listino_hash)`.
+
+    Sfrutta l'UNIQUE INDEX `ux_sessions_tenant_hash` (CHG-2026-04-30-047)
+    per lookup O(log N). Pattern d'uso tipico: la UI controlla pre-save
+    se il listino e' gia' stato eseguito, mostra warning ed evita
+    duplicati silenziosi.
+
+    :param db_session: SQLAlchemy `Session` aperta.
+    :param listino_hash: hash sha256 hex del listino (output di `_listino_hash`).
+    :param tenant_id: tenant filter. Default 1 (MVP single-tenant).
+    :returns: `SessionSummary` con counts aggregati, oppure `None` se
+        nessuna sessione del tenant ha quel hash.
+    :raises ValueError: se `listino_hash` non e' lungo 64 (sha256 hex).
+    """
+    expected_hash_length = 64
+    if len(listino_hash) != expected_hash_length:
+        msg = (
+            f"listino_hash invalido: lunghezza {len(listino_hash)} != "
+            f"{expected_hash_length} (sha256 hex)."
+        )
+        raise ValueError(msg)
+
+    with with_tenant(db_session, tenant_id):
+        stmt = select(AnalysisSession).where(
+            AnalysisSession.tenant_id == tenant_id,
+            AnalysisSession.listino_hash == listino_hash,
+        )
+        asession = db_session.scalar(stmt)
+        if asession is None:
+            return None
+
+        n_cart = db_session.scalar(
+            select(func.count()).select_from(CartItem).where(CartItem.session_id == asession.id),
+        )
+        n_panch = db_session.scalar(
+            select(func.count())
+            .select_from(PanchinaItem)
+            .where(PanchinaItem.session_id == asession.id),
+        )
+        return SessionSummary(
+            id=int(asession.id),
+            started_at=asession.started_at,
+            ended_at=asession.ended_at,
+            budget_eur=asession.budget_eur,
+            velocity_target=asession.velocity_target,
+            listino_hash=asession.listino_hash,
+            n_cart_items=int(n_cart or 0),
+            n_panchina_items=int(n_panch or 0),
+        )
+
+
 def list_recent_sessions(
     db_session: Session,
     *,

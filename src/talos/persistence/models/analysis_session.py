@@ -15,7 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CHAR, TIMESTAMP, BigInteger, Integer, Numeric, func, text
+from sqlalchemy import CHAR, TIMESTAMP, BigInteger, Index, Integer, Numeric, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from talos.persistence.base import Base
@@ -45,6 +45,11 @@ class AnalysisSession(Base):
     """
 
     __tablename__ = "sessions"
+    __table_args__ = (
+        # CHG-2026-04-30-047: idempotency su (tenant_id, listino_hash).
+        # Vincolo applicato come UNIQUE INDEX (vedi migration `e965e1b81041`).
+        Index("ux_sessions_tenant_hash", "tenant_id", "listino_hash", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     started_at: Mapped[datetime] = mapped_column(

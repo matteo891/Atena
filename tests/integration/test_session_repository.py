@@ -155,23 +155,37 @@ def test_save_persists_panchina_items(orm_session: Session) -> None:
 
 
 def test_save_listino_hash_deterministic(orm_session: Session) -> None:
-    """Stesso listino → stesso hash. Listino diverso → hash diverso."""
+    """Stesso listino → stesso hash. Listino diverso → hash diverso.
+
+    Post CHG-047 (UNIQUE INDEX su (tenant_id, listino_hash)) testiamo
+    l'helper privato `_listino_hash` direttamente per il caso "stesso →
+    stesso", e usiamo tenant_id diversi per persistere due sessioni con
+    listino identico (entrambe ammesse dal vincolo).
+    """
+    from talos.persistence.session_repository import (  # noqa: PLC0415
+        _listino_hash,
+    )
+
     inp1, result1 = _make_session()
-    sid1 = save_session_result(orm_session, session_input=inp1, result=result1)
+    sid1 = save_session_result(orm_session, session_input=inp1, result=result1, tenant_id=1)
     h1 = orm_session.get(AnalysisSession, sid1).listino_hash
 
-    # Stesso input → stesso hash
+    # Helper deterministico (stesso input → stesso hash, isolato dal DB).
+    h_helper = _listino_hash(inp1.listino_raw)
+    assert h1 == h_helper
+
+    # Stesso listino, tenant_id diverso → save ammesso, stesso hash.
     inp2, result2 = _make_session()
-    sid2 = save_session_result(orm_session, session_input=inp2, result=result2)
+    sid2 = save_session_result(orm_session, session_input=inp2, result=result2, tenant_id=99)
     h2 = orm_session.get(AnalysisSession, sid2).listino_hash
     assert h1 == h2
 
-    # Listino diverso → hash diverso
+    # Listino diverso → hash diverso (tenant=1, no conflitto col primo).
     df_modified = inp1.listino_raw.copy()
     df_modified.loc[0, "buy_box_eur"] = 1500.0
     inp3 = SessionInput(listino_raw=df_modified, budget=inp1.budget)
     result3 = run_session(inp3)
-    sid3 = save_session_result(orm_session, session_input=inp3, result=result3)
+    sid3 = save_session_result(orm_session, session_input=inp3, result=result3, tenant_id=1)
     h3 = orm_session.get(AnalysisSession, sid3).listino_hash
     assert h1 != h3
 

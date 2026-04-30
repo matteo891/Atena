@@ -60,7 +60,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/orchestrator.py` | ADR-0018 | ADR-0013, ADR-0019 | `run_session(SessionInput) -> SessionResult` end-to-end (enrich + score + tetris + panchina + compounding); file top-level (no directory) ratificato dal Leader 2026-04-30 — gap ADR risolto inline (passa Test di Conformita' #1 ADR-0013 perche' `find -type d` non vede file) — CHG-2026-04-30-039 |
 | `tests/` | ADR-0019 | ADR-0002, ADR-0011 | unit / integration / golden / governance |
 | `tests/integration/` | ADR-0019 | ADR-0015 (RLS + audit), ADR-0011 (test gate) | DB reale via env var `TALOS_DB_URL`; skip module-level se assente — CHG-2026-04-30-019 |
-| `migrations/` | ADR-0015 | — | Alembic; initial migration = Allegato A di ADR-0015 |
+| `migrations/` | ADR-0015 | — | Alembic; initial migration = Allegato A di ADR-0015; `e965e1b81041` aggiunge UNIQUE INDEX `ux_sessions_tenant_hash` (CHG-2026-04-30-047) |
 | `pyproject.toml` | ADR-0013, ADR-0014 | — | uv + ruff + mypy + pytest config |
 | `uv.lock` | ADR-0013, ADR-0014 | — | Versionato; aggiornato con `uv sync` |
 | `scripts/setup-dev.sh` | ADR-0013 | — | Bootstrap ambiente dev (futuro) |
@@ -94,7 +94,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/persistence/` | ADR-0015 | ADR-0013, ADR-0019 | SQLAlchemy 2.0 + RLS bootstrap |
 | `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (URL letta via `TalosSettings.db_url` — CHG-2026-04-30-020 + CHG-2026-04-30-030) |
 | `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
-| `src/talos/persistence/session_repository.py` | ADR-0015 | ADR-0014, ADR-0019 | `save_session_result(db_session, *, session_input, result, tenant_id=1) -> int` (CHG-042); `SessionSummary` + `list_recent_sessions(db_session, *, limit=20, tenant_id=1)` (CHG-044); `LoadedSession` + `load_session_by_id(db_session, sid, *, tenant_id=1) -> LoadedSession \| None` (CHG-045) — CRUD-light read+write con tenant filter applicativo + with_tenant SQL var |
+| `src/talos/persistence/session_repository.py` | ADR-0015 | ADR-0014, ADR-0019 | `save_session_result(db_session, *, session_input, result, tenant_id=1) -> int` (CHG-042); `SessionSummary` + `list_recent_sessions(...)` (CHG-044); `LoadedSession` + `load_session_by_id(...)` (CHG-045); `find_session_by_hash(db_session, *, listino_hash, tenant_id=1) -> SessionSummary \| None` (CHG-047) — CRUD-light read+write con tenant filter applicativo + with_tenant SQL var; idempotency via UNIQUE INDEX `ux_sessions_tenant_hash` |
 | `src/talos/ui/` | ADR-0016 | ADR-0013, ADR-0015 (RLS), ADR-0019 | Streamlit dashboard + pages + components |
 | `src/talos/ui/__init__.py` | ADR-0016 | ADR-0013 | Package marker `ui/` (inaugurato CHG-2026-04-30-040); re-export `parse_locked_in`, `DEFAULT_BUDGET_EUR` |
 | `src/talos/ui/dashboard.py` | ADR-0016 | ADR-0019, ADR-0015 | Entrypoint Streamlit MVP mono-page (sidebar parametri + file upload CSV + chiamata `run_session` + metric + tabelle Cart/Panchina/enriched). Sezione persistenza DB con `get_session_factory_or_none` + `try_persist_session` (graceful degrade se `TALOS_DB_URL` assente, bottone "Salva sessione" se DB raggiungibile) — CHG-2026-04-30-040 + CHG-2026-04-30-043 |

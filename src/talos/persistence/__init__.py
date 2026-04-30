@@ -30,6 +30,7 @@ from talos.persistence.session import (
 from talos.persistence.session_repository import (
     LoadedSession,
     SessionSummary,
+    find_session_by_hash,
     list_recent_sessions,
     load_session_by_id,
     save_session_result,
@@ -50,6 +51,7 @@ __all__ = [
     "StoricoOrdine",
     "VgpResult",
     "create_app_engine",
+    "find_session_by_hash",
     "list_recent_sessions",
     "load_session_by_id",
     "make_session_factory",
