@@ -26,7 +26,7 @@ from talos.formulas import (
     DEFAULT_LOT_SIZE,
     DEFAULT_VELOCITY_TARGET_DAYS,
 )
-from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
+from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, replay_session, run_session
 from talos.persistence import (
     KEY_REFERRAL_FEE_PCT,
     SCOPE_CATEGORY,
@@ -39,6 +39,7 @@ from talos.persistence import (
     list_category_referral_fees,
     list_recent_sessions,
     load_session_by_id,
+    load_session_full,
     make_session_factory,
     save_session_result,
     session_scope,
@@ -443,6 +444,40 @@ def try_delete_category_referral_fee(
     return True, None
 
 
+def try_replay_session(
+    factory: sessionmaker[Session],
+    session_id: int,
+    *,
+    locked_in_override: list[str] | None = None,
+    budget_override: float | None = None,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[SessionResult | None, str | None]:
+    """Carica una sessione via `load_session_full` e applica `replay_session`.
+
+    :returns: tupla `(result, error_message)`. `result=None` se la sessione
+        non esiste o se il replay fallisce; `error_message=None` su
+        successo. R-04 fail (`InsufficientBudgetError`) ritorna messaggio
+        per l'utente, NON eccezione.
+    """
+    try:
+        with session_scope(factory) as db:
+            loaded = load_session_full(db, session_id, tenant_id=tenant_id)
+            if loaded is None:
+                return None, f"Sessione id={session_id} non trovata o non accessibile."
+            replayed = replay_session(
+                loaded,
+                locked_in_override=locked_in_override,
+                budget_override=budget_override,
+            )
+    except InsufficientBudgetError as exc:
+        return None, f"R-04 fallito: {exc}"
+    except ValueError as exc:
+        return None, f"Validazione fallita: {exc}"
+    except Exception as exc:  # noqa: BLE001 - graceful UI feedback su DB/IO
+        return None, f"Errore inatteso: {exc}"
+    return replayed, None
+
+
 def build_session_input(  # noqa: PLR0913 — 7 parametri sessione = la firma del cruscotto
     factory: sessionmaker[Session] | None,
     listino_raw: pd.DataFrame,
@@ -531,11 +566,20 @@ def _render_history(
             if loaded is None:
                 st.error(f"Sessione id={sid_input} non trovata o non accessibile.")
             else:
-                _render_loaded_session_detail(loaded)
+                _render_loaded_session_detail(loaded, factory)
 
 
-def _render_loaded_session_detail(loaded: LoadedSession) -> None:
-    """Render del dettaglio di una `LoadedSession` (post-`load_session_by_id`)."""
+def _render_loaded_session_detail(
+    loaded: LoadedSession,
+    factory: sessionmaker[Session] | None = None,
+) -> None:
+    """Render del dettaglio di una `LoadedSession` (post-`load_session_by_id`).
+
+    Se `factory` e' fornito, espone anche un sub-expander "What-if
+    Re-allocate" (CHG-057) che permette al CFO di ri-allocare la
+    sessione corrente con `locked_in`/`budget` override senza
+    ri-eseguire enrichment (consumer di `replay_session`).
+    """
     s = loaded.summary
     st.subheader(f"Dettaglio Sessione id={s.id}")
     col1, col2, col3 = st.columns(3)
@@ -554,6 +598,81 @@ def _render_loaded_session_detail(loaded: LoadedSession) -> None:
         st.dataframe(pd.DataFrame(loaded.panchina_rows), use_container_width=True)
     else:
         st.caption("Panchina: vuota.")
+
+    if factory is not None:
+        _render_replay_what_if(factory, s.id, original_budget=float(s.budget_eur))
+
+
+def _render_replay_what_if(
+    factory: sessionmaker[Session],
+    session_id: int,
+    *,
+    original_budget: float,
+) -> None:
+    """Sub-expander "What-if Re-allocate" (CHG-057).
+
+    Permette al CFO di modificare `budget` o `locked_in` e ottenere
+    un nuovo `SessionResult` via `replay_session`, senza ri-eseguire
+    enrichment. Pattern UX: input → bottone → metric/tabelle nuove.
+    """
+    with st.expander("What-if — Re-allocate questa sessione"):
+        st.caption(
+            "Modifica budget o locked-in e ottieni un nuovo Cart senza ricaricare il listino. "
+            "Niente persistenza: il replay e' in memoria.",
+        )
+        new_budget = st.number_input(
+            "Budget override (EUR)",
+            min_value=100.0,
+            value=float(original_budget),
+            step=500.0,
+            format="%.2f",
+            key=f"replay_budget_{session_id}",
+        )
+        new_locked_raw = st.text_input(
+            "Locked-in override (ASIN separati da virgola; vuoto = stessi locked-in originali)",
+            value="",
+            key=f"replay_locked_{session_id}",
+        )
+        if st.button("Re-allocate (what-if)", key=f"replay_btn_{session_id}"):
+            locked_override = parse_locked_in(new_locked_raw) if new_locked_raw.strip() else None
+            replayed, err = try_replay_session(
+                factory,
+                session_id,
+                locked_in_override=locked_override,
+                budget_override=float(new_budget),
+            )
+            if err is not None or replayed is None:
+                st.error(err or "Replay fallito.")
+            else:
+                _render_replay_result(replayed)
+
+
+def _render_replay_result(replayed: SessionResult) -> None:
+    """Render del SessionResult prodotto dal replay (no persist)."""
+    st.success("Replay completato (in memoria).")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Saturazione Cart", f"{replayed.cart.saturation:.1%}")
+    col2.metric("Budget T+1 (R-07)", f"€ {replayed.budget_t1:,.2f}")
+    col3.metric("# Cart / Panchina", f"{len(replayed.cart.items)} / {len(replayed.panchina)}")
+
+    if replayed.cart.items:
+        cart_view = [
+            {
+                "asin": ci.asin,
+                "qty": ci.qty,
+                "cost_total": ci.cost_total,
+                "vgp_score": ci.vgp_score,
+                "locked": ci.locked,
+            }
+            for ci in replayed.cart.items
+        ]
+        st.caption("Nuovo Cart")
+        st.dataframe(pd.DataFrame(cart_view), use_container_width=True)
+
+    if not replayed.panchina.empty:
+        st.caption("Nuova Panchina")
+        cols = [c for c in ("asin", "vgp_score", "qty_final", "roi") if c in replayed.panchina]
+        st.dataframe(replayed.panchina[cols], use_container_width=True)
 
 
 def _render_panchina_table(panchina: pd.DataFrame) -> None:
@@ -705,7 +824,7 @@ def _render_existing_session_warning(
         if loaded is None:
             st.error(f"Impossibile caricare la sessione id={existing.id}.")
         else:
-            _render_loaded_session_detail(loaded)
+            _render_loaded_session_detail(loaded, factory)
 
 
 if __name__ == "__main__":  # pragma: no cover - run via streamlit CLI

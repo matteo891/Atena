@@ -30,6 +30,7 @@ from talos.ui.dashboard import (
     try_persist_category_referral_fee,
     try_persist_session,
     try_persist_veto_roi_threshold,
+    try_replay_session,
 )
 
 __all__ = [
@@ -49,4 +50,5 @@ __all__ = [
     "try_persist_category_referral_fee",
     "try_persist_session",
     "try_persist_veto_roi_threshold",
+    "try_replay_session",
 ]
