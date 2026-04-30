@@ -3,7 +3,7 @@ id: CHG-2026-04-30-018
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 18c32b6
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -158,4 +158,4 @@ Nuovi test (19): 8 strutturali (tablename, metadata, 8 colonne, PK, no FK, actor
 - Predecessore: CHG-2026-04-30-017 (`locked_in`)
 - **Conclude la sequenza CHG-008 → CHG-018: 9 tabelle dell'Allegato A introdotte come ORM + 1 errata corrige di chiarimento (CHG-010 "DEFAULT → NOT NULL")**
 - Successore atteso: setup bootstrap ruoli/GRANT/REVOKE (`scripts/db-bootstrap.sh`) oppure cambio direzione verso un altro modulo applicativo
-- Commit: `<pending>`
+- Commit: `18c32b6`
