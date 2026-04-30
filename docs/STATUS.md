@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `[da aggiornare post-commit]` (chore backfill CHG-026 + STATUS + sync GitNexus). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / 04 target `3a5e2ed`). Catena CHG odierna: 001→...→026. **Tabelle Allegato A coperte: 10/10** ✓ + **218 test PASS** (197 unit/governance + 21 integration). **Indice GitNexus operativo** (1737 / 2022 / 12 / 4).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `11b8bec` (chore backfill CHG-026 + STATUS + sync GitNexus). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / 04 target `3a5e2ed`). Catena CHG odierna: 001→...→026. **Tabelle Allegato A coperte: 10/10** ✓ + **218 test PASS** (197 unit/governance + 21 integration). **Indice GitNexus operativo** (1737 / 2022 / 12 / 4).
 > **Sessione corrente:** TALOS — F2 + ROI scritti (CHG-026, sblocca gate Veto R-08) + F1 (CHG-025) + ISS-001 chiusa (CHG-024) + errata ADR-0007/0010 verifica reciproca STATUS↔git/runtime (CHG-023/024). Catena del valore: `fee_fba_manual → cash_inflow_eur → cash_profit_eur → roi`.
 
 ---
