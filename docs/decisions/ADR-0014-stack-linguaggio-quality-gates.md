@@ -7,6 +7,10 @@ deciders: Leader
 category: architecture
 supersedes: —
 superseded_by: —
+errata:
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-003
+    summary: "Aggiornato il riferimento all'integrazione hooks: la chiamata al pre-commit-app è ora wired nel pre-commit di governance via Errata Corrige di ADR-0006 (CHG-2026-04-30-003), non più 'sotto-dichiarata'."
 ---
 
 ## Contesto
@@ -79,7 +83,7 @@ SemVer manuale (decisione esplicita Leader). `version = "0.1.0"` come bootstrap 
 - Setup dev più lungo (1-2 minuti) per `uv sync` + scaricamento Python 3.11 al primo run.
 
 **Effetti collaterali noti:**
-- ADR-0006 (governance hooks) verrà aggiornato via Errata Corrige per integrare la chiamata al pre-commit-app: questa modifica è sotto-dichiarata qui ed entrerà in vigore alla prima introduzione di codice Python.
+- ADR-0006 (governance hooks) è stato aggiornato via Errata Corrige in CHG-2026-04-30-003 per integrare la chiamata al pre-commit-app: il `pre-commit` di governance ora invoca `scripts/hooks/pre-commit-app` quando in staging ci sono file Python/pyproject/uv.lock; graceful skip se l'hook applicativo non esiste (fase pre-bootstrap codice).
 - Future librerie devono essere compatibili con Python 3.11; libreria che richiede 3.10 max → blocker.
 
 ## Test di Conformità
@@ -109,3 +113,12 @@ Se ruff "ALL" si rivela troppo invasivo:
 1. Errata Corrige: passare a `select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "PT", "SIM", "TCH"]` (subset focalizzato).
 2. Aggiornare `pyproject.toml` `[tool.ruff.lint]`.
 3. Documentare regole disabilitate con motivazione.
+
+## Errata
+
+### 2026-04-30 — CHG-2026-04-30-003
+
+- **Tipo:** errata corrige
+- **Modifica:** sezione "Effetti collaterali noti" — frase "ADR-0006 verrà aggiornato via Errata Corrige... entrerà in vigore alla prima introduzione di codice Python" sostituita con "ADR-0006 è stato aggiornato via Errata Corrige in CHG-2026-04-30-003... graceful skip se l'hook applicativo non esiste". Frontmatter `errata:` esteso con voce 2026-04-30.
+- **Motivo:** allineamento al stato verificato del repository: l'aggiornamento di ADR-0006 è stato eseguito (CHG-2026-04-30-003) e gli hook governance ora invocano `pre-commit-app` quando applicabile. La frase originale (futuro) era diventata obsoleta.
+- **Sostanza alterata:** No. La decisione di avere un `pre-commit-app` separato resta invariata; cambia solo lo stato della relativa integrazione (da "futura" a "in vigore").

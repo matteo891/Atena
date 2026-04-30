@@ -5,6 +5,10 @@
 #     CHG-ID resta obbligatorio anche con prefisso docs(/chore(/ci(.
 #   - ADR-NNNN obbligatorio nel footer (M6).
 #   - CHG-ID citato deve esistere come file in docs/changes/ (M7).
+# Esteso da ADR-0020 (Errata Corrige ADR-0006, CHG-2026-04-30-003):
+#   - Bypass per commit del bot github-actions[bot] con marker [skip ci]
+#     (reindex automatico GitNexus post-merge). Identificato sia da marker
+#     [skip ci] nel messaggio sia da author email noreply di GitHub Actions.
 
 COMMIT_MSG_FILE="$1"
 COMMIT_MSG=$(cat "$COMMIT_MSG_FILE" 2>/dev/null || echo "")
@@ -17,6 +21,16 @@ echo "$COMMIT_MSG" | grep -qE "^Revert " && exit 0
 
 # Bypass: emergency commits (ADR-0002)
 echo "$COMMIT_MSG" | grep -q "\[EMERGENCY-NO-TEST\]" && exit 0
+
+# Bypass: bot CI con marker [skip ci] (ADR-0020 reindex GitNexus)
+# Validità ristretta: il commit deve avere [skip ci] E essere fatto
+# dal bot github-actions[bot] (verifica via $GIT_AUTHOR_EMAIL / config).
+if echo "$COMMIT_MSG" | grep -q "\[skip ci\]"; then
+    AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-$(git config user.email 2>/dev/null || echo "")}"
+    if echo "$AUTHOR_EMAIL" | grep -qE "github-actions\[bot\]@users\.noreply\.github\.com$"; then
+        exit 0
+    fi
+fi
 
 # ── Classifier dei file in staging (allineato a pre-commit) ───────────────────
 # Un commit con prefisso docs(/chore(/ci( è ammesso senza CHG-ID SOLO se

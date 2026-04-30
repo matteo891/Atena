@@ -9,6 +9,20 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-04-30 — Errata Corrige ADR-0006 (hooks v2)
+
+Hardening governance pre-bootstrap codice. **Errata Corrige di ADR-0006** (meccanismo ADR-0009) per allineare testo + hook eseguibili alle estensioni già ratificate da ADR-0014 e ADR-0020 nella validazione bulk del giorno (CHG-2026-04-30-001) ma rimaste "side-decision sotto-dichiarate". Errata corrige secondarie su ADR-0014 e ADR-0020 per allineamento testuale dello stato corrente.
+
+### Changed
+- `scripts/hooks/pre-commit`: nuova **Verifica 3** dopo i check governance — se in staging ci sono `*.py`, `pyproject.toml` o `uv.lock`, invoca `scripts/hooks/pre-commit-app` (ADR-0014) se eseguibile; **graceful skip** se assente (per supportare la fase pre-bootstrap codice senza falsi blocker).
+- `scripts/hooks/commit-msg`: nuovo **bypass cumulativo** per il bot CI di reindex GitNexus — marker `[skip ci]` **+** author email `github-actions[bot]@users.noreply.github.com`. Marker da solo non basta (commit umani con `[skip ci]` continuano a essere validati normalmente).
+- `docs/decisions/ADR-0006-git-hooks-enforcement.md`: frontmatter `errata:` esteso; sezioni "Hook 1: pre-commit" e "Hook 2: commit-msg" estese con nota sulle Verifiche 3 ed Esenzioni; sezione `## Errata` aggiunta in coda con riferimento a CHG-003.
+- `docs/decisions/ADR-0014-stack-linguaggio-quality-gates.md`: errata corrige (frase "verrà aggiornato... alla prima introduzione" → "è stato aggiornato in CHG-003... graceful skip"); frontmatter `errata:` esteso; sezione `## Errata` aggiunta.
+- `docs/decisions/ADR-0020-cicd-github-actions.md`: errata corrige (frase "va aggiornato... applicata alla prima introduzione di codice CI" → stato corrente + dettaglio bypass cumulativo); frontmatter `errata:` esteso; sezione `## Errata` aggiunta.
+
+### Added
+- `docs/changes/2026-04-30-003-errata-adr-0006-hooks-extension.md`
+
 ## [0.9.0] — 2026-04-30 — Stack `Frozen` (ADR di stack 0013–0021 promulgati)
 
 Pietra miliare. Tutte le aree precedentemente in gap (stack tecnologico, struttura, CI/CD, test strategy applicativa, logging) sono ora coperte da ADR `Active`. Repo in stato di **purezza infrastrutturale**: zero codice applicativo, ADR cardine pronti per il bootstrap del primo modulo. **HARD STOP** richiesto dal Leader post-tag `milestone/stack-frozen-v0.9.0` per consentire il clone di `Atena-Core`.

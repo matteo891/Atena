@@ -7,6 +7,10 @@ deciders: Leader
 category: process
 supersedes: —
 superseded_by: —
+errata:
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-003
+    summary: "Allineamento al testo dei due hook sulle estensioni già ratificate da ADR-0014 (chiamata pre-commit-app condizionata su file Python in staging) e ADR-0020 (bypass commit-msg per bot github-actions[bot] con marker [skip ci])."
 ---
 
 ## Contesto
@@ -28,6 +32,9 @@ Se esistono nuovi file ADR in staging (`docs/decisions/ADR-*.md`), controlla che
 
 **File non-triviali:** qualsiasi file che non sia `.md`, `docs/`, `.claude/`, `.gitnexus/`, `.gitignore`, `.gitattributes`.
 
+**Verifica 3 — Pre-commit applicativo (estensione ADR-0014, errata 2026-04-30):**
+Se in staging ci sono file Python (`*.py`, `pyproject.toml`, `uv.lock`), dopo le verifiche governance il pre-commit invoca `scripts/hooks/pre-commit-app` se eseguibile. Lo hook applicativo esegue (per scope ADR-0014) ruff check + ruff format check + mypy + pytest unit. Graceful skip se l'hook applicativo non esiste (fase pre-bootstrap codice). Lo hook applicativo è governato da ADR-0014.
+
 ### Hook 2: `commit-msg`
 
 **File:** `scripts/hooks/commit-msg`
@@ -35,6 +42,9 @@ Se esistono nuovi file ADR in staging (`docs/decisions/ADR-*.md`), controlla che
 
 **Verifica — Formato ADR-0005:**
 Se il commit message non inizia con `docs(`, `chore(`, `ci(` e non contiene `[EMERGENCY-NO-TEST]`, controlla la presenza di `CHG-YYYY-MM-DD-NNN` nel message. In assenza, il commit è bloccato con diagnostica.
+
+**Esenzioni bypass (estensione ADR-0020, errata 2026-04-30):**
+Sono esentati dalla verifica i commit del bot CI `github-actions[bot]` che contengono il marker `[skip ci]` nel messaggio. Identificazione cumulativa: il marker da solo non basta, deve essere accompagnato dalla mail autore `<...>github-actions[bot]@users.noreply.github.com`. Questa esenzione è riservata al workflow di reindex GitNexus post-merge (ADR-0020 `gitnexus.yml`); commit umani con `[skip ci]` non sono esentati.
 
 ### Attivazione (Obbligatoria ad ogni Clone)
 
@@ -98,3 +108,16 @@ git config --unset core.hooksPath
 ```
 
 Questo ripristina i hook standard di git (`.git/hooks/`, tipicamente vuota). I file in `scripts/hooks/` restano tracciati ma inattivi.
+
+## Errata
+
+### 2026-04-30 — CHG-2026-04-30-003
+
+- **Tipo:** errata corrige
+- **Modifica:**
+  - Sezione "Hook 1: pre-commit": aggiunta `Verifica 3` che descrive l'invocazione di `scripts/hooks/pre-commit-app` quando in staging ci sono file Python/pyproject/uv.lock; graceful skip se assente.
+  - Sezione "Hook 2: commit-msg": aggiunta nota "Esenzioni bypass" che descrive il bypass per commit del bot `github-actions[bot]` con `[skip ci]`.
+  - Frontmatter `errata:` esteso con voce 2026-04-30.
+  - File `scripts/hooks/pre-commit` e `scripts/hooks/commit-msg` aggiornati per implementare le due estensioni; commenti inline citano ADR-0014 e ADR-0020 + CHG-2026-04-30-003 come riferimento.
+- **Motivo:** ADR-0014 (Stack Linguaggio & Quality Gates) e ADR-0020 (CI/CD Pipeline) avevano dichiarato due "side-decision sotto-dichiarate" che impattano gli hook governati da ADR-0006: la chiamata al pre-commit applicativo (ADR-0014) e l'esenzione del bot reindex (ADR-0020). Il testo originale di ADR-0006 era incompleto rispetto a quelle decisioni già ratificate dal Leader nella validazione bulk del 2026-04-30 (CHG-2026-04-30-001). Questo errata allinea il testo alle decisioni in vigore senza alterarne il contenuto normativo.
+- **Sostanza alterata:** No. Le regole nuove sono già normative via ADR-0014 e ADR-0020; ADR-0006 le riprende per coerenza testuale. La sezione `## Decisione` non cambia nelle regole di base (change document + struttura ADR + commit format).

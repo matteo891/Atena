@@ -1,6 +1,10 @@
 #!/bin/bash
 # ADR-0006: Git Hooks Enforcement
 # Verifica (1) change document, (2) struttura ADR prima di ogni commit.
+# Esteso da:
+#   - ADR-0014 (Errata Corrige ADR-0006, CHG-2026-04-30-003): se in staging
+#     ci sono file Python/pyproject, dopo i check governance invoca
+#     scripts/hooks/pre-commit-app (lint+type+unit). Graceful skip se assente.
 
 STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
 [ -z "$STAGED" ] && exit 0
@@ -8,6 +12,7 @@ STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
 # ── Classifica i file in staging ──────────────────────────────────────────────
 NON_TRIVIAL_FILES=()
 NEW_ADR_FILES=()
+HAS_PYTHON_STAGED=0
 
 while IFS= read -r f; do
     [ -z "$f" ] && continue
@@ -17,6 +22,10 @@ while IFS= read -r f; do
     # File triviali: solo .md, docs/, .claude/, .gitnexus/, gitconfig
     elif ! echo "$f" | grep -qE '(\.md$|^docs/|^\.claude/|^\.gitnexus/|^\.gitignore$|^\.gitattributes$)'; then
         NON_TRIVIAL_FILES+=("$f")
+    fi
+    # Tracciamento file Python/pyproject per hook applicativo (ADR-0014)
+    if echo "$f" | grep -qE '(\.py$|^pyproject\.toml$|^uv\.lock$)'; then
+        HAS_PYTHON_STAGED=1
     fi
 done <<< "$STAGED"
 
@@ -94,6 +103,29 @@ if [ ${#NEW_ADR_FILES[@]} -gt 0 ]; then
             fi
         fi
     done
+fi
+
+# ── Check 3: Pre-commit applicativo (ADR-0014, errata ADR-0006) ───────────────
+# Se in staging ci sono file Python o pyproject.toml/uv.lock, invoca lo hook
+# applicativo. Graceful skip se il file non esiste (fase pre-bootstrap o
+# bootstrap minimo).
+if [ "$HAS_PYTHON_STAGED" -eq 1 ]; then
+    APP_HOOK="scripts/hooks/pre-commit-app"
+    if [ -x "$APP_HOOK" ]; then
+        "$APP_HOOK"
+        APP_EXIT=$?
+        if [ "$APP_EXIT" -ne 0 ]; then
+            echo ""
+            echo "ERROR: COMMIT BLOCCATO — ADR-0014 (pre-commit applicativo)"
+            echo "──────────────────────────────────────────────────────"
+            echo "Lo hook $APP_HOOK ha restituito exit $APP_EXIT."
+            echo "──────────────────────────────────────────────────────"
+            exit "$APP_EXIT"
+        fi
+    elif [ -f "$APP_HOOK" ]; then
+        echo "WARNING: $APP_HOOK presente ma non eseguibile. Skip applicativo."
+    fi
+    # Se non esiste affatto: graceful skip (pre-bootstrap codice).
 fi
 
 exit 0

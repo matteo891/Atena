@@ -7,6 +7,10 @@ deciders: Leader
 category: process
 supersedes: —
 superseded_by: —
+errata:
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-003
+    summary: "Aggiornato il riferimento al bypass commit-msg per il bot reindex: l'esenzione [skip ci] + author github-actions[bot] è ora wired nel commit-msg hook via Errata Corrige di ADR-0006 (CHG-2026-04-30-003), non più 'side-decision sotto-dichiarata'."
 ---
 
 ## Contesto
@@ -159,11 +163,9 @@ Post-MVP (ADR futuro): possibile integrazione Telegram/email su failure.
 - Reindex GitNexus aggiunge commit "rumore" sul main (mitigato da `[skip ci]`).
 
 **Effetti collaterali noti:**
-- Hook governance (ADR-0006) va aggiornato via Errata Corrige per:
-  - riconoscere `[skip ci]` come exempt dal footer governance
-  - non bloccare commit del bot `github-actions[bot]`
-
-Questa è una **side-decision sotto-dichiarata in questo ADR**: applicata alla prima introduzione di codice CI.
+- Hook governance (ADR-0006) **è stato aggiornato via Errata Corrige in CHG-2026-04-30-003**:
+  - `commit-msg` riconosce `[skip ci]` + author email `github-actions[bot]@users.noreply.github.com` come bypass cumulativo (entrambe le condizioni richieste; commit umani con `[skip ci]` non sono esentati).
+  - Nessun cambio per `pre-commit`: il workflow di reindex GitNexus modifica solo `.gitnexus/` (escluso da `.gitignore` ma includibile via `git add -f`); il classifier di pre-commit considera la dir come "triviale" e non richiede change document.
 
 ## Test di Conformità
 
@@ -191,3 +193,12 @@ Se GitHub Actions diventa inadeguato (es. limiti free tier raggiunti, esigenza s
 Se branch protection MVP si rivela troppo permissiva (regressioni accidentali):
 1. Errata Corrige: introdurre PR mandatory + 1 review (in MVP single-developer = self-review da branch separato).
 2. Aggiornare branch policy in ADR-0011 di conseguenza.
+
+## Errata
+
+### 2026-04-30 — CHG-2026-04-30-003
+
+- **Tipo:** errata corrige
+- **Modifica:** sezione "Effetti collaterali noti" — frase "Hook governance va aggiornato via Errata Corrige... applicata alla prima introduzione di codice CI" sostituita con "Hook governance è stato aggiornato via Errata Corrige in CHG-2026-04-30-003" + dettaglio dei bypass effettivamente applicati al `commit-msg` (cumulativo: marker + author bot). Frontmatter `errata:` esteso con voce 2026-04-30.
+- **Motivo:** allineamento al stato verificato del repository: l'aggiornamento di ADR-0006 è stato eseguito (CHG-2026-04-30-003) e il `commit-msg` ora applica il bypass cumulativo (marker `[skip ci]` + author email `github-actions[bot]`). La frase originale (futuro) era diventata obsoleta.
+- **Sostanza alterata:** No. La decisione di esentare il bot resta invariata; cambia solo lo stato della relativa integrazione (da "side-decision futura" a "in vigore") e si aggiunge la precisazione che l'esenzione è cumulativa (marker da solo non basta, deve esserci anche l'author email del bot — irrigidimento testuale per evitare abusi, già implicito nell'intent originale).
