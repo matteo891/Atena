@@ -3,7 +3,7 @@ id: CHG-2026-04-30-002
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 71c4c3b
 adr_ref: ADR-0007, ADR-0006, ADR-0003
 ---
 
@@ -99,6 +99,6 @@ Test manuali documentati (governance — ADR-0011). Modifiche sono di tooling/co
 
 - ADR: ADR-0007 (GitNexus integration), ADR-0006 (governance hooks — chmod), ADR-0003 (milestone tag)
 - Predecessore: CHG-2026-04-30-001 (promulgazione ADR di stack)
-- Commit: `<pending>`
-- Tag: `milestone/stack-frozen-v0.9.0` (post-CHG)
+- Commit: `71c4c3b`
+- Tag: `milestone/stack-frozen-v0.9.0` su `71c4c3b`
 - Issue: HARD-STOP attiva post-tag (decisione Leader)
