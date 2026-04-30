@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-050
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 1bdac33
 adr_ref: ADR-0015, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -200,4 +200,4 @@ i nuovi simboli `config_repository.py` + UI helper.
 - Successore atteso: lookup `Referral_Fee` per categoria (CHG-051?);
   `set_config_override_text` + override testuali; lookup hierarchy
   asin > category > global
-- Commit: `[pending]`
+- Commit: `1bdac33`
