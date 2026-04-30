@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-040
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: da0a370
 adr_ref: ADR-0016, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -183,4 +183,4 @@ backlog per CHG futuri.
 - Successore atteso: refactor multi-page ADR-0016 (`pages/`, `components/`,
   `state.py`); persistenza `SessionResult` in DB; manual override grid;
   caching strategy
-- Commit: `[pending]`
+- Commit: `da0a370`
