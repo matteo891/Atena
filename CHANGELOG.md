@@ -9,6 +9,20 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-04-30 — Prima pipeline CI (server-side quality gate)
+
+Estende il quality gate locale (CHG-004) a GitHub Actions. Errata Corrige di ADR-0020 documenta il rollout staging dei 4 workflow prescritti dall'ADR.
+
+### Added
+- `.github/workflows/ci.yml` — 3 job server-side:
+  - `quality-gates` (replica del `pre-commit-app` locale: ruff check + ruff format check + mypy + pytest unit+governance)
+  - `structure-check` (verifica ADR-0013 8 aree consentite in `src/talos/` + ADR INDEX sync)
+  - `governance-checks` (hook eseguibili + sezioni ADR obbligatorie su tutti gli ADR del repo)
+- `docs/changes/2026-04-30-005-ci-base-github-actions.md`
+
+### Changed
+- `docs/decisions/ADR-0020-cicd-github-actions.md`: errata corrige (rollout staging documentato — `tests` job + `gitnexus.yml` + `release.yml` + `hooks-check.yml` rinviati a CHG dedicati alla loro maturazione). Frontmatter `errata:` esteso con voce CHG-005.
+
 ## [0.10.0] — 2026-04-30 — Primo commit di codice applicativo (bootstrap minimale)
 
 Sblocco fase codice. Concretizzazione dei path vincolanti di ADR-0013 (`src-layout`) e attivazione del quality gate di ADR-0014. Zero funzionalità di prodotto: solo l'ossatura installabile e testabile su cui costruire i moduli successivi modulo per modulo.

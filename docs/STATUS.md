@@ -42,6 +42,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **Milestone tag `milestone/stack-frozen-v0.9.0`** | 0003 | (parte di CHG-002) | tag su `71c4c3b` |
 | **Errata Corrige ADR-0006 + side-effect su ADR-0014/0020 (hooks v2: pre-commit-app wiring + bot reindex bypass)** | 0006, 0014, 0020 | [CHG-2026-04-30-003](changes/2026-04-30-003-errata-adr-0006-hooks-extension.md) | `b92fe87` |
 | **Bootstrap codice minimale (pyproject.toml + src/talos scaffold + tests + pre-commit-app + setup-dev.sh + README)** | 0013, 0014, 0019, 0021, 0006 | [CHG-2026-04-30-004](changes/2026-04-30-004-bootstrap-codice-minimale.md) | `b7f78d4` |
+| **CI base (`.github/workflows/ci.yml` — 3 job server-side: quality-gates + structure-check + governance-checks) + Errata Corrige ADR-0020 (rollout staging dei 4 workflow)** | 0020, 0006, 0009 | [CHG-2026-04-30-005](changes/2026-04-30-005-ci-base-github-actions.md) | `<pending>` |
 
 ---
 
@@ -57,8 +58,9 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~ESP-007~~ | ~~Step [6] ADR-0012: scomposizione → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — promulgati 9 ADR di stack | — |
 | ~~TAG-001~~ | ~~Milestone tag pre-scomposizione~~ | Sostituito da `milestone/stack-frozen-v0.9.0` (ADR-0003) post-CHG-002 | — |
 | ~~HARD-STOP~~ | ~~Stop categorico post-tag~~ | Sciolto 2026-04-30 dal Leader ("rompi pure l'hard stop e continua") | — |
-| ~~CHG-004~~ | ~~Bootstrap minimale codice~~ | Chiuso 2026-04-30 con commit `b7f78d4` — quality gate verde end-to-end (pre-commit-app eseguito dal hook governance al commit reale) | — |
-| **NEXT** | **Prossimo step da scegliere col Leader** | In attesa | Opzioni naturali: (a) ADR-0020 CI workflow base `ci.yml`, (b) ADR-0021 `configure_logging` reale, (c) ADR-0015 primo modulo `persistence/` con Alembic init |
+| ~~CHG-004~~ | ~~Bootstrap minimale codice~~ | Chiuso 2026-04-30 con commit `b7f78d4` — quality gate verde end-to-end | — |
+| **CHG-005** | **CI base + Errata ADR-0020 (rollout staging)** | In commit | Primo workflow GitHub Actions; il run su questo push sarà il test definitivo |
+| **NEXT** | **Prossimo step da scegliere col Leader** | In attesa | (a) ADR-0021 `configure_logging` reale, (b) ADR-0015 primo modulo `persistence/`, (c) altro |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 

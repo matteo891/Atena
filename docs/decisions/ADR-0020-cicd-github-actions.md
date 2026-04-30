@@ -11,6 +11,9 @@ errata:
   - date: 2026-04-30
     chg: CHG-2026-04-30-003
     summary: "Aggiornato il riferimento al bypass commit-msg per il bot reindex: l'esenzione [skip ci] + author github-actions[bot] è ora wired nel commit-msg hook via Errata Corrige di ADR-0006 (CHG-2026-04-30-003), non più 'side-decision sotto-dichiarata'."
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-005
+    summary: "Documentazione del rollout progressivo dei 4 workflow: ci.yml introdotto ora con solo i job quality-gates + structure-check + governance-checks; il job 'tests' (postgres + tesseract + playwright + coverage-gate ≥85%) entrerà in vigore alla prima introduzione del modulo che lo richiede; gitnexus.yml/release.yml/hooks-check.yml rinviati a CHG dedicati."
 ---
 
 ## Contesto
@@ -202,3 +205,15 @@ Se branch protection MVP si rivela troppo permissiva (regressioni accidentali):
 - **Modifica:** sezione "Effetti collaterali noti" — frase "Hook governance va aggiornato via Errata Corrige... applicata alla prima introduzione di codice CI" sostituita con "Hook governance è stato aggiornato via Errata Corrige in CHG-2026-04-30-003" + dettaglio dei bypass effettivamente applicati al `commit-msg` (cumulativo: marker + author bot). Frontmatter `errata:` esteso con voce 2026-04-30.
 - **Motivo:** allineamento al stato verificato del repository: l'aggiornamento di ADR-0006 è stato eseguito (CHG-2026-04-30-003) e il `commit-msg` ora applica il bypass cumulativo (marker `[skip ci]` + author email `github-actions[bot]`). La frase originale (futuro) era diventata obsoleta.
 - **Sostanza alterata:** No. La decisione di esentare il bot resta invariata; cambia solo lo stato della relativa integrazione (da "side-decision futura" a "in vigore") e si aggiunge la precisazione che l'esenzione è cumulativa (marker da solo non basta, deve esserci anche l'author email del bot — irrigidimento testuale per evitare abusi, già implicito nell'intent originale).
+
+### 2026-04-30 — CHG-2026-04-30-005
+
+- **Tipo:** errata corrige (rollout staging)
+- **Modifica:** documentato il rollout progressivo dei workflow rispetto al testo originale che ne prescriveva 4 con job completi sin dal giorno 1.
+  - **`ci.yml` introdotto in CHG-2026-04-30-005** con job `quality-gates` (ruff+format+mypy+pytest unit+governance), `structure-check` (ADR-0013 8 aree + INDEX sync) e `governance-checks` (hook eseguibili + sezioni ADR). Replica server-side esatta del `pre-commit-app` locale.
+  - **Job `tests`** (service container `postgres:16-alpine` + apt install Tesseract + playwright install chromium + `pytest --cov=src/talos --cov-fail-under=85 -m "not slow"`) **non in vigore** finché non arriva un modulo applicativo che lo giustifica. Ogni introduzione di un modulo coperto (`persistence/` → ADR-0015 attiva postgres+coverage; `ui/` → ADR-0016 attiva streamlit smoke; `io_/` → ADR-0017 attiva playwright+tesseract) si fa via CHG dedicato che aggiunge il job parziale in `ci.yml`.
+  - **`gitnexus.yml`** rinviato finché ISS-001 non è risolta (ad oggi `gitnexus analyze` non gira sulla macchina di sviluppo). CHG dedicato.
+  - **`release.yml`** rinviato finché non c'è un primo binario/wheel pubblicabile post-MVP. CHG dedicato.
+  - **`hooks-check.yml`** rinviato; le verifiche di integrità hook sono già coperte dal job `governance-checks` di `ci.yml`. Errata futura potrà promuoverlo a workflow separato se la frequenza di check lo giustifica.
+- **Motivo:** il testo originale di ADR-0020 prescriveva i 4 workflow con job completi (incluso `pytest --cov-fail-under=85`) ma il bootstrap in CHG-2026-04-30-004 ha intenzionalmente 0% di coverage (ossatura, codice di prodotto inesistente). Eseguire il job `tests` ora produrrebbe failure deterministico fino al primo modulo di sostanza. Disciplina ADR-0019: la soglia coverage è in vigore "sui moduli core" — bootstrap non rientra. Questo errata documenta esplicitamente la sequenza di rollout invece di lasciarla implicita o disattendere il testo originale silenziosamente.
+- **Sostanza alterata:** No. La decisione di avere 4 workflow completi resta valida e vincolante. Cambia solo la cadenza di introduzione (da "tutti subito" a "incrementale, condizionata alla comparsa del modulo applicabile"), e l'incremento di ogni workflow viene tracciato in CHG dedicato. Coverage threshold ≥85% globale e ≥90% sui core (ADR-0019) restano invariate; entreranno nel `tests` job alla sua introduzione.

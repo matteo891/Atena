@@ -1,0 +1,129 @@
+# TALOS — Continuous Integration
+# Governato da ADR-0020 (CI/CD Pipeline). Vincoli quality gate da ADR-0014/0019.
+#
+# Scope di questa versione (CHG-2026-04-30-005, errata ADR-0020):
+#   - Quality gates puri (ruff + format + mypy + pytest unit+governance)
+#   - Replica server-side esatta del `scripts/hooks/pre-commit-app` locale
+#   - I job postgres / tesseract / playwright / coverage-gate verranno
+#     introdotti via CHG dedicati alla prima comparsa di un modulo che li
+#     richieda (persistence → ADR-0015, ui → ADR-0016, scraping/ocr → ADR-0017)
+#
+# Trigger: push su qualsiasi branch + pull_request verso main.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    name: lint + type + unit + governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv (Astral)
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python 3.11
+        run: uv python install 3.11
+
+      - name: Sync dependencies (frozen)
+        run: uv sync --all-groups --frozen
+
+      - name: Ruff — lint
+        run: uv run ruff check src/ tests/
+
+      - name: Ruff — format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: Mypy — type check
+        run: uv run mypy src/
+
+      - name: Pytest — unit + governance
+        run: uv run pytest tests/unit tests/governance -m "not slow" -q
+
+  structure-check:
+    name: ADR-0013 + INDEX sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify src-layout (ADR-0013, 8 aree consentite)
+        run: |
+          set -e
+          allowed='^(io_|extract|vgp|tetris|formulas|persistence|ui|observability|config)$'
+          if [ -d src/talos ]; then
+            for d in src/talos/*/; do
+              [ -d "$d" ] || continue
+              name=$(basename "$d")
+              if ! echo "$name" | grep -qE "$allowed"; then
+                echo "ERRORE: directory non consentita in src/talos/: $name (ADR-0013)"
+                exit 1
+              fi
+            done
+          fi
+
+      - name: Verify INDEX.md sync (ogni ADR-NNNN ha riga)
+        run: |
+          set -e
+          missing=0
+          for f in docs/decisions/ADR-*.md; do
+            id=$(grep -m1 '^id:' "$f" | sed 's/id:[[:space:]]*//' | tr -d '\r')
+            if [ -n "$id" ] && ! grep -q "$id" docs/decisions/INDEX.md; then
+              echo "ERRORE: $id non referenziato in INDEX.md"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+  governance-checks:
+    name: governance hooks + change-doc invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Verify hooks executable (ADR-0006)
+        run: |
+          set -e
+          test -x scripts/hooks/pre-commit
+          test -x scripts/hooks/commit-msg
+          test -x scripts/hooks/pre-commit-app
+
+      - name: Verify ADR sections (ADR-0001)
+        run: |
+          set -e
+          required="## Contesto|## Decisione|## Conseguenze|## Test di Conformità|## Cross-References|## Rollback"
+          missing=0
+          for f in docs/decisions/ADR-*.md; do
+            for section in "## Contesto" "## Decisione" "## Conseguenze" "## Test di Conformità" "## Cross-References" "## Rollback"; do
+              if ! grep -q "^$section" "$f"; then
+                echo "ERRORE: $f manca sezione: $section"
+                missing=1
+              fi
+            done
+          done
+          exit "$missing"
