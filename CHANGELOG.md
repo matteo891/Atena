@@ -9,6 +9,19 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-04-30 — Errata Corrige ADR-0015 (regola "DEFAULT → NOT NULL" ratificata)
+
+Risolve la open question dichiarata in CHG-009. Decisione esplicita del Leader (risoluzione (a)): ratifica formale della convenzione "Qualsiasi colonna definita con un `DEFAULT` in Allegato A implica automaticamente il vincolo `NOT NULL` (`nullable=False`)" per garantire allineamento DB/Typing. I modelli esistenti (`AnalysisSession`, `AsinMaster`) erano già conformi: nessun rework di codice.
+
+### Changed
+- `docs/decisions/ADR-0015-stack-persistenza.md`:
+  - Frontmatter `errata:` esteso con voce CHG-010.
+  - Nuova sezione "Convenzione interpretativa" inserita prima del DDL dell'Allegato A.
+  - Sezione `## Errata` in coda con descrizione + motivazione.
+
+### Added
+- `docs/changes/2026-04-30-010-errata-adr-0015-default-implies-not-null.md`
+
 ## [0.14.0] — 2026-04-30 — Seconda tabella Allegato A: asin_master (anagrafica ASIN)
 
 `AsinMaster` (tabella `asin_master`) è la seconda delle 10 tabelle dell'Allegato A. Lookup table standalone (no FK) con tutti i campi anagrafici e di connettività. Revision Alembic `d4a7e3cefbb1` in catena alla `9d9ebe778e40` di CHG-008. Migration validata offline.

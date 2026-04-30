@@ -7,6 +7,10 @@ deciders: Leader
 category: architecture
 supersedes: —
 superseded_by: —
+errata:
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-010
+    summary: "Sancita formalmente la convenzione interpretativa dell'Allegato A: ogni colonna definita con un `DEFAULT` implica automaticamente il vincolo `NOT NULL` (`nullable=False` nell'ORM). Garantisce allineamento DB ↔ Typing Python (no `Mapped[T | None]` per campi con default deterministico)."
 ---
 
 ## Contesto
@@ -68,6 +72,20 @@ Tabella `audit_log` append-only:
 ## Allegato A — Schema DB Iniziale (DDL conceptuale)
 
 > Schema di riferimento per Alembic initial migration. Le decisioni di tipo (`NUMERIC` vs `INT`) e gli indici secondari saranno raffinati in fase implementativa.
+
+### Convenzione interpretativa (Errata Corrige 2026-04-30, CHG-2026-04-30-010)
+
+**Regola vincolante:** ogni colonna dichiarata nell'Allegato A con un `DEFAULT` esplicito (es. `DEFAULT NOW()`, `DEFAULT FALSE`, `DEFAULT 1`, `DEFAULT 15`) **implica automaticamente il vincolo `NOT NULL`**, anche se il `NOT NULL` non compare letteralmente nel DDL.
+
+**Razionale:**
+- Il `DEFAULT` rende impossibile in pratica un valore `NULL` (un `INSERT` senza valore esplicito riceve il default a livello Postgres).
+- Allineare l'ORM (`nullable=False`) preserva il typing Python `Mapped[T]` non-Optional, evitando `Mapped[T | None]` per colonne che logicamente non saranno mai NULL.
+- Rimuove ambiguità tra il testo dell'Allegato A e l'implementazione SQLAlchemy 2.0.
+
+**Conseguenze operative:**
+- Tutti i model esistenti (`AnalysisSession`/`AsinMaster` da CHG-008/009) sono già conformi.
+- I model futuri devono applicare la regola: se nell'Allegato A vedi `DEFAULT <x>`, scrivi `nullable=False` nell'ORM e non includere `| None` nel `Mapped[T]`.
+- Per colonne nullable senza default (es. `ended_at TIMESTAMPTZ`), il typing rimane `Mapped[T | None]` con `nullable=True`.
 
 ```sql
 -- ============================================================
@@ -269,3 +287,14 @@ Per superseduta totale (es. cambio engine):
 1. Promulgare ADR-NNNN con `supersedes: ADR-0015`.
 2. Esportare schema + dati (`pg_dump`) e migrare al nuovo engine.
 3. Archiviare il database PostgreSQL.
+
+## Errata
+
+### 2026-04-30 — CHG-2026-04-30-010
+
+- **Tipo:** errata corrige (chiarimento convenzione interpretativa)
+- **Modifica:**
+  - Aggiunta sezione "Convenzione interpretativa" prima del DDL dell'Allegato A che sancisce formalmente: ogni colonna con `DEFAULT` implica automaticamente `NOT NULL` (`nullable=False` nell'ORM).
+  - Frontmatter `errata:` esteso con voce 2026-04-30.
+- **Motivo:** in CHG-2026-04-30-008 e CHG-2026-04-30-009 sono stati introdotti i modelli `AnalysisSession` e `AsinMaster`. Per le colonne con `DEFAULT` (es. `started_at`, `enterprise`, `last_seen_at`) l'Allegato A originario non specificava `NOT NULL` esplicito, ma l'implementazione ORM ha applicato la convenzione "DEFAULT → NOT NULL" per allineare typing Python e comportamento DB. Questo errata ratifica la convenzione, eliminando l'ambiguità per i modelli futuri (8/10 tabelle restanti).
+- **Sostanza alterata:** No. Il DDL letterale dell'Allegato A resta invariato; viene aggiunto solo un *chiarimento interpretativo* che rende esplicita la regola di traduzione DDL → ORM. La decisione di stack (PostgreSQL + SQLAlchemy 2.0 sync + Alembic + Zero-Trust) e i suoi Test di Conformità non cambiano.
