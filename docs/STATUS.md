@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `2fb60a8` (CHG-025 F1 cash_inflow_eur — primo consumatore di fee_fba_manual). Tag: `milestone/stack-frozen-v0.9.0` + **3 checkpoint** (01 / 02 / 03). Catena CHG odierna: 001→...→025. **Tabelle Allegato A coperte: 10/10** ✓ + **203 test PASS** (182 unit/governance + 21 integration). **Indice GitNexus operativo**.
+> **Ultimo aggiornamento:** 2026-04-30 — commit `[da aggiornare post-commit]` (chore sync STATUS post-checkpoint/2026-04-30-04). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / **04 nuovo**, target `3a5e2ed`). Catena CHG odierna: 001→...→025. **Tabelle Allegato A coperte: 10/10** ✓ + **203 test PASS** (182 unit/governance + 21 integration). **Indice GitNexus operativo**.
 > **Sessione corrente:** TALOS — F1 cash_inflow scritta (CHG-025) + chiusura ISS-001 (CHG-024) + due errata ADR-0010 di verifica reciproca STATUS↔git/runtime (CHG-023/024). `fee_fba_manual` non più isolato: prima catena del valore in piedi.
 
 ---
@@ -107,9 +107,10 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-024~~ | ~~Chiusura ISS-001 + errata ADR-0007/0010: verifica empirica STATUS↔runtime tooling~~ | Chiuso 2026-04-30 — modifica solo governance + auto-aggiornamento blocco GitNexus in CLAUDE/AGENTS | — |
 | ~~ISS-001~~ | ~~`gitnexus analyze` segfault su Node v24.15.0~~ | Risolta 2026-04-30 con CHG-024 — root cause Node v24-specific; risolto da downgrade a v22.22.2 (oggi default in nvm). Indice fresh, 1646/1929/4. | — |
 | ~~CHG-025~~ | ~~F1 `formulas/cash_inflow.py`: primo consumatore di `fee_fba_manual`~~ | Chiuso 2026-04-30 — 11 test verdi, quality gate end-to-end PASS | — |
+| ~~CHECKPOINT-04~~ | ~~Tag `checkpoint/2026-04-30-04`~~ | Creato e pushato su `3a5e2ed` (sha tag `2b74ddc`). Finestra: CHG-019..CHG-025 | — |
 | ~~CHECKPOINT-03~~ | ~~Tag `checkpoint/2026-04-30-03`~~ | Già esistente su `e563e59` (post-CHG-018, creato 15:50) | — |
-| **CHECKPOINT-04** | Prossimo restore point | **A soglia: 5/5** | Da CHG-018 in poi: CHG-019/020/021/022 + CHG-025 (codice/integration/codice/codice/codice). CHG-023/024 sono governance/errata, non significativi. **Soglia ADR-0003 raggiunta**: proporre `checkpoint/2026-04-30-04` al Leader prima del prossimo CHG significativo |
-| **NEXT** | **Prossimi step possibili** | In attesa | (a) **`checkpoint/2026-04-30-04`** (priorità: soglia raggiunta); (b) F2 `formulas/cash_profit.py` + `roi.py` consumano `cash_inflow_eur` e sbloccano il Veto R-08; (c) `vgp/normalize.py` (versione vettoriale L04b min-max); (d) config layer pydantic-settings; (e) `milestone/first-formula-v1.0.0` post-F2; (f) lookup `Referral_Fee` per categoria (config/) |
+| **CHECKPOINT-05** | Prossimo restore point | A 0/5 | Conteggio riparte da CHG-026 (incluso). Soglia ADR-0003: 5 commit significativi → proposta tag |
+| **NEXT** | **Prossimi step possibili** | In attesa | (a) F2 `formulas/cash_profit.py` + `roi.py` consumano `cash_inflow_eur` e sbloccano il Veto R-08; (b) `vgp/normalize.py` (versione vettoriale L04b min-max); (c) config layer pydantic-settings; (d) `milestone/first-formula-v1.0.0` post-F2; (e) lookup `Referral_Fee` per categoria (config/) |
 | ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
