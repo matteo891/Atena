@@ -81,6 +81,8 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/formulas/cash_inflow.py` | ADR-0018 | ADR-0019 | `cash_inflow_eur` verbatim F1 (BuyBox − Fee_FBA − BuyBox·Referral_Fee) — CHG-2026-04-30-025 (primo consumatore architetturale di `fee_fba_manual`) |
 | `src/talos/formulas/cash_profit.py` | ADR-0018 | ADR-0019 | `cash_profit_eur` verbatim F2 (Cash_Inflow − Costo_Fornitore) — CHG-2026-04-30-026 |
 | `src/talos/formulas/roi.py` | ADR-0018 | ADR-0019 | `roi` come frazione decimale (Cash_Profit / Costo_Fornitore); gate scalare del Veto R-08 — CHG-2026-04-30-026 |
+| `src/talos/vgp/__init__.py` | ADR-0018 | ADR-0013 | Package marker `vgp/` (inaugurato CHG-2026-04-30-027); re-export `is_vetoed_by_roi`, `DEFAULT_ROI_VETO_THRESHOLD` |
+| `src/talos/vgp/veto.py` | ADR-0018 | ADR-0019 | `is_vetoed_by_roi(roi, threshold=0.08)` — predicato scalare R-08 verbatim — CHG-2026-04-30-027 |
 | `src/talos/persistence/` | ADR-0015 | ADR-0013, ADR-0019 | SQLAlchemy 2.0 + RLS bootstrap |
 | `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (env var `TALOS_DB_URL`) — CHG-2026-04-30-020 |
 | `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
