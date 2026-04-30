@@ -69,6 +69,7 @@ Ogni dato non-banale che viene scartato/escluso/modificato deve produrre un even
 | `scrape.selector_fail` | `io_/scraper.py` | `asin`, `selector_name`, `html_snippet_hash` |
 | `ocr.below_confidence` | `io_/ocr.py` | `file`, `confidence`, `threshold`, `text_extracted` |
 | `db.audit_log_write` | `persistence/audit.py` | `actor`, `table`, `op`, `row_id` |
+| `session.replayed` | `orchestrator.py` | `asin_count`, `locked_in_count`, `budget`, `budget_t1` |
 
 **Vincolo:** ogni `.drop()`, `.skip()`, `continue` su listino o pipeline VGP deve essere preceduto o seguito da un evento di log strutturato. Test `tests/governance/test_log_on_drop.py` verifica empiricamente: dato un input con scarto noto, controlla che l'evento di log corrispondente sia stato emesso.
 
@@ -163,3 +164,14 @@ Se structlog risulta inadeguato (es. esigenza OpenTelemetry):
 Se R-01 enforcement dinamico è troppo invasivo:
 1. Errata Corrige a ADR-0021: degradare a enforcement statico (grep) only.
 2. Mantenere comunque structlog come libreria.
+
+## Errata
+
+**2026-04-30 (CHG-2026-04-30-058) — additivo catalogo eventi.**
+Aggiunto evento canonico `session.replayed` per tracciare le esecuzioni
+di `replay_session` (CHG-2026-04-30-056). Campi obbligatori:
+`asin_count`, `locked_in_count`, `budget`, `budget_t1`. Modulo emittente:
+`orchestrator.py`. Razionale: il what-if non e' persistito in DB, ma
+deve restare tracciabile per audit ("quanti scenari ha esplorato il
+CFO?"). Modifica additiva, non altera la semantica degli eventi
+esistenti — non richiede supersessione (regola ADR-0001 non si applica).

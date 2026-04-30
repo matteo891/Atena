@@ -36,6 +36,7 @@ Versione "happy path" senza:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
@@ -61,6 +62,13 @@ from talos.vgp import DEFAULT_ROI_VETO_THRESHOLD, compute_vgp_score
 
 if TYPE_CHECKING:
     import pandas as pd
+
+
+_logger = logging.getLogger(__name__)
+# Eventi canonici emessi da questo modulo (catalogo ADR-0021):
+# - "session.replayed": replay_session ha prodotto un nuovo SessionResult
+#   in memoria (what-if). Campi: asin_count, locked_in_count, budget,
+#   budget_t1. Vedi errata CHG-058.
 
 
 # Status di match (output futuro di `extract/`) che attivano R-05 KILL-SWITCH.
@@ -392,9 +400,22 @@ def replay_session(
         cart_profits.append(cash_profit_per_unit * item.qty)
     budget_t1 = compounding_t1(new_budget, cart_profits)
 
-    return SessionResult(
+    replayed = SessionResult(
         cart=cart,
         panchina=panchina,
         budget_t1=budget_t1,
         enriched_df=sorted_df,
     )
+    # Telemetria: evento canonico `session.replayed` (catalogo ADR-0021,
+    # errata CHG-058). DEBUG level: in produzione INFO+ filtra; opt-in
+    # via handler dedicato per audit "quanti scenari ha esplorato il CFO".
+    _logger.debug(
+        "session.replayed",
+        extra={
+            "asin_count": len(replayed.enriched_df),
+            "locked_in_count": sum(1 for item in replayed.cart.items if item.locked),
+            "budget": float(new_budget),
+            "budget_t1": float(replayed.budget_t1),
+        },
+    )
+    return replayed
