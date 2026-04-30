@@ -3,7 +3,7 @@ id: CHG-2026-05-01-005
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" sessione attivata 2026-04-30 sera, prosegue oltre mezzanotte)
 status: Draft
-commit: [pending]
+commit: 8316ee4
 adr_ref: ADR-0017, ADR-0015, ADR-0021, ADR-0014, ADR-0019
 ---
 
@@ -349,4 +349,4 @@ def _emit_miss(asin: str, *, field: str) -> None:
   Playwright / Tesseract + fallback chain orchestratrice +
   golden HTML/PDF statici + integration con `apt install
   tesseract-ocr-ita-eng` e `playwright install chromium`.
-- Commit: `[pending]`.
+- Commit: `8316ee4`.
