@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-036
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 4747382
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -175,4 +175,4 @@ ascending=False) → allocate_tetris(...)`. Nessun simbolo esistente toccato.
 - Vision verbatim: PROJECT-RAW.md sez. 4.1.13 (R-04 locked-in) + riga 224
   (R-06 saturazione 99.9%)
 - Successore atteso: `tetris/panchina.py` (R-09 archivio idonei scartati)
-- Commit: `[pending]`
+- Commit: `4747382`
