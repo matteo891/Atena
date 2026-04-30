@@ -12,6 +12,7 @@ from talos.persistence.base import Base
 from talos.persistence.models import (
     AnalysisSession,
     AsinMaster,
+    CartItem,
     ConfigOverride,
     ListinoItem,
     VgpResult,
@@ -21,6 +22,7 @@ __all__ = [
     "AnalysisSession",
     "AsinMaster",
     "Base",
+    "CartItem",
     "ConfigOverride",
     "ListinoItem",
     "VgpResult",

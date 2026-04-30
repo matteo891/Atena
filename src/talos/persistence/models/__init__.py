@@ -7,6 +7,7 @@ in modo che `Base.metadata` veda tutte le tabelle quando il package
 
 from talos.persistence.models.analysis_session import AnalysisSession
 from talos.persistence.models.asin_master import AsinMaster
+from talos.persistence.models.cart_item import CartItem
 from talos.persistence.models.config_override import ConfigOverride
 from talos.persistence.models.listino_item import ListinoItem
 from talos.persistence.models.vgp_result import VgpResult
@@ -14,6 +15,7 @@ from talos.persistence.models.vgp_result import VgpResult
 __all__ = [
     "AnalysisSession",
     "AsinMaster",
+    "CartItem",
     "ConfigOverride",
     "ListinoItem",
     "VgpResult",

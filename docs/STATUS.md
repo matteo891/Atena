@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `047bb46` (CHG-013 vgp_results — nucleo decisore). Tag: `milestone/stack-frozen-v0.9.0` + `checkpoint/2026-04-30-01`. Catena CHG odierna: 001→002→...→013. Tabelle Allegato A coperte: 5/10
+> **Ultimo aggiornamento:** 2026-04-30 — commit `<pending CHG-014>` (cart_items). Tag: `milestone/stack-frozen-v0.9.0` + `checkpoint/2026-04-30-01` + `checkpoint/2026-04-30-02`. Catena CHG odierna: 001→002→...→014. Tabelle Allegato A coperte: 6/10
 > **Sessione corrente:** TALOS — **Step [6] ADR-0012 completato.** Promulgazione del cluster ADR di stack 0013–0021 (9 ADR architettura/process: project structure, linguaggio, persistenza, UI, acquisizione dati, algoritmo VGP/Tetris, test strategy, CI/CD, logging). Validazione bulk Leader (Opzione A) + override puntuali ricevuti e incisi. Sblocco fase codice.
 
 ---
@@ -52,6 +52,8 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **Terza tabella: `ListinoItem` (primo con FK → sessions ON DELETE CASCADE + relationship bidirezionale + indice + revision `d6ab9ffde2a2`). 12 test unit.** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-011](changes/2026-04-30-011-listino-items-model-with-fk.md) | `02a8787` |
 | **Quarta tabella: `ConfigOverride` (primo con RLS Zero-Trust + indice UNIQUE composito 4 col + revision `027a145f76a8`). 15 test unit.** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-012](changes/2026-04-30-012-config-overrides-model-with-rls.md) | `2498326` |
 | **Quinta tabella: `VgpResult` (nucleo decisore, 15 col, doppia FK CASCADE, indice `(session_id, vgp_score DESC)` + revision `c9527f017d5c`). 16 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-013](changes/2026-04-30-013-vgp-results-model.md) | `047bb46` |
+| **Tag `checkpoint/2026-04-30-02`** — 6 CHG significativi (sessions/asin_master/errata/listino_items/config_overrides/vgp_results) | 0003 | (nessun CHG) | tag su `37fdc7e` |
+| **Sesta tabella: `CartItem` (carrello Tetris, 6 col, doppia FK CASCADE, locked_in R-04 + revision `fa6408788e73`). 13 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-014](changes/2026-04-30-014-cart-items-model.md) | `<pending>` |
 
 ---
 
@@ -78,8 +80,10 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-010~~ | ~~Errata Corrige ADR-0015~~ | Chiuso 2026-04-30 | — |
 | ~~CHG-011~~ | ~~modello `listino_items`~~ | Chiuso 2026-04-30 | — |
 | ~~CHG-012~~ | ~~modello `config_overrides`~~ | Chiuso 2026-04-30 | — |
-| **CHG-013** | **modello `vgp_results` (nucleo decisore, FK doppia, indice DESC)** | In commit | 79 test PASS, mypy 12 file. Pattern doppia FK + indice direzionale ratificato |
-| **NEXT** | **Prossimo step Leader** | In attesa | Tabelle restanti Allegato A (5/10): `cart_items`, `panchina_items`, `storico_ordini` (RLS), `locked_in` (RLS), `audit_log` |
+| ~~CHG-013~~ | ~~modello `vgp_results`~~ | Chiuso 2026-04-30 | — |
+| ~~CHECKPOINT-02~~ | ~~`checkpoint/2026-04-30-02`~~ | Creato e pushato su `37fdc7e` | — |
+| **CHG-014** | **modello `cart_items` (carrello Tetris finale, doppia FK CASCADE, R-04 locked_in)** | In commit | 92 test PASS, mypy 13 file |
+| **NEXT** | **Prossimo step Leader** | In attesa | Tabelle restanti Allegato A (4/10): `panchina_items`, `storico_ordini` (RLS), `locked_in` (RLS), `audit_log` |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 

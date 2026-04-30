@@ -39,6 +39,7 @@ from talos.persistence.base import Base
 
 if TYPE_CHECKING:
     from talos.persistence.models.analysis_session import AnalysisSession
+    from talos.persistence.models.cart_item import CartItem
     from talos.persistence.models.listino_item import ListinoItem
 
 
@@ -96,3 +97,7 @@ class VgpResult(Base):
     # ── Relationships ────────────────────────────────────────────────────
     session: Mapped[AnalysisSession] = relationship(back_populates="vgp_results")
     listino_item: Mapped[ListinoItem] = relationship(back_populates="vgp_results")
+    cart_items: Mapped[list[CartItem]] = relationship(
+        back_populates="vgp_result",
+        passive_deletes=True,
+    )

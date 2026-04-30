@@ -9,6 +9,28 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-04-30 — Sesta tabella Allegato A: cart_items (carrello Tetris)
+
+`CartItem` (tabella `cart_items`) è la sesta delle 10 tabelle dell'Allegato A. Output principale della sessione: il carrello finale del Tetris allocator. Doppia FK CASCADE + flag `locked_in` (R-04 Manual Override) con default `false` (NOT NULL implicito da regola CHG-010). Revision Alembic `fa6408788e73`.
+
+### Added
+- `src/talos/persistence/models/cart_item.py` — `class CartItem(Base)` con 6 colonne (id BigInt PK, session_id+vgp_result_id BigInt FK CASCADE, qty Integer NOT NULL, unit_cost_eur Numeric(12,2) NOT NULL, locked_in Boolean default false NOT NULL). Relationship `session: Mapped[AnalysisSession]` + `vgp_result: Mapped[VgpResult]`.
+- `migrations/versions/fa6408788e73_create_cart_items.py` — Alembic revision (catena: `Revises: c9527f017d5c`). `op.create_table` con 2 `sa.ForeignKey(..., ondelete="CASCADE")`.
+- `tests/unit/test_cart_item_model.py` — 13 test invarianti (9 strutturali + 2 relationship + 2 costruzioni)
+- `docs/changes/2026-04-30-014-cart-items-model.md`
+- Tag annotato `checkpoint/2026-04-30-02` su `37fdc7e` (6 CHG significativi post checkpoint-01)
+
+### Changed
+- `src/talos/persistence/models/analysis_session.py` — relationship `cart_items: Mapped[list[CartItem]]` aggiunta. Forward reference `CartItem` in `TYPE_CHECKING`.
+- `src/talos/persistence/models/vgp_result.py` — relationship `cart_items: Mapped[list[CartItem]]` aggiunta. Forward reference in `TYPE_CHECKING`.
+- `src/talos/persistence/models/__init__.py` — re-export `CartItem`
+- `src/talos/persistence/__init__.py` — re-export `CartItem`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (13 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **92 passed** (era 79, +13)
+- `alembic upgrade --sql` → DDL + 2 FK CASCADE + `locked_in BOOLEAN DEFAULT false NOT NULL` coerenti con Allegato A
+
 ## [0.17.0] — 2026-04-30 — Quinta tabella Allegato A: vgp_results (nucleo decisore)
 
 `VgpResult` (tabella `vgp_results`) è la quinta delle 10 tabelle dell'Allegato A. **Nucleo del decisore VGP**. Primo modello con **doppia FK** (entrambe ON DELETE CASCADE) e primo con **indice composito direzionale** `(session_id, vgp_score DESC)` per supportare le query "top-N per session" del Tetris allocator. Revision Alembic `c9527f017d5c` in catena.
