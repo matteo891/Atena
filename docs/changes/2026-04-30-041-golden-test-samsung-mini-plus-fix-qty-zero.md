@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-041
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 1615206
 adr_ref: ADR-0019, ADR-0018, ADR-0014, ADR-0013
 ---
 
@@ -180,4 +180,4 @@ modificato) + i nuovi simboli golden.
   i moduli ... fixture di listino noto con risultato VGP + carrello
   Tetris atteso byte-exact")
 - Successore atteso: golden Samsung 1000 ASIN (post `io_/extract`)
-- Commit: `[pending]`
+- Commit: `1615206`
