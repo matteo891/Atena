@@ -9,6 +9,29 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-04-30 — Primo modello concreto + initial migration (sessions, Allegato A)
+
+Nucleo centrale del DB pronto. `AnalysisSession` (tabella `sessions`, 7 colonne dell'Allegato A) è il primo dei 10 modelli prescritti da ADR-0015. Migration Alembic `9d9ebe778e40` validata in offline mode (`alembic upgrade head --sql`): DDL output coerente verbatim con l'Allegato A. Tag `checkpoint/2026-04-30-01` su HEAD pre-CHG-008 (5 CHG significativi post stack-frozen).
+
+### Added
+- `src/talos/persistence/models/__init__.py` — re-export `AnalysisSession`
+- `src/talos/persistence/models/analysis_session.py` — model con `__tablename__ = "sessions"`, tipi `Mapped[T]` per le 7 colonne dell'Allegato A
+- `migrations/versions/9d9ebe778e40_create_sessions.py` — initial Alembic revision
+- `tests/unit/test_analysis_session_model.py` — 9 test invarianti (tablename, columns set, tipi, default, nullable)
+- `docs/changes/2026-04-30-008-sessions-model-initial-migration.md`
+- Tag annotato `checkpoint/2026-04-30-01` su `0f8f40a`
+
+### Changed
+- `src/talos/persistence/__init__.py` — re-export anche `AnalysisSession`
+- `tests/unit/test_persistence_skeleton.py` — `test_base_metadata_no_tables_yet` → `test_base_metadata_has_registered_tables` (asserzione invertita)
+- `pyproject.toml` — `[tool.ruff.lint.per-file-ignores]` aggiunge `"src/talos/persistence/models/**" = ["TC003"]` (SQLAlchemy 2.0 `Mapped[T]` richiede tipi runtime, conflitto noto con TC003)
+- `alembic.ini` — sezione `[post_write_hooks]` corretta (`type = exec` + `executable = ruff` invece di `console_scripts/entrypoint`)
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (8 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **25 passed**
+- `alembic upgrade head --sql` → DDL coerente con Allegato A (verificato a vista)
+
 ## [0.12.0] — 2026-04-30 — Persistence skeleton (SQLAlchemy 2.0 + Alembic + plugin mypy)
 
 Primo passo verso ADR-0015. Aggiunge SQLAlchemy 2.0, Alembic e psycopg come dipendenze runtime, attiva il plugin `sqlalchemy[mypy]` di ADR-0014, introduce la `DeclarativeBase` e la struttura minima `migrations/`. **No modelli concreti, no DDL, no Postgres**: step di preparazione.

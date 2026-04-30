@@ -63,6 +63,12 @@ ignore = [
     "INP001",   # __init__.py non richiesto in tests/
     "PLR2004",  # magic numbers consentiti nei test
 ]
+"src/talos/persistence/models/**" = [
+    # SQLAlchemy 2.0 valuta a runtime le annotazioni `Mapped[T]` per dedurre
+    # i tipi colonna; spostare datetime/Decimal in TYPE_CHECKING farebbe
+    # fallire l'init con MappedAnnotationError. Documented trade-off.
+    "TC003",
+]
 
 [tool.ruff.format]
 quote-style = "double"

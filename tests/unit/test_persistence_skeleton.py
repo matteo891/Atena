@@ -25,8 +25,8 @@ def test_base_has_metadata() -> None:
 
 
 @pytest.mark.unit
-def test_base_metadata_no_tables_yet() -> None:
-    # In CHG-2026-04-30-007 (skeleton) nessun modello concreto e' stato ancora
-    # registrato. Quando arrivera' il primo (es. sessions), questo test
-    # diventera' "tables >= 1" via aggiornamento puntuale.
-    assert len(Base.metadata.tables) == 0
+def test_base_metadata_has_registered_tables() -> None:
+    # CHG-2026-04-30-008 introduce il primo modello concreto (`sessions`).
+    # La soglia minima di tabelle registrate cresce con ogni CHG modello.
+    assert len(Base.metadata.tables) >= 1
+    assert "sessions" in Base.metadata.tables
