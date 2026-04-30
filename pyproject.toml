@@ -11,14 +11,16 @@ requires-python = ">=3.11,<3.13"
 authors = [{ name = "Leader" }]
 license = { text = "Proprietario" }
 dependencies = [
-    # Logging strutturato (ADR-0021) — prima dipendenza runtime, introdotta
-    # in CHG-2026-04-30-006. Le altre dipendenze applicative entreranno
-    # modulo per modulo, ognuna sotto il proprio ADR di stack:
-    #   SQLAlchemy/psycopg/Alembic → ADR-0015
+    # Logging strutturato (ADR-0021) — CHG-2026-04-30-006
+    "structlog>=24.4.0",
+    # Persistenza (ADR-0015) — CHG-2026-04-30-007 (skeleton)
+    "sqlalchemy[mypy]>=2.0.30,<2.1",
+    "alembic>=1.13.0,<2",
+    "psycopg[binary]>=3.2.0,<4",
+    # Le altre dipendenze applicative entreranno modulo per modulo:
     #   Streamlit                  → ADR-0016
     #   Keepa/Playwright/Tesseract → ADR-0017
     #   pandas/numpy               → ADR-0018
-    "structlog>=24.4.0",
 ]
 
 [dependency-groups]
@@ -73,8 +75,9 @@ warn_unreachable = true
 warn_redundant_casts = true
 disallow_untyped_decorators = true
 enable_error_code = ["redundant-self", "redundant-expr", "truthy-bool"]
-# Plugin sqlalchemy[mypy] (ADR-0014) verrà attivato quando ADR-0015 introdurrà
-# i modelli ORM (CHG futuro).
+# ADR-0014: plugin sqlalchemy[mypy] attivato in CHG-2026-04-30-007 con
+# l'introduzione di src/talos/persistence/.
+plugins = ["sqlalchemy.ext.mypy.plugin"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

@@ -9,6 +9,29 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-04-30 — Persistence skeleton (SQLAlchemy 2.0 + Alembic + plugin mypy)
+
+Primo passo verso ADR-0015. Aggiunge SQLAlchemy 2.0, Alembic e psycopg come dipendenze runtime, attiva il plugin `sqlalchemy[mypy]` di ADR-0014, introduce la `DeclarativeBase` e la struttura minima `migrations/`. **No modelli concreti, no DDL, no Postgres**: step di preparazione.
+
+### Added
+- `src/talos/persistence/__init__.py` — re-export di `Base`
+- `src/talos/persistence/base.py` — `class Base(DeclarativeBase)` (SQLAlchemy 2.0 typed mapping)
+- `alembic.ini` — config Alembic in root: `script_location = migrations`, `prepend_sys_path = .`, post-write hook `ruff_format`, URL placeholder (sostituita a runtime da `TALOS_DB_URL`)
+- `migrations/env.py` — `target_metadata = Base.metadata` + override URL da env var
+- `migrations/script.py.mako` — template revision compatibile mypy strict + ruff
+- `migrations/versions/.gitkeep`
+- `tests/unit/test_persistence_skeleton.py` — 3 test invarianti (Base subclasses DeclarativeBase, has metadata, no tables yet)
+- `docs/changes/2026-04-30-007-persistence-skeleton.md`
+
+### Changed
+- `pyproject.toml` — `[project].dependencies` ora include `sqlalchemy[mypy]>=2.0.30,<2.1`, `alembic>=1.13.0,<2`, `psycopg[binary]>=3.2.0,<4`. `[tool.mypy].plugins = ["sqlalchemy.ext.mypy.plugin"]` attivato
+- `uv.lock` — sqlalchemy 2.0.49, alembic 1.18.4, psycopg 3.3.3, psycopg-binary 3.3.3, greenlet, mako, markupsafe lockate
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (6 source file con plugin SQLAlchemy attivo) → puliti
+- `pytest tests/unit tests/governance -q` → **15 passed**
+- `alembic --raiseerr heads` → exit 0, output vuoto (atteso allo skeleton)
+
 ## [0.11.0] — 2026-04-30 — Primo modulo applicativo: observability (configure_logging + catalogo eventi)
 
 `src/talos/observability/` ottiene la sua prima implementazione concreta: configurazione `structlog` aderente ad ADR-0021, catalogo dei 10 eventi canonici come fonte di verità statica, helper di session context. Sblocca la disciplina R-01 NO SILENT DROPS dinamica (test governance attivo).
