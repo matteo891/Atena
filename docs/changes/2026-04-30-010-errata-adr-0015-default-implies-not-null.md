@@ -3,7 +3,7 @@ id: CHG-2026-04-30-010
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 3a4414f
 adr_ref: ADR-0015, ADR-0009
 ---
 
@@ -93,4 +93,4 @@ Test manuali documentati (governance — ADR-0011). Modifica solo testuale a un 
 - ADR: ADR-0015 (errata corrige primaria), ADR-0009 (meccanismo)
 - Predecessore: CHG-2026-04-30-009 (open question dichiarata)
 - Successore atteso: CHG-2026-04-30-011 (`listino_items` model — primo modello con FK)
-- Commit: `<pending>`
+- Commit: `3a4414f`
