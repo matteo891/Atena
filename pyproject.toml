@@ -21,6 +21,7 @@ dependencies = [
     #   Streamlit                  → ADR-0016
     #   Keepa/Playwright/Tesseract → ADR-0017
     #   pandas/numpy               → ADR-0018
+    "pydantic-settings>=2.14.0",
 ]
 
 [dependency-groups]
