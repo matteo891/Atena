@@ -3,7 +3,7 @@ id: CHG-2026-04-30-016
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 0270e20
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -103,4 +103,4 @@ Nuovi test (17): 8 invarianti strutturali base (tablename, metadata, 8 columns, 
 - Predecessore: CHG-2026-04-30-015 (`panchina_items`)
 - Pattern RLS riusato da: CHG-2026-04-30-012 (`config_overrides`)
 - Successore atteso: prossima tabella Allegato A — `locked_in` (RLS standalone, R-04) o `audit_log` (append-only)
-- Commit: `<pending>`
+- Commit: `0270e20`
