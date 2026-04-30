@@ -3,8 +3,8 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `11b8bec` (chore backfill CHG-026 + STATUS + sync GitNexus). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / 04 target `3a5e2ed`). Catena CHG odierna: 001→...→026. **Tabelle Allegato A coperte: 10/10** ✓ + **218 test PASS** (197 unit/governance + 21 integration). **Indice GitNexus operativo** (1737 / 2022 / 12 / 4).
-> **Sessione corrente:** TALOS — F2 + ROI scritti (CHG-026, sblocca gate Veto R-08) + F1 (CHG-025) + ISS-001 chiusa (CHG-024) + errata ADR-0007/0010 verifica reciproca STATUS↔git/runtime (CHG-023/024). Catena del valore: `fee_fba_manual → cash_inflow_eur → cash_profit_eur → roi`.
+> **Ultimo aggiornamento:** 2026-04-30 — commit `[da aggiornare post-commit]` (chore backfill CHG-027 + STATUS + sync GitNexus). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / 04 target `3a5e2ed`). Catena CHG odierna: 001→...→027. **Tabelle Allegato A coperte: 10/10** ✓ + **229 test PASS** (208 unit/governance + 21 integration). **Indice GitNexus operativo** (1768 / 2053 / 12 / 4).
+> **Sessione corrente:** TALOS — `vgp/` inaugurata con Veto R-08 scalare (CHG-027) + F2/ROI (CHG-026) + F1 (CHG-025) + chiusura ISS-001 (CHG-024) + due errata ADR-0010 di verifica reciproca (CHG-023/024). **Primo filtro applicativo del Tetris in piedi.**
 
 ---
 
@@ -109,9 +109,10 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-025~~ | ~~F1 `formulas/cash_inflow.py`: primo consumatore di `fee_fba_manual`~~ | Chiuso 2026-04-30 — 11 test verdi, quality gate end-to-end PASS | — |
 | ~~CHECKPOINT-04~~ | ~~Tag `checkpoint/2026-04-30-04`~~ | Creato e pushato su `3a5e2ed` (sha tag `2b74ddc`). Finestra: CHG-019..CHG-025 | — |
 | ~~CHG-026~~ | ~~F2 `cash_profit_eur` + `roi` — sblocca gate Veto R-08~~ | Chiuso 2026-04-30 — 15 test verdi, quality gate end-to-end PASS. Catena F1→F2→ROI in piedi | — |
+| ~~CHG-027~~ | ~~Veto R-08 scalare `vgp/veto.py` — inaugurazione `vgp/`~~ | Chiuso 2026-04-30 — 11 test verdi, primo filtro applicativo funzionale. `vgp/` non più vuota | — |
 | ~~CHECKPOINT-03~~ | ~~Tag `checkpoint/2026-04-30-03`~~ | Già esistente su `e563e59` (post-CHG-018, creato 15:50) | — |
-| **CHECKPOINT-05** | Prossimo restore point | A 1/5 | CHG-026 contato. Conteggio: 5 commit significativi → proposta tag |
-| **NEXT** | **Prossimi step possibili** | In attesa | (a) Veto R-08 (`vgp/veto.py` o `formulas/veto.py`): gate `if roi < soglia: scarta` + soglia configurabile L10 + telemetria evento canonico R-01 — sblocca il primo filtro applicativo del Tetris; (b) `vgp/normalize.py` (versione vettoriale L04b min-max su 3 termini); (c) config layer pydantic-settings; (d) `milestone/first-formula-v1.0.0` (catena F1→F2→ROI completa, candidata); (e) lookup `Referral_Fee` per categoria (config/); (f) F3 Compounding T+1 |
+| **CHECKPOINT-05** | Prossimo restore point | A 2/5 | CHG-026/027 contati. Conteggio: 5 commit significativi → proposta tag |
+| **NEXT** | **Prossimi step possibili** | In attesa | (a) `milestone/first-formula-v1.0.0` (catena F1→F2→ROI + Veto R-08 completi, candidata immediata); (b) telemetria evento `veto_roi_applied` in `observability/`; (c) config layer pydantic-settings (lookup soglia da `config_overrides`); (d) `vgp/normalize.py` (versione vettoriale L04b min-max); (e) lookup `Referral_Fee` per categoria; (f) F3 Compounding T+1 |
 | ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
