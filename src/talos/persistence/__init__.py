@@ -27,6 +27,7 @@ from talos.persistence.session import (
     session_scope,
     with_tenant,
 )
+from talos.persistence.session_repository import save_session_result
 
 __all__ = [
     "AnalysisSession",
@@ -42,6 +43,7 @@ __all__ = [
     "VgpResult",
     "create_app_engine",
     "make_session_factory",
+    "save_session_result",
     "session_scope",
     "with_tenant",
 ]

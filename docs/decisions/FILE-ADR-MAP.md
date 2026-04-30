@@ -94,6 +94,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/persistence/` | ADR-0015 | ADR-0013, ADR-0019 | SQLAlchemy 2.0 + RLS bootstrap |
 | `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (URL letta via `TalosSettings.db_url` — CHG-2026-04-30-020 + CHG-2026-04-30-030) |
 | `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
+| `src/talos/persistence/session_repository.py` | ADR-0015 | ADR-0014, ADR-0019 | `save_session_result(db_session, *, session_input, result, tenant_id=1) -> int` — persiste `SessionResult` su `sessions`/`listino_items`/`vgp_results`/`cart_items`/`panchina_items` sotto `with_tenant`; `_listino_hash` deterministico sha256 — CHG-2026-04-30-042 |
 | `src/talos/ui/` | ADR-0016 | ADR-0013, ADR-0015 (RLS), ADR-0019 | Streamlit dashboard + pages + components |
 | `src/talos/ui/__init__.py` | ADR-0016 | ADR-0013 | Package marker `ui/` (inaugurato CHG-2026-04-30-040); re-export `parse_locked_in`, `DEFAULT_BUDGET_EUR` |
 | `src/talos/ui/dashboard.py` | ADR-0016 | ADR-0019 | Entrypoint Streamlit MVP mono-page (sidebar parametri + file upload CSV + chiamata `run_session` + metric + tabelle Cart/Panchina/enriched). Multi-page split (`pages/`, `components/`, `state.py`) di ADR-0016 e' scope CHG futuro — CHG-2026-04-30-040 |
