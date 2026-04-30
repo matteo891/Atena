@@ -29,6 +29,7 @@ from talos.formulas import (
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
 from talos.persistence import (
     create_app_engine,
+    list_recent_sessions,
     make_session_factory,
     save_session_result,
     session_scope,
@@ -158,6 +159,52 @@ def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
     st.dataframe(cart_df, use_container_width=True)
 
 
+def fetch_recent_sessions_or_empty(
+    factory: sessionmaker[Session],
+    *,
+    limit: int = 20,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> list[dict[str, object]]:
+    """Carica le sessioni recenti come list-of-dict per Streamlit dataframe.
+
+    Ritorna lista vuota se la query fallisce per qualunque motivo
+    (graceful UI: lo storico e' nice-to-have, non critico).
+    """
+    try:
+        with session_scope(factory) as db:
+            summaries = list_recent_sessions(db, limit=limit, tenant_id=tenant_id)
+    except Exception:  # noqa: BLE001 - graceful UI fallback
+        return []
+    return [
+        {
+            "id": s.id,
+            "started_at": s.started_at,
+            "ended_at": s.ended_at,
+            "budget_eur": float(s.budget_eur),
+            "velocity_target": s.velocity_target,
+            "n_cart": s.n_cart_items,
+            "n_panchina": s.n_panchina_items,
+            "hash": s.listino_hash[:12] + "...",
+        }
+        for s in summaries
+    ]
+
+
+def _render_history(
+    factory: sessionmaker[Session],
+    *,
+    tenant_id: int,
+    limit: int = 20,
+) -> None:
+    """Expander con lista delle sessioni precedenti per il tenant."""
+    with st.expander("Storico Sessioni (lista recente)"):
+        rows = fetch_recent_sessions_or_empty(factory, limit=limit, tenant_id=tenant_id)
+        if not rows:
+            st.caption("Nessuna sessione precedente trovata.")
+            return
+        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+
 def _render_panchina_table(panchina: pd.DataFrame) -> None:
     """Tabella Panchina (R-09: idonei scartati per cassa, ordinati VGP DESC)."""
     st.subheader("Panchina — Idonei scartati per capienza (R-09)")
@@ -268,6 +315,8 @@ def main() -> None:
             st.success(f"Sessione persistita. id = `{sid}`.")
         else:  # pragma: no cover - UI-only error path
             st.error(f"Persistenza fallita: {err}")
+
+    _render_history(factory, tenant_id=DEFAULT_TENANT_ID)
 
 
 if __name__ == "__main__":  # pragma: no cover - run via streamlit CLI

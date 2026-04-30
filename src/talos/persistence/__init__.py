@@ -27,7 +27,11 @@ from talos.persistence.session import (
     session_scope,
     with_tenant,
 )
-from talos.persistence.session_repository import save_session_result
+from talos.persistence.session_repository import (
+    SessionSummary,
+    list_recent_sessions,
+    save_session_result,
+)
 
 __all__ = [
     "AnalysisSession",
@@ -39,9 +43,11 @@ __all__ = [
     "ListinoItem",
     "LockedInItem",
     "PanchinaItem",
+    "SessionSummary",
     "StoricoOrdine",
     "VgpResult",
     "create_app_engine",
+    "list_recent_sessions",
     "make_session_factory",
     "save_session_result",
     "session_scope",

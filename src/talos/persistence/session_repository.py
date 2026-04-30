@@ -31,9 +31,12 @@ Scope MVP:
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
+
+from sqlalchemy import func, select
 
 from talos.persistence.models import (
     AnalysisSession,
@@ -49,6 +52,25 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from talos.orchestrator import SessionInput, SessionResult
+
+
+@dataclass(frozen=True)
+class SessionSummary:
+    """Vista compatta di una sessione storica per UI lista (CHG-2026-04-30-044).
+
+    Aggrega via SQL `count()` i child relevanti, evitando di materializzare
+    tutte le righe `vgp_results` / `cart_items` / `panchina_items` per la
+    pagina "storico".
+    """
+
+    id: int
+    started_at: datetime
+    ended_at: datetime | None
+    budget_eur: Decimal
+    velocity_target: int
+    listino_hash: str
+    n_cart_items: int
+    n_panchina_items: int
 
 
 def _listino_hash(listino_raw: pd.DataFrame) -> str:
@@ -169,3 +191,69 @@ def save_session_result(
         db_session.flush()
 
         return int(analysis_session.id)
+
+
+def list_recent_sessions(
+    db_session: Session,
+    *,
+    limit: int = 20,
+    tenant_id: int = 1,
+) -> list[SessionSummary]:
+    """Lista le sessioni piu' recenti per il `tenant_id`, ordinate per `started_at` DESC.
+
+    Aggrega `n_cart_items` e `n_panchina_items` via subquery `count()`,
+    senza caricare le righe child. Adatta a UI lista riepilogativa.
+
+    :param db_session: SQLAlchemy `Session` aperta.
+    :param limit: numero massimo di righe da ritornare. Default 20.
+    :param tenant_id: filtro tenant (RLS-compatibile). Default 1 (MVP).
+    :returns: lista (eventualmente vuota) di `SessionSummary` ordinati per
+        `started_at` DESC.
+    :raises ValueError: se `limit <= 0`.
+    """
+    if limit <= 0:
+        msg = f"limit invalido: {limit}. Deve essere > 0."
+        raise ValueError(msg)
+
+    with with_tenant(db_session, tenant_id):
+        cart_count_sq = (
+            select(CartItem.session_id, func.count().label("n_cart"))
+            .group_by(CartItem.session_id)
+            .subquery()
+        )
+        panch_count_sq = (
+            select(PanchinaItem.session_id, func.count().label("n_panch"))
+            .group_by(PanchinaItem.session_id)
+            .subquery()
+        )
+
+        stmt = (
+            select(
+                AnalysisSession,
+                func.coalesce(cart_count_sq.c.n_cart, 0).label("n_cart"),
+                func.coalesce(panch_count_sq.c.n_panch, 0).label("n_panch"),
+            )
+            .outerjoin(cart_count_sq, cart_count_sq.c.session_id == AnalysisSession.id)
+            .outerjoin(panch_count_sq, panch_count_sq.c.session_id == AnalysisSession.id)
+            .where(AnalysisSession.tenant_id == tenant_id)
+            # `started_at` ha server_default `now()`: due insert in rapida
+            # successione possono avere timestamp identico. Tiebreaker `id`
+            # (sequence-generated, monotonic) garantisce ordering stabile.
+            .order_by(AnalysisSession.started_at.desc(), AnalysisSession.id.desc())
+            .limit(limit)
+        )
+
+        rows = db_session.execute(stmt).all()
+        return [
+            SessionSummary(
+                id=int(asession.id),
+                started_at=asession.started_at,
+                ended_at=asession.ended_at,
+                budget_eur=asession.budget_eur,
+                velocity_target=asession.velocity_target,
+                listino_hash=asession.listino_hash,
+                n_cart_items=int(n_cart),
+                n_panchina_items=int(n_panch),
+            )
+            for asession, n_cart, n_panch in rows
+        ]
