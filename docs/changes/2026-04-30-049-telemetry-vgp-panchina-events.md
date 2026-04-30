@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-049
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: ac3a0ef
 adr_ref: ADR-0021, ADR-0019, ADR-0018, ADR-0014
 ---
 
@@ -188,4 +188,4 @@ opzionali).
 - Successore atteso: migrazione `structlog.bind(session_id, tenant_id)`;
   attivazione eventi `extract.*` con `io_/extract`; aggregazione
   summary se profiler richiede; `db.audit_log_write` con persistence audit
-- Commit: `[pending]`
+- Commit: `ac3a0ef`
