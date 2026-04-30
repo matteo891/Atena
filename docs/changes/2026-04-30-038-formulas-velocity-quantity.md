@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-038
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: f693abc
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -159,4 +159,4 @@ breaking changes).
   L05 Round 5 (default 15 giorni)
 - Successore atteso: orchestratore di sessione (CHG-039?) - pipeline
   end-to-end consumando tutte le formule + tetris
-- Commit: `[pending]`
+- Commit: `f693abc`
