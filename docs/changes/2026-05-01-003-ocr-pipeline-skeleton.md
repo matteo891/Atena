@@ -3,7 +3,7 @@ id: CHG-2026-05-01-003
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" sessione attivata 2026-04-30 sera, prosegue oltre mezzanotte)
 status: Draft
-commit: [pending]
+commit: 1da38b0
 adr_ref: ADR-0017, ADR-0014, ADR-0019, ADR-0021
 ---
 
@@ -273,4 +273,4 @@ def process_image(self, image):
   detection).
 - Memory: `project_io_extract_design_decisions.md` (D3 ratificata
   "default").
-- Commit: `[pending]`.
+- Commit: `1da38b0`.
