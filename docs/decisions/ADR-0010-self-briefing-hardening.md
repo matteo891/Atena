@@ -7,6 +7,10 @@ deciders: Leader
 category: process
 supersedes: —
 superseded_by: —
+errata:
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-023
+    summary: "Step 1 esteso con verifica reciproca STATUS↔git per claim su tag/branch/hash pubblicati (`git tag -l '<pattern>'` o equivalente). Test di Conformità arricchito con scenario corrispondente. Chiarisce convenzione interpretativa: STATUS è fonte di verità sulla storia documentata, non sullo stato git corrente quando i due possono divergere."
 ---
 
 ## Contesto
@@ -52,6 +56,8 @@ La sequenza canonica e unica del Self-Briefing è quella già definita in CLAUDE
 4. GitNexus query (degrade esplicitamente se ISS-001)       [ADR-0007]
 5. ROADMAP.md (solo se step 1 non è sufficiente)            [ADR-0008]
 ```
+
+**Verifica reciproca STATUS ↔ git (errata 2026-04-30 / CHG-023).** Quando lo Step 1 incontra in STATUS un'affermazione su esistenza, proposta o assenza di un tag git, di un branch o di un commit hash specifico, esegue la verifica corrispondente sul repository (`git tag -l '<pattern>'`, `git branch --list`, `git log <hash>`) prima di agire. Se la verifica diverge da STATUS, segnalare al Leader e correggere STATUS prima di qualsiasi azione: STATUS è fonte di verità sulla **storia documentata**, non sullo **stato git corrente** quando i due possono divergere. Costo: <1 secondo. Beneficio: chiude la classe di errori "STATUS stale propaga decisioni sbagliate".
 
 La sezione "Flusso di Re-Briefing" di ADR-0004 è marcata come **superseduta da questo ADR** tramite hardening patch (ADR-0009, applicata in CHG-2026-04-29-002). Il resto di ADR-0004 rimane normativo.
 
@@ -114,6 +120,7 @@ Una sessione che non produce alcun commit (audit, esplorazione, briefing) **non*
 | STATUS.md con claim non ancorato | Errore di rilettura, riformulare o rimuovere |
 | Sessione di sola lettura | Esenzione esplicita dichiarata, STATUS.md non modificato |
 | Sezione "Flusso di Re-Briefing" di ADR-0004 letta in isolamento | Lettore vede il blocco "Superseduta da ADR-0010" e segue ADR-0010 |
+| STATUS afferma stato di tag/branch/hash, repo dice diversamente (errata 2026-04-30) | Errore di rilettura: segnalare al Leader, correggere STATUS prima di agire |
 
 Verifica: pre-commit del commit di sessione, Claude rilegge STATUS.md ed elenca eventuali claim non ancorati al Leader.
 
@@ -123,8 +130,20 @@ Verifica: pre-commit del commit di sessione, Claude rilegge STATUS.md ed elenca 
 - Governa: protocollo di self-briefing step 0, struttura di `docs/STATUS.md`, regole di anchoring
 - Impatta: `CLAUDE.md` (workflow), `docs/STATUS.md`, ADR-0004 sezione "Flusso di Re-Briefing"
 - Test: verifica meccanica step 0 + verifica manuale anchoring pre-commit
-- Commits: [da aggiornare post-commit]
+- Commits: `416ab87` (introduzione, CHG-2026-04-29-002) + commit dell'errata 2026-04-30 (CHG-2026-04-30-023)
 
 ## Rollback
 
 Se lo step 0 si rivela troppo invasivo (falsi positivi, ambienti con configurazioni git non standard), si crea un ADR di supersessione che lo declassa a "consigliato ma non bloccante". Le regole di anchoring di STATUS.md sono indipendenti e possono essere mantenute o ritirate separatamente.
+
+## Errata
+
+### 2026-04-30 — CHG-2026-04-30-023
+
+- **Tipo:** errata corrige (chiarimento di convenzione interpretativa).
+- **Modifica:**
+  - Sezione "Sequenza di Re-Briefing — Fonte Unica": aggiunta paragrafo "Verifica reciproca STATUS ↔ git" sotto la sequenza canonica. Lo Step 1 incorpora una verifica sul repository (`git tag -l '<pattern>'`, `git branch --list`, `git log <hash>`) ogni volta che STATUS afferma esistenza, proposta o assenza di un tag, branch o commit hash specifico.
+  - Sezione "Test di Conformità": aggiunta riga "STATUS afferma stato di tag/branch/hash, repo dice diversamente → errore di rilettura, segnalare al Leader, correggere STATUS prima di agire".
+  - Frontmatter `errata:` esteso con voce 2026-04-30.
+  - Campo `Commits:` riallineato (sostituito placeholder con commit di hardening + commit dell'errata).
+- **Motivo:** sessione 2026-04-30 (CHG-019..022) ha ripetutamente aggiornato STATUS con la riga "CHECKPOINT-03 proposto, in attesa autorizzazione" mentre il tag `checkpoint/2026-04-30-03` esisteva già da 6 ore (creato 15:50 post-CHG-018). La regola "ogni claim ancorato" di Regola 2 copre il **caso scrittore** ma non il **caso lettore**: chi rilegge STATUS deve confermare che le ancore puntino ancora alla realtà attuale. L'errata inscrive la verifica reciproca, chiudendo la classe di errori "STATUS stale propaga decisioni sbagliate".
