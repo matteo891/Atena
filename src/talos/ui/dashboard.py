@@ -28,11 +28,14 @@ from talos.formulas import (
 )
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
 from talos.persistence import (
+    KEY_REFERRAL_FEE_PCT,
+    SCOPE_CATEGORY,
     LoadedSession,
     SessionSummary,
     create_app_engine,
     find_session_by_hash,
     get_config_override_numeric,
+    list_category_referral_fees,
     list_recent_sessions,
     load_session_by_id,
     make_session_factory,
@@ -158,6 +161,9 @@ def _render_sidebar(
         else:  # pragma: no cover - UI-only error path
             st.sidebar.error(f"Salvataggio fallito: {err}")
 
+    if factory is not None:
+        _render_sidebar_referral_fees(factory)
+
     lot_size = st.sidebar.number_input(
         "Lot Size Fornitore",
         min_value=1,
@@ -166,6 +172,51 @@ def _render_sidebar(
         help="F5: Floor(qty_target / lot) * lot. Default Samsung MVP = 5.",
     )
     return float(budget), int(velocity_target), float(veto_threshold), int(lot_size)
+
+
+def _render_sidebar_referral_fees(factory: sessionmaker[Session]) -> None:
+    """Sidebar section: CRUD `Referral_Fee` per categoria (L12 PROJECT-RAW Round 5).
+
+    Form input (categoria + fee) + bottone "Salva" + lista esistenti
+    (st.dataframe). Override DB-level usabili dal futuro orchestrator
+    per correggere `referral_fee_pct` per riga del listino in base a
+    `asin_master.category_node`.
+    """
+    with st.sidebar.expander("Referral Fee per categoria"):
+        existing = fetch_category_referral_fees_or_empty(factory)
+        if existing:
+            st.dataframe(
+                pd.DataFrame(
+                    [{"category": c, "fee_pct": v} for c, v in sorted(existing.items())],
+                ),
+                use_container_width=True,
+            )
+        else:
+            st.caption("Nessun override registrato.")
+
+        category = st.text_input("Categoria", key="ref_fee_cat_input").strip()
+        fee = st.number_input(
+            "Fee %",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.08,
+            step=0.01,
+            format="%.4f",
+            key="ref_fee_value_input",
+        )
+        if st.button("Salva referral fee", key="save_ref_fee_btn"):
+            if not category:
+                st.warning("Inserisci una categoria non vuota.")
+            else:
+                ok, err = try_persist_category_referral_fee(
+                    factory,
+                    category_node=category,
+                    referral_fee_pct=float(fee),
+                )
+                if ok:
+                    st.success(f"Referral fee per `{category}` salvato.")
+                else:  # pragma: no cover - UI-only
+                    st.error(f"Salvataggio fallito: {err}")
 
 
 def _render_metrics(saturation: float, budget_t1: float) -> None:
@@ -276,6 +327,51 @@ def try_persist_veto_roi_threshold(
                 key=CONFIG_KEY_VETO_ROI,
                 value=threshold,
                 tenant_id=tenant_id,
+            )
+    except Exception as exc:  # noqa: BLE001 - graceful UI feedback
+        return False, str(exc)
+    return True, None
+
+
+def fetch_category_referral_fees_or_empty(
+    factory: sessionmaker[Session] | None,
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> dict[str, float]:
+    """Lookup mappa `category_node → referral_fee_pct` per il tenant; graceful empty.
+
+    Ritorna dict vuoto se factory None, query fallisce o nessun override.
+    """
+    if factory is None:
+        return {}
+    try:
+        with session_scope(factory) as db:
+            decimals = list_category_referral_fees(db, tenant_id=tenant_id)
+    except Exception:  # noqa: BLE001 - graceful UI fallback
+        return {}
+    return {cat: float(v) for cat, v in decimals.items()}
+
+
+def try_persist_category_referral_fee(
+    factory: sessionmaker[Session],
+    *,
+    category_node: str,
+    referral_fee_pct: float,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, str | None]:
+    """UPSERT del referral fee per la categoria (`scope="category"`).
+
+    :returns: tupla `(success, error_message)`.
+    """
+    try:
+        with session_scope(factory) as db:
+            set_config_override_numeric(
+                db,
+                key=KEY_REFERRAL_FEE_PCT,
+                value=referral_fee_pct,
+                tenant_id=tenant_id,
+                scope=SCOPE_CATEGORY,
+                scope_key=category_node,
             )
     except Exception as exc:  # noqa: BLE001 - graceful UI feedback
         return False, str(exc)

@@ -12,6 +12,8 @@ internamente).
 API:
 - `get_config_override_numeric(...) -> Decimal | None`
 - `set_config_override_numeric(...) -> None` (UPSERT idempotente).
+- `list_category_referral_fees(...) -> dict[str, Decimal]` (CHG-051,
+  L12 Round 5: mappa `category_node` → `referral_fee_pct`).
 
 Le chiavi `value_text` (`set_config_override_text`,
 `get_config_override_text`) sono scope CHG futuro quando emergeranno
@@ -38,6 +40,10 @@ SCOPE_CATEGORY: str = "category"
 SCOPE_ASIN: str = "asin"
 
 _VALID_SCOPES: frozenset[str] = frozenset({SCOPE_GLOBAL, SCOPE_CATEGORY, SCOPE_ASIN})
+
+# Chiave canonica del Referral Fee Amazon per categoria (L12 PROJECT-RAW Round 5).
+# Override per `scope="category"`, `scope_key=<category_node>`.
+KEY_REFERRAL_FEE_PCT: str = "referral_fee_pct"
 
 
 def _validate_scope(scope: str) -> None:
@@ -73,6 +79,35 @@ def get_config_override_numeric(
             ConfigOverride.key == key,
         )
         return db_session.scalar(stmt)
+
+
+def list_category_referral_fees(
+    db_session: Session,
+    *,
+    tenant_id: int = 1,
+) -> dict[str, Decimal]:
+    """Lista tutti gli override `referral_fee_pct` con `scope="category"` per il tenant.
+
+    Pattern usage: il CFO configura una mappa `category_node → fee` per
+    correggere/sovrascrivere il valore del listino raw quando l'ASIN
+    appartiene a una categoria nota (L12 PROJECT-RAW Round 5).
+
+    :returns: dict `{category_node: referral_fee_pct}`. Vuoto se nessun
+        override registrato.
+    """
+    with with_tenant(db_session, tenant_id):
+        stmt = select(ConfigOverride.scope_key, ConfigOverride.value_numeric).where(
+            ConfigOverride.tenant_id == tenant_id,
+            ConfigOverride.scope == SCOPE_CATEGORY,
+            ConfigOverride.key == KEY_REFERRAL_FEE_PCT,
+            ConfigOverride.scope_key.is_not(None),
+            ConfigOverride.value_numeric.is_not(None),
+        )
+        # Filtri SQL `is_not(None)` garantiscono che entrambi i campi siano popolati;
+        # niente `continue` defensive lato Python (R-01 governance: no silent drops).
+        return {
+            str(scope_key): Decimal(value) for scope_key, value in db_session.execute(stmt).all()
+        }
 
 
 def set_config_override_numeric(  # noqa: PLR0913 — 6 arg necessari (db + key + value + tenant + scope + scope_key) per UPSERT su UNIQUE composito Allegato A

@@ -10,10 +10,12 @@ le veda tutte automaticamente in `alembic revision --autogenerate`.
 
 from talos.persistence.base import Base
 from talos.persistence.config_repository import (
+    KEY_REFERRAL_FEE_PCT,
     SCOPE_ASIN,
     SCOPE_CATEGORY,
     SCOPE_GLOBAL,
     get_config_override_numeric,
+    list_category_referral_fees,
     set_config_override_numeric,
 )
 from talos.persistence.engine import create_app_engine
@@ -44,6 +46,7 @@ from talos.persistence.session_repository import (
 )
 
 __all__ = [
+    "KEY_REFERRAL_FEE_PCT",
     "SCOPE_ASIN",
     "SCOPE_CATEGORY",
     "SCOPE_GLOBAL",
@@ -63,6 +66,7 @@ __all__ = [
     "create_app_engine",
     "find_session_by_hash",
     "get_config_override_numeric",
+    "list_category_referral_fees",
     "list_recent_sessions",
     "load_session_by_id",
     "make_session_factory",
