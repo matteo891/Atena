@@ -78,6 +78,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/tetris/` | ADR-0018 | ADR-0013, ADR-0019, ADR-0021 | allocator, panchina (R-04..R-09) |
 | `src/talos/formulas/` | ADR-0018 | ADR-0019 | F1..F5 + fee_fba (L11b verbatim) |
 | `src/talos/formulas/fee_fba.py` | ADR-0018 | ADR-0019 | `fee_fba_manual` verbatim L11b + R-01 NO SILENT DROPS — CHG-2026-04-30-022 (primo modulo applicativo Talos) |
+| `src/talos/formulas/cash_inflow.py` | ADR-0018 | ADR-0019 | `cash_inflow_eur` verbatim F1 (BuyBox − Fee_FBA − BuyBox·Referral_Fee) — CHG-2026-04-30-025 (primo consumatore architetturale di `fee_fba_manual`) |
 | `src/talos/persistence/` | ADR-0015 | ADR-0013, ADR-0019 | SQLAlchemy 2.0 + RLS bootstrap |
 | `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (env var `TALOS_DB_URL`) — CHG-2026-04-30-020 |
 | `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
