@@ -330,3 +330,71 @@ def run_session(inp: SessionInput) -> SessionResult:
         budget_t1=budget_t1,
         enriched_df=scored_sorted,
     )
+
+
+def replay_session(
+    loaded: SessionResult,
+    *,
+    locked_in_override: list[str] | None = None,
+    budget_override: float | None = None,
+) -> SessionResult:
+    """Riesegue Tetris + panchina + compounding su un `SessionResult` ricaricato.
+
+    Pensato per il flusso "what-if" interattivo: il CFO carica una
+    sessione storica via `load_session_full` (CHG-052), modifica
+    `locked_in` o `budget`, e ottiene un nuovo `SessionResult` senza
+    pagare il costo di re-enrichment + ri-fetch DB.
+
+    NON ricalcola enrichment ne' VGP score: usa `loaded.enriched_df`
+    cosi' com'è (le colonne `vgp_score`, `kill_mask`, `veto_roi_passed`
+    restano quelle del run originale). Questo significa che un override
+    della soglia veto ROI **non e' supportato** in V1 — richiederebbe
+    di rilanciare `compute_vgp_score` con la threshold nuova, scope CHG
+    successivo (errata se richiesto).
+
+    :param loaded: `SessionResult` ricaricato (tipicamente da
+        `load_session_full`). Deve avere `enriched_df` con almeno
+        `asin`, `cost_eur`, `qty_final`, `vgp_score`, `cash_profit_eur`.
+    :param locked_in_override: nuova lista locked-in (R-04). Se `None`,
+        riusa i locked-in del `loaded.cart` (pattern: stessi locked-in,
+        budget diverso). Se `[]`, rimuove tutti i locked-in.
+    :param budget_override: nuovo budget di sessione. Se `None`, riusa
+        `loaded.cart.budget`.
+    :returns: nuovo `SessionResult` con cart/panchina/budget_t1
+        ricalcolati.
+    :raises ValueError: se l'enriched_df e' vuoto/mancante colonne.
+    :raises InsufficientBudgetError: se i locked-in non stanno nel
+        nuovo budget (R-04 fail-fast, propagato da `allocate_tetris`).
+    """
+    new_budget = budget_override if budget_override is not None else loaded.cart.budget
+    if locked_in_override is None:
+        new_locked_in = [item.asin for item in loaded.cart.items if item.locked]
+    else:
+        new_locked_in = list(locked_in_override)
+
+    # Ordinamento defensive: l'allocator richiede DESC per vgp_score (Pass 2).
+    sorted_df = loaded.enriched_df.sort_values("vgp_score", ascending=False)
+
+    cart = allocate_tetris(sorted_df, budget=new_budget, locked_in=new_locked_in)
+    panchina = build_panchina(sorted_df, cart)
+
+    # Compounding T+1 (R-07): cash_profit per ASIN gia' nel df.
+    cart_profits: list[float] = []
+    for item in cart.items:
+        match = sorted_df[sorted_df["asin"] == item.asin]
+        if match.empty:
+            msg = (
+                f"BUG interno (replay): ASIN '{item.asin}' nel cart ma assente da "
+                "enriched_df; mapping VgpResult/Cart corrotto."
+            )
+            raise RuntimeError(msg)
+        cash_profit_per_unit = float(match.iloc[0]["cash_profit_eur"])
+        cart_profits.append(cash_profit_per_unit * item.qty)
+    budget_t1 = compounding_t1(new_budget, cart_profits)
+
+    return SessionResult(
+        cart=cart,
+        panchina=panchina,
+        budget_t1=budget_t1,
+        enriched_df=sorted_df,
+    )
