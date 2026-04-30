@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-033
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Proposed
-commit: TBD
+status: Committed
+commit: cc4070e
 adr_ref: ADR-0019, ADR-0018
 ---
 
@@ -129,4 +129,4 @@ Per il chained test, il risultato finale è identico (la somma è associativa): 
 - Predecessori: CHG-2026-04-30-028 (sentinella iniziale F1→F2→ROI→Veto), CHG-2026-04-30-032 (F3)
 - Vision: PROJECT-RAW.md sez. 6.3 + R-07 + R-08
 - Successore atteso: `milestone/first-formula-v1.0.0` (catena scalare formule blindata da sentinella e2e)
-- Commit: TBD
+- Commit: `cc4070e`
