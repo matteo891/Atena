@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-035
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 5829bfe
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -161,4 +161,4 @@ contexts (orchestratore, debug); la versione vettoriale e' inline in
 - Vision verbatim: PROJECT-RAW.md sez. 6.3 (formula) + righe 223 (R-05) + 226 (R-08)
 - Successore atteso: `tetris/allocator.py` con R-06 saturazione 99.9% + R-04
   Locked-in priority∞ — consumatore di `compute_vgp_score`
-- Commit: `[pending]`
+- Commit: `5829bfe`
