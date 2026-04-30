@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-029
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: 0ae978a
 adr_ref: ADR-0014, ADR-0013, ADR-0015, ADR-0018, ADR-0019
 ---
 
@@ -118,4 +118,4 @@ def get_settings() -> TalosSettings:
 - Predecessore: CHG-2026-04-30-027 (Veto R-08 con `DEFAULT_ROI_VETO_THRESHOLD`, ora override-able via settings)
 - Vision: PROJECT-RAW.md L10 chiusa Round 5 — soglia 8% configurabile, persistita
 - Successore atteso: refactor `engine.py` per usare `TalosSettings.db_url`; lookup `config_overrides` per soglia runtime override
-- Commit: [da aggiornare post-commit]
+- Commit: `0ae978a`
