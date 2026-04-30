@@ -3,7 +3,7 @@ id: CHG-2026-05-01-004
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" sessione attivata 2026-04-30 sera, prosegue oltre mezzanotte)
 status: Draft
-commit: [pending]
+commit: 2140ab4
 adr_ref: ADR-0017, ADR-0018, ADR-0014, ADR-0019, ADR-0021
 ---
 
@@ -291,4 +291,4 @@ def match(self, *, supplier, amazon):
   "default").
 - PROJECT-RAW: L06 (Samsung MVP), L07 (pipeline interna), R-05
   (KILL-SWITCH), riga 223.
-- Commit: `[pending]`.
+- Commit: `2140ab4`.
