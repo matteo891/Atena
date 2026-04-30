@@ -9,6 +9,25 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-04-30 — Nona tabella Allegato A: locked_in (R-04 Manual Override + RLS)
+
+`LockedInItem` (tabella `locked_in`) è la nona delle 10 tabelle dell'Allegato A. R-04 Manual Override: ASIN che il CFO ha forzato a Priorità ∞. Standalone (no FK). Terza tabella con RLS Zero-Trust — pattern riusato verbatim da `config_overrides` (CHG-012) e `storico_ordini` (CHG-016). Revision Alembic `e7a92c0260fa`.
+
+### Added
+- `src/talos/persistence/models/locked_in_item.py` — `class LockedInItem(Base)` con 6 colonne (id BigInt PK, asin CHAR(10) NOT NULL, qty_min Integer NOT NULL, notes Text NULL, created_at TIMESTAMPTZ default NOW NOT NULL, tenant_id BigInt default 1 NOT NULL). No FK, no relationship.
+- `migrations/versions/e7a92c0260fa_create_locked_in_with_rls.py` — Alembic revision (catena: `Revises: a074ee67895c`). `op.create_table` + `op.execute` per `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation`.
+- `tests/unit/test_locked_in_item_model.py` — 15 test invarianti incluso `test_no_foreign_keys` esplicito + 3 schema-aware sul file di migration.
+- `docs/changes/2026-04-30-017-locked-in-model-with-rls.md`
+
+### Changed
+- `src/talos/persistence/models/__init__.py` — re-export `LockedInItem`
+- `src/talos/persistence/__init__.py` — re-export `LockedInItem`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (16 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **134 passed** (era 119, +15)
+- `alembic upgrade --sql` → DDL + RLS + POLICY coerenti con Allegato A
+
 ## [0.20.0] — 2026-04-30 — Ottava tabella Allegato A: storico_ordini (R-03 registro permanente + RLS)
 
 `StoricoOrdine` (tabella `storico_ordini`) è l'ottava delle 10 tabelle dell'Allegato A. **R-03 ORDER-DRIVEN MEMORY**: registro permanente degli ordini. Differenza chiave: FK `session_id`/`cart_item_id` **senza** `ON DELETE CASCADE` (aderenza letterale Allegato A — un registro contabile non si cascade-cancella). Seconda tabella con RLS Zero-Trust (pattern identico a `config_overrides`). Revision Alembic `a074ee67895c`.

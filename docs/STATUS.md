@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `0270e20` (CHG-016 storico_ordini). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→016. Tabelle Allegato A coperte: 8/10
+> **Ultimo aggiornamento:** 2026-04-30 — commit `<pending CHG-017>` (locked_in + RLS). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→017. Tabelle Allegato A coperte: 9/10
 > **Sessione corrente:** TALOS — **Step [6] ADR-0012 completato.** Promulgazione del cluster ADR di stack 0013–0021 (9 ADR architettura/process: project structure, linguaggio, persistenza, UI, acquisizione dati, algoritmo VGP/Tetris, test strategy, CI/CD, logging). Validazione bulk Leader (Opzione A) + override puntuali ricevuti e incisi. Sblocco fase codice.
 
 ---
@@ -56,6 +56,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **Sesta tabella: `CartItem` (carrello Tetris, 6 col, doppia FK CASCADE, locked_in R-04 + revision `fa6408788e73`). 13 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-014](changes/2026-04-30-014-cart-items-model.md) | `9a587cc` |
 | **Settima tabella: `PanchinaItem` (R-09 archivio, 4 col, doppia FK CASCADE + revision `618105641c27`). 10 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-015](changes/2026-04-30-015-panchina-items-model.md) | `69cb614` |
 | **Ottava tabella: `StoricoOrdine` (R-03 registro permanente, 8 col, FK SENZA CASCADE + RLS Zero-Trust + revision `a074ee67895c`). 17 test unit.** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-016](changes/2026-04-30-016-storico-ordini-model-with-rls.md) | `0270e20` |
+| **Nona tabella: `LockedInItem` (R-04 Manual Override, 6 col, standalone, RLS + revision `e7a92c0260fa`). 15 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-017](changes/2026-04-30-017-locked-in-model-with-rls.md) | `<pending>` |
 
 ---
 
@@ -86,8 +87,9 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHECKPOINT-02~~ | ~~`checkpoint/2026-04-30-02`~~ | Creato e pushato su `37fdc7e` | — |
 | ~~CHG-014~~ | ~~modello `cart_items`~~ | Chiuso 2026-04-30 | — |
 | ~~CHG-015~~ | ~~modello `panchina_items`~~ | Chiuso 2026-04-30 | — |
-| **CHG-016** | **modello `storico_ordini` (R-03 registro permanente, FK senza CASCADE, RLS)** | In commit | 119 test PASS, mypy 15 file. Nuovo pattern: registro permanente + RLS |
-| **NEXT** | **Prossimo step Leader** | In attesa | Tabelle restanti Allegato A (2/10): `locked_in` (RLS standalone), `audit_log` (append-only) |
+| ~~CHG-016~~ | ~~modello `storico_ordini`~~ | Chiuso 2026-04-30 | — |
+| **CHG-017** | **modello `locked_in` (R-04, RLS standalone)** | In commit | 134 test PASS, mypy 16 file. Pattern RLS riusato (3a volta) |
+| **NEXT** | **Prossimo step** | In coda | Ultima tabella Allegato A: `audit_log` (append-only, REVOKE UPDATE/DELETE) |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
