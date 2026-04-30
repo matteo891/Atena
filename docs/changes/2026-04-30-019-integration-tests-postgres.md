@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-019
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Pending
-commit: TBD
+status: Committed
+commit: 35190c3
 adr_ref: ADR-0019, ADR-0015, ADR-0014, ADR-0002, ADR-0011
 ---
 
@@ -115,4 +115,4 @@ Senza env var: i test integration sono **skipped** automaticamente. Il quality g
 - ADR: ADR-0019 (`tests/integration/` come categoria), ADR-0015 (RLS Zero-Trust + audit), ADR-0014 (quality gates), ADR-0002 + ADR-0011 (test gate, push immediato)
 - Predecessore: CHG-2026-04-30-018 (audit_log + 3 trigger — chiuso il rischio residuo "test schema-aware solo statici")
 - Successore atteso: integration job CI (`.github/workflows/ci.yml` con service Postgres) o bootstrap ruoli `db-bootstrap.sh`
-- Commit: TBD (in attesa di permesso esplicito Leader)
+- Commit: `35190c3`

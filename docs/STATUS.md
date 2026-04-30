@@ -3,8 +3,8 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `18c32b6` (CHG-018 audit_log — schema Allegato A 10/10 completo). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→018. **Tabelle Allegato A coperte: 10/10** ✓
-> **Sessione corrente:** TALOS — **Step [6] ADR-0012 completato.** Promulgazione del cluster ADR di stack 0013–0021 (9 ADR architettura/process: project structure, linguaggio, persistenza, UI, acquisizione dati, algoritmo VGP/Tetris, test strategy, CI/CD, logging). Validazione bulk Leader (Opzione A) + override puntuali ricevuti e incisi. Sblocco fase codice.
+> **Ultimo aggiornamento:** 2026-04-30 — commit `35190c3` (CHG-019 `tests/integration/` runtime su Postgres reale: RLS + audit trigger verde). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→019. **Tabelle Allegato A coperte: 10/10** ✓ + **161 test PASS** (153 unit/governance + 8 integration).
+> **Sessione corrente:** TALOS — schema completo + alembic upgrade head reale verde su Postgres 16-alpine + prima categoria `tests/integration/` operativa con DB reale. Soglia checkpoint ADR-0003 raggiunta (≥5 commit significativi dopo `checkpoint/2026-04-30-02`): pronto per `checkpoint/2026-04-30-03`.
 
 ---
 
@@ -58,6 +58,8 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **Ottava tabella: `StoricoOrdine` (R-03 registro permanente, 8 col, FK SENZA CASCADE + RLS Zero-Trust + revision `a074ee67895c`). 17 test unit.** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-016](changes/2026-04-30-016-storico-ordini-model-with-rls.md) | `0270e20` |
 | **Nona tabella: `LockedInItem` (R-04 Manual Override, 6 col, standalone, RLS + revision `e7a92c0260fa`). 15 test unit.** | 0015, 0014, 0013, 0019, 0018 | [CHG-2026-04-30-017](changes/2026-04-30-017-locked-in-model-with-rls.md) | `099dd60` |
 | **🎯 Decima e ultima tabella: `AuditLog` (registro append-only, 8 col incluso 2 JSONB, funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER su tabelle critiche + revision `6e03f2a4f5a3`). 19 test unit. SCHEMA ALLEGATO A COMPLETO 10/10** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-018](changes/2026-04-30-018-audit-log-model-with-triggers.md) | `18c32b6` |
+| **`alembic upgrade head` reale verde su Postgres 16-alpine** (10 revision in catena, RLS attiva su 3 tabelle, funzione + 9 trigger creati, 6 FK CASCADE + 2 FK NO ACTION verbatim Allegato A) | 0015 | (no CHG — validazione runtime) | (container ephemeral `talos-pg-test`) |
+| **`tests/integration/` inaugurata: 4 test RLS (`tenant_isolation` + FORCE + ruolo non-superuser) + 4 test audit trigger I/U/D con before/after JSONB. Env-var `TALOS_DB_URL` con skip module-level se assente. Pattern fixture transazionale + rollback.** | 0019, 0015, 0011 | [CHG-2026-04-30-019](changes/2026-04-30-019-integration-tests-postgres.md) | `35190c3` |
 
 ---
 
@@ -90,8 +92,10 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-015~~ | ~~modello `panchina_items`~~ | Chiuso 2026-04-30 | — |
 | ~~CHG-016~~ | ~~modello `storico_ordini`~~ | Chiuso 2026-04-30 | — |
 | ~~CHG-017~~ | ~~modello `locked_in`~~ | Chiuso 2026-04-30 | — |
-| **CHG-018** | **modello `audit_log` + funzione PL/pgSQL + 3 trigger AFTER. ALLEGATO A 10/10 COMPLETO** | In commit | 153 test PASS, mypy 17 file. Schema DB completo verbatim Allegato A |
-| **NEXT** | **Prossimo step Leader** | In attesa | Out-of-scope DB schema (completato): possibili — (a) `scripts/db-bootstrap.sh` (ruoli + GRANT/REVOKE Zero-Trust), (b) cambio direzione su altro modulo applicativo, (c) milestone tag `milestone/db-schema-frozen-vX.X.X` |
+| ~~CHG-018~~ | ~~modello `audit_log` + funzione PL/pgSQL + 3 trigger AFTER~~ | Chiuso 2026-04-30 — schema Allegato A 10/10 completo | — |
+| ~~CHG-019~~ | ~~tests/integration/ con RLS + audit runtime~~ | Chiuso 2026-04-30 — 8 integration PASS su Postgres reale | — |
+| **CHECKPOINT-03** | Tag `checkpoint/2026-04-30-03` proposto | In attesa autorizzazione | Soglia ≥5 commit significativi raggiunta (CHG-014→019). Restore point pre-prossimo modulo |
+| **NEXT** | **Prossimo step Leader** | In attesa | Possibili: (a) `scripts/db-bootstrap.sh` (ruoli `talos_app/talos_admin/talos_audit` + GRANT/REVOKE Zero-Trust + NO BYPASSRLS); (b) integration job CI (`.github/workflows/ci.yml` con service Postgres → niente più skip silenzioso); (c) test runtime FK CASCADE/RESTRICT (estensione di `tests/integration/`); (d) milestone tag `milestone/db-schema-frozen-v1.0.0`; (e) cambio direzione su altro modulo applicativo |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
@@ -144,13 +148,9 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 
 - **Step 0 del Self-Briefing è bloccante (ADR-0010).** Verifica `git config core.hooksPath` = `scripts/hooks` prima di tutto.
 - **Hooks v2 in vigore (CHG-2026-04-30-003).** Il `pre-commit` invoca `scripts/hooks/pre-commit-app` quando in staging ci sono `*.py`/`pyproject.toml`/`uv.lock` (graceful skip se l'hook applicativo non esiste); il `commit-msg` esenta i commit del bot `github-actions[bot]` con marker `[skip ci]` (esenzione cumulativa, marker da solo non basta).
-- **🔖 Fermaposto operativo (2026-04-30, fine sessione 18 CHG):** schema Allegato A completo 10/10. **Direzione concordata col Leader: opzione (a) Postgres reale via Docker + integration test.** Stato infrastruttura Docker:
-  - `docker --version` → v29.4.1 installato
-  - `/var/run/docker.sock` → root:docker mode 660
-  - Utente `matteo` → **non in gruppo `docker`** al momento del fermaposto
-  - **Azione richiesta dal Leader (FATTA in shell separata):** `sudo usermod -aG docker $USER` + chiusura/riapertura shell WSL
-  - **Prima azione di Claude al rientro:** `docker ps` (validazione gruppo attivo); se OK, lanciare Postgres ephemeral (`docker run -d --name talos-pg-test -e POSTGRES_PASSWORD=test -p 55432:5432 --tmpfs /var/lib/postgresql/data:rw postgres:16-alpine`), settare `TALOS_DB_URL=postgresql+psycopg://postgres:test@localhost:55432/postgres`, eseguire `alembic upgrade head` (primo upgrade reale) e procedere con `tests/integration/` (RLS policy effettiva, trigger audit, FK CASCADE/RESTRICT).
-  - **Se `docker ps` ancora fallisce** dopo restart shell: segnalare al Leader, NON aggirare con sudo o chmod sul socket.
+- **🔓 Fermaposto Docker risolto (2026-04-30 sessione 19):** `docker ps` verde, gruppo attivo. Container `talos-pg-test` (postgres:16-alpine, host:55432, tmpfs) lanciato e validato; `alembic upgrade head` reale eseguito con successo (10 revision applicate, schema verbatim Allegato A). Container può essere fermato a fine sessione (`docker rm -f talos-pg-test`) — ephemeral, dati su tmpfs.
+- **🔖 Scoperta runtime CHG-019 (rilevante per futuro `db-bootstrap.sh`):** la policy RLS `tenant_isolation` non era visibile testando da `postgres` neanche con `FORCE ROW LEVEL SECURITY`, perché `postgres` ha `BYPASSRLS` (superuser). I test usano `CREATE ROLE talos_rls_test_subject` (default NOSUPERUSER NOBYPASSRLS) + GRANT minimo + `SET LOCAL ROLE`. **Implicazione:** il bootstrap dei ruoli applicativi deve esplicitamente NON dare `BYPASSRLS` a `talos_app`, e ogni tabella con RLS deve avere `FORCE` se la ownership non è `talos_app`.
+- **`TALOS_DB_URL` env var:** se assente, `tests/integration/` skippa silenziosamente module-level. CI integration job (futuro CHG) deve **failarsi se non vengono raccolti almeno N test** per evitare che lo skip diventi default.
 - **`PROJECT-RAW.md` è in stato `Frozen` dal 2026-04-29 (codename TALOS).** Modifiche alla vision passano per **Errata Corrige** (ADR-0009) o transizione documentata a `Iterating` con motivazione esplicita del Leader.
 - **Regola "Lacune mai completate" (ADR-0012, vincolante).** Continua ad applicarsi anche post-Frozen e post-stack-Frozen. Se emergono ambiguità durante la futura implementazione, marcarle in chat e portarle al Leader, **non inferire**.
 - **Cluster ADR di stack 0013–0021 attivo (CHG-2026-04-30-001).** Ogni nuovo file applicativo deve mappare a un ADR Primario in FILE-ADR-MAP.md (sezione "Codice Applicativo"). Path consentiti: `src/talos/{io_,extract,vgp,tetris,formulas,persistence,ui,observability,config}` + `tests/{unit,integration,golden,governance}` + `migrations/`.
