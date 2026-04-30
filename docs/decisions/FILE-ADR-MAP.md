@@ -95,7 +95,8 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (URL letta via `TalosSettings.db_url` — CHG-2026-04-30-020 + CHG-2026-04-30-030) |
 | `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
 | `src/talos/ui/` | ADR-0016 | ADR-0013, ADR-0015 (RLS), ADR-0019 | Streamlit dashboard + pages + components |
-| `src/talos/ui/dashboard.py` | ADR-0016 | — | Entrypoint Streamlit |
+| `src/talos/ui/__init__.py` | ADR-0016 | ADR-0013 | Package marker `ui/` (inaugurato CHG-2026-04-30-040); re-export `parse_locked_in`, `DEFAULT_BUDGET_EUR` |
+| `src/talos/ui/dashboard.py` | ADR-0016 | ADR-0019 | Entrypoint Streamlit MVP mono-page (sidebar parametri + file upload CSV + chiamata `run_session` + metric + tabelle Cart/Panchina/enriched). Multi-page split (`pages/`, `components/`, `state.py`) di ADR-0016 e' scope CHG futuro — CHG-2026-04-30-040 |
 | `src/talos/observability/` | ADR-0021 | ADR-0008, ADR-0019 (test catalogo) | structlog config + catalogo eventi |
 | `src/talos/config/` | ADR-0013 | ADR-0014 | pydantic-settings + override layer |
 | `src/talos/config/__init__.py` | ADR-0013 | — | Re-export `TalosSettings`, `get_settings` (inaugurato CHG-2026-04-30-029) |
