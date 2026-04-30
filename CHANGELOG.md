@@ -9,6 +9,25 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-04-30 — Quarta tabella Allegato A: config_overrides (primo con RLS + UNIQUE INDEX)
+
+`ConfigOverride` (tabella `config_overrides`) è la quarta delle 10 tabelle dell'Allegato A. **Primo modello con Row-Level Security (RLS) Zero-Trust attiva** + **primo con indice UNIQUE composito a 4 colonne**. Pattern RLS ratificato per le 3 tabelle che lo richiedono nell'Allegato A (`storico_ordini`, `locked_in`, `config_overrides`). Revision Alembic `027a145f76a8` in catena.
+
+### Added
+- `src/talos/persistence/models/config_override.py` — `class ConfigOverride(Base)` con 8 colonne (id BigInt PK, scope/key TEXT NOT NULL, scope_key/value_numeric/value_text NULL, value_numeric NUMERIC(12,4), updated_at TIMESTAMPTZ default NOW NOT NULL, tenant_id BigInt default 1 NOT NULL) + indice **UNIQUE composito** `idx_config_unique` su `(tenant_id, scope, scope_key, key)`.
+- `migrations/versions/027a145f76a8_create_config_overrides_with_rls.py` — Alembic revision (catena: `Revises: d6ab9ffde2a2`). `op.create_table` + `op.create_index(unique=True)` + `op.execute` per `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation USING (tenant_id = current_setting('talos.tenant_id', true)::bigint)`. Downgrade simmetrico con `DROP POLICY IF EXISTS` + `DISABLE`.
+- `tests/unit/test_config_override_model.py` — 15 test invarianti (12 sul mapper + 3 **schema-aware sul file di migration** che verificano la presenza di RLS / policy / downgrade)
+- `docs/changes/2026-04-30-012-config-overrides-model-with-rls.md`
+
+### Changed
+- `src/talos/persistence/models/__init__.py` — re-export anche `ConfigOverride`
+- `src/talos/persistence/__init__.py` — re-export anche `ConfigOverride`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (11 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **63 passed** (era 48, +15)
+- `alembic upgrade --sql` → DDL + `CREATE UNIQUE INDEX` + `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation` coerenti con Allegato A
+
 ## [0.15.0] — 2026-04-30 — Terza tabella Allegato A: listino_items (primo con FK + relationship)
 
 `ListinoItem` (tabella `listino_items`) è la terza delle 10 tabelle dell'Allegato A. **Primo modello con Foreign Key** (`session_id → sessions.id ON DELETE CASCADE`) e prima **relationship bidirezionale** (`AnalysisSession.listino_items ↔ ListinoItem.session`). Pattern `passive_deletes=True` lato ORM (cascade gestito dal DB). Revision Alembic `d6ab9ffde2a2` in catena.
