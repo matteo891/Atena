@@ -443,6 +443,41 @@ def try_delete_category_referral_fee(
     return True, None
 
 
+def build_session_input(  # noqa: PLR0913 — 7 parametri sessione = la firma del cruscotto
+    factory: sessionmaker[Session] | None,
+    listino_raw: pd.DataFrame,
+    *,
+    budget: float,
+    locked_in: list[str],
+    velocity_target_days: int,
+    veto_roi_threshold: float,
+    lot_size: int,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> SessionInput:
+    """Costruisce `SessionInput` includendo le `referral_fee_overrides` da DB.
+
+    Carica la mappa `category_node → referral_fee_pct` per il tenant via
+    `fetch_category_referral_fees_or_empty` (graceful empty se factory
+    None o DB down). Se la mappa e' vuota, passa `referral_fee_overrides=None`
+    al `SessionInput` (`None` invece di `{}` perche' l'orchestrator
+    tratta entrambi identici, ma `None` e' la "intent" piu' chiara).
+
+    Pattern: questo helper isola la logica di wiring DB↔orchestrator dal
+    flow Streamlit di `main()`, rendendola testabile senza streamlit.
+    """
+    overrides_floats = fetch_category_referral_fees_or_empty(factory, tenant_id=tenant_id)
+    overrides = overrides_floats or None
+    return SessionInput(
+        listino_raw=listino_raw,
+        budget=budget,
+        locked_in=locked_in,
+        velocity_target_days=velocity_target_days,
+        veto_roi_threshold=veto_roi_threshold,
+        lot_size=lot_size,
+        referral_fee_overrides=overrides,
+    )
+
+
 def fetch_existing_session_for_listino(
     factory: sessionmaker[Session],
     listino_raw: pd.DataFrame,
@@ -576,8 +611,9 @@ def main() -> None:
         st.caption(f"Anteprima ({min(len(listino), 20)} righe). Premi 'Esegui Sessione'.")
         return
 
-    inp = SessionInput(
-        listino_raw=listino,
+    inp = build_session_input(
+        factory_for_sidebar,
+        listino,
         budget=budget,
         locked_in=locked_in,
         velocity_target_days=velocity_target,
