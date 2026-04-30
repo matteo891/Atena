@@ -3,7 +3,7 @@ id: CHG-2026-04-30-005
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 4684085
 adr_ref: ADR-0020, ADR-0006, ADR-0009
 ---
 
@@ -123,4 +123,4 @@ Test manuali documentati (ADR-0011 — file di governance/CI, non codice applica
 - ADR: ADR-0020 (errata corrige primaria), ADR-0006 (governance hooks verificati nel job), ADR-0009 (meccanismo errata)
 - Predecessore: CHG-2026-04-30-004 (Bootstrap codice minimale — il `pre-commit-app` qui replicato in CI)
 - Successore atteso: prima estensione di `ci.yml` con job `tests` parziale, accompagnata dal CHG che introduce il primo modulo di sostanza
-- Commit: `<pending>`
+- Commit: `4684085`
