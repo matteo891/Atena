@@ -82,14 +82,35 @@ class LoadedSession:
     (asin, vgp_score, roi). Pensata per `st.dataframe` UI.
 
     Differenza vs `SessionResult` (orchestrator): questo e' il **read-side**
-    del DB, niente `pd.DataFrame` enriched ne' `Cart` con metodi
-    `saturation`/`remaining`. Ricostruzione full e' scope CHG futuro
-    (`load_session_full` se serve).
+    "lite" del DB, niente `pd.DataFrame` enriched ne' `Cart` con metodi
+    `saturation`/`remaining`. Per la ricostruzione esatta usare
+    `load_session_full` (CHG-2026-04-30-052).
     """
 
     summary: SessionSummary
     cart_rows: list[dict[str, object]]
     panchina_rows: list[dict[str, object]]
+
+
+# Colonne emesse da `load_session_full` nel DataFrame `enriched_df`.
+# Sono il sottoinsieme persistito (no fee_fba/cash_inflow/q_m perche' non
+# sono in vgp_results — quelle si ricostruiscono on-demand dalle formule
+# scalari se il caller le richiede).
+_LOADED_ENRICHED_COLUMNS: tuple[str, ...] = (
+    "asin",
+    "cost_eur",
+    "roi",
+    "velocity_monthly",
+    "cash_profit_eur",
+    "roi_norm",
+    "velocity_norm",
+    "cash_profit_norm",
+    "vgp_score",
+    "veto_roi_passed",
+    "kill_mask",
+    "qty_target",
+    "qty_final",
+)
 
 
 def _listino_hash(listino_raw: pd.DataFrame) -> str:
@@ -299,6 +320,180 @@ def load_session_by_id(
             summary=summary,
             cart_rows=cart_rows,
             panchina_rows=panchina_rows,
+        )
+
+
+def load_session_full(
+    db_session: Session,
+    session_id: int,
+    *,
+    tenant_id: int = 1,
+) -> SessionResult | None:
+    """Ricostruisce un `SessionResult` full dal DB (CHG-2026-04-30-052).
+
+    Round-trip rispetto a `save_session_result`: dato un `session_id`,
+    ricostruisce `cart`, `panchina`, `budget_t1`, `enriched_df` come se
+    `run_session` fosse stato eseguito di nuovo. Permette al CFO di
+    riaprire una sessione storica e operare sull'output canonico
+    (es. ri-allocare un cart con locked-in modificato — scope futuro).
+
+    **Drift atteso vs `run_session` originale**:
+    - `enriched_df` non contiene `fee_fba_eur`, `cash_inflow_eur`, `q_m`
+      perche' non sono in `vgp_results` (Allegato A ADR-0015). Sono
+      ricalcolabili on-demand dalle formule scalari.
+    - `Decimal -> float` introduce drift di ordine `1e-9` su roi/velocity/
+      cash_profit. Il `budget_t1` ricalcolato e' coerente entro `1e-6`.
+    - `enriched_df` e' ordinato per `vgp_score DESC, id ASC` (come la
+      pipeline post-`compute_vgp_score`); i tiebreaker dipendono dall'id
+      DB, non dall'ordine pre-allocator originale.
+    - `panchina` ha `qty_final` derivato da `panchina_items.qty_proposed`
+      (snapshot al momento del save).
+
+    :param db_session: SQLAlchemy `Session` aperta.
+    :param session_id: id `AnalysisSession` da caricare.
+    :param tenant_id: filtro tenant (RLS-compatibile). Default 1.
+    :returns: `SessionResult` ricostruito oppure `None` se la sessione
+        non esiste o appartiene a un altro tenant.
+    :raises ValueError: se `session_id <= 0`.
+    """
+    if session_id <= 0:
+        msg = f"session_id invalido: {session_id}. Deve essere > 0."
+        raise ValueError(msg)
+
+    # Lazy import per spezzare il ciclo persistence -> orchestrator/tetris.
+    # Pattern coerente con `_empty_scored_df` in orchestrator.
+    import pandas as pd  # noqa: PLC0415
+
+    from talos.formulas import compounding_t1  # noqa: PLC0415
+    from talos.orchestrator import SessionResult  # noqa: PLC0415
+    from talos.tetris import Cart  # noqa: PLC0415
+    from talos.tetris import CartItem as TetrisCartItem  # noqa: PLC0415
+
+    with with_tenant(db_session, tenant_id):
+        asession = db_session.get(AnalysisSession, session_id)
+        if asession is None or asession.tenant_id != tenant_id:
+            return None
+
+        # 1. Enriched df: VgpResult JOIN ListinoItem (per cost_eur).
+        vgp_stmt = (
+            select(VgpResult, ListinoItem.cost_eur)
+            .join(ListinoItem, VgpResult.listino_item_id == ListinoItem.id)
+            .where(VgpResult.session_id == session_id)
+            .order_by(VgpResult.vgp_score.desc(), VgpResult.id.asc())
+        )
+        records: list[dict[str, object]] = []
+        cash_profit_by_asin: dict[str, float] = {}
+        for vr, cost_eur in db_session.execute(vgp_stmt).all():
+            asin_clean = (vr.asin or "").strip()
+            cash_profit_per_unit = (
+                float(vr.cash_profit_eur) if vr.cash_profit_eur is not None else 0.0
+            )
+            cash_profit_by_asin[asin_clean] = cash_profit_per_unit
+            records.append(
+                {
+                    "asin": asin_clean,
+                    "cost_eur": float(cost_eur),
+                    "roi": float(vr.roi_pct) if vr.roi_pct is not None else 0.0,
+                    "velocity_monthly": (
+                        float(vr.velocity_monthly) if vr.velocity_monthly is not None else 0.0
+                    ),
+                    "cash_profit_eur": cash_profit_per_unit,
+                    "roi_norm": float(vr.roi_norm) if vr.roi_norm is not None else 0.0,
+                    "velocity_norm": (
+                        float(vr.velocity_norm) if vr.velocity_norm is not None else 0.0
+                    ),
+                    "cash_profit_norm": (
+                        float(vr.cash_profit_norm) if vr.cash_profit_norm is not None else 0.0
+                    ),
+                    "vgp_score": float(vr.vgp_score) if vr.vgp_score is not None else 0.0,
+                    "veto_roi_passed": bool(vr.veto_roi_passed),
+                    "kill_mask": bool(vr.kill_switch_triggered),
+                    "qty_target": int(vr.qty_target),
+                    "qty_final": int(vr.qty_final),
+                },
+            )
+        if records:
+            enriched_df = pd.DataFrame(records, columns=list(_LOADED_ENRICHED_COLUMNS))
+        else:
+            enriched_df = pd.DataFrame(
+                {col: pd.Series([], dtype=object) for col in _LOADED_ENRICHED_COLUMNS},
+            )
+
+        # 2. Cart: CartItem JOIN VgpResult (per asin/vgp_score) — ordine append.
+        cart = Cart(budget=float(asession.budget_eur))
+        cart_stmt = (
+            select(CartItem, VgpResult.asin, VgpResult.vgp_score)
+            .join(VgpResult, CartItem.vgp_result_id == VgpResult.id)
+            .where(CartItem.session_id == session_id)
+            .order_by(CartItem.id.asc())
+        )
+        cart_profits: list[float] = []
+        for ci_db, ci_asin, ci_vgp in db_session.execute(cart_stmt).all():
+            asin_clean = (ci_asin or "").strip()
+            qty_int = int(ci_db.qty)
+            unit_cost = float(ci_db.unit_cost_eur)
+            cart.add(
+                TetrisCartItem(
+                    asin=asin_clean,
+                    cost_total=unit_cost * qty_int,
+                    qty=qty_int,
+                    vgp_score=float(ci_vgp) if ci_vgp is not None else 0.0,
+                    locked=bool(ci_db.locked_in),
+                ),
+            )
+            cart_profits.append(cash_profit_by_asin.get(asin_clean, 0.0) * qty_int)
+
+        # 3. Panchina df: PanchinaItem JOIN VgpResult (asin/score/roi/qty_final).
+        panch_stmt = (
+            select(
+                PanchinaItem,
+                VgpResult.asin,
+                VgpResult.vgp_score,
+                VgpResult.roi_pct,
+            )
+            .join(VgpResult, PanchinaItem.vgp_result_id == VgpResult.id)
+            .where(PanchinaItem.session_id == session_id)
+            .order_by(VgpResult.vgp_score.desc(), PanchinaItem.id.asc())
+        )
+        panch_records: list[dict[str, object]] = []
+        for pi_db, pi_asin, pi_vgp, pi_roi in db_session.execute(panch_stmt).all():
+            qty_proposed = int(pi_db.qty_proposed)
+            panch_records.append(
+                {
+                    "asin": (pi_asin or "").strip(),
+                    "qty_proposed": qty_proposed,
+                    # `qty_final` mirror of `qty_proposed` (save lo scrive da
+                    # row["qty_final"] originale): coerente con consumer
+                    # downstream che cercano `qty_final` nel panchina df.
+                    "qty_final": qty_proposed,
+                    "vgp_score": float(pi_vgp) if pi_vgp is not None else 0.0,
+                    "roi": float(pi_roi) if pi_roi is not None else 0.0,
+                },
+            )
+        panchina_df = (
+            pd.DataFrame(panch_records)
+            if panch_records
+            else pd.DataFrame(
+                {
+                    "asin": pd.Series([], dtype=object),
+                    "qty_proposed": pd.Series([], dtype=int),
+                    "qty_final": pd.Series([], dtype=int),
+                    "vgp_score": pd.Series([], dtype=float),
+                    "roi": pd.Series([], dtype=float),
+                },
+            )
+        )
+
+        # 4. Budget T+1: ricalcolato via formula F3 (R-07 100% reinvestibile).
+        # NON persistito in DB — il valore al save originale e' deterministico
+        # da `cart_profits` e `budget_eur`, ricalcolarlo evita drift Decimal.
+        budget_t1 = compounding_t1(float(asession.budget_eur), cart_profits)
+
+        return SessionResult(
+            cart=cart,
+            panchina=panchina_df,
+            budget_t1=budget_t1,
+            enriched_df=enriched_df,
         )
 
 

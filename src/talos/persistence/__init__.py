@@ -42,6 +42,7 @@ from talos.persistence.session_repository import (
     find_session_by_hash,
     list_recent_sessions,
     load_session_by_id,
+    load_session_full,
     save_session_result,
 )
 
@@ -69,6 +70,7 @@ __all__ = [
     "list_category_referral_fees",
     "list_recent_sessions",
     "load_session_by_id",
+    "load_session_full",
     "make_session_factory",
     "save_session_result",
     "session_scope",
