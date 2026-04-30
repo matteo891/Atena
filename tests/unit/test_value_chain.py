@@ -23,7 +23,13 @@ from math import isclose
 
 import pytest
 
-from talos.formulas import cash_inflow_eur, cash_profit_eur, fee_fba_manual, roi
+from talos.formulas import (
+    cash_inflow_eur,
+    cash_profit_eur,
+    compounding_t1,
+    fee_fba_manual,
+    roi,
+)
 from talos.vgp import is_vetoed_by_roi
 
 pytestmark = pytest.mark.unit
@@ -90,3 +96,61 @@ def test_chain_e2e_pass_or_veto(
     assert vetoed is expected_vetoed, (
         f"scenario '{label}': roi={roi_value:.4f}, expected_vetoed={expected_vetoed}, got={vetoed}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Rollup F3 (CHG-2026-04-30-033) — chiusura ciclo finanziario di sessione
+# ---------------------------------------------------------------------------
+
+
+def test_chain_with_rollup_excludes_vetoed_profits() -> None:
+    """Rollup anchor: 5 ASIN (2 vetoed); Budget_T+1 somma solo i non-vetoed.
+
+    Riusa i 5 scenari di `test_chain_e2e_pass_or_veto`. La pipeline
+    realistica del rollup esclude i vetati prima del compounding (R-08
+    e R-04 sono filtri a monte; R-07 reinveste il netto).
+    """
+    scenarios = [
+        (200.0, 0.08, 100.0),  # low_value passes
+        (500.0, 0.15, 300.0),  # mid_value passes
+        (1000.0, 0.08, 600.0),  # high_value passes
+        (122.0, 0.15, 110.0),  # loss_leader vetoed (escluso)
+        (200.0, 0.08, 158.0),  # thin_margin vetoed (escluso)
+    ]
+    surviving_profits: list[float] = []
+    for buy_box, ref, costo in scenarios:
+        fee = fee_fba_manual(buy_box)
+        inflow = cash_inflow_eur(buy_box, fee, ref)
+        profit = cash_profit_eur(inflow, costo)
+        roi_value = roi(profit, costo)
+        if not is_vetoed_by_roi(roi_value):
+            surviving_profits.append(profit)
+
+    # Atteso: 3 sopravvissuti (64.5922 + 84.9226 + 245.4756 = 394.9904)
+    assert len(surviving_profits) == 3
+    budget_t1 = compounding_t1(1000.0, surviving_profits)
+    assert isclose(budget_t1, 1394.9957, abs_tol=_TOL_EUR)
+
+
+def test_chain_chained_three_sessions_compounds_budget() -> None:
+    """T -> T+1 -> T+2 -> T+3: budget cresce monotono in 3 sessioni in sequenza.
+
+    Variante streaming del rollup: ogni sessione compounda 1 ASIN. Verifica
+    associativita' della somma: il risultato finale e' identico al rollup
+    batch (1394.99) sui 3 happy-path.
+    """
+    sessions = [
+        (200.0, 0.08, 100.0),
+        (500.0, 0.15, 300.0),
+        (1000.0, 0.08, 600.0),
+    ]
+    budget = 1000.0
+    for buy_box, ref, costo in sessions:
+        fee = fee_fba_manual(buy_box)
+        inflow = cash_inflow_eur(buy_box, fee, ref)
+        profit = cash_profit_eur(inflow, costo)
+        roi_value = roi(profit, costo)
+        if not is_vetoed_by_roi(roi_value):
+            budget = compounding_t1(budget, [profit])
+
+    assert isclose(budget, 1394.9957, abs_tol=_TOL_EUR)
