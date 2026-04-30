@@ -3,7 +3,7 @@ id: CHG-2026-04-30-003
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: b92fe87
 adr_ref: ADR-0006, ADR-0014, ADR-0020, ADR-0009
 ---
 
@@ -112,5 +112,5 @@ Test manuali documentati (governance — ADR-0011). Modifiche solo a hook + ADR;
 - ADR: ADR-0006 (errata corrige primaria), ADR-0014 + ADR-0020 (errata corrige secondarie per stato), ADR-0009 (meccanismo)
 - Predecessore: CHG-2026-04-30-002 (tooling GitNexus + tag stack-frozen)
 - Successore atteso: CHG-2026-04-30-004 (Bootstrap minimale codice — `pyproject.toml`, `src/talos/__init__.py`, `tests/conftest.py`, `scripts/hooks/pre-commit-app`)
-- Commit: `<pending>`
+- Commit: `b92fe87`
 - Issue: HARD-STOP risolto (Leader 2026-04-30 "rompi pure l'hard stop e continua")
