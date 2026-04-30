@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 sera — commit `e7c2666` (feat: replay_session what-if CHG-056). Tag: 4 milestone + 10 checkpoint (post checkpoint-10 imminente). Catena CHG odierna: 001→...→**056**. **Tabelle Allegato A coperte: 10/10** ✓ + **484 test PASS** (387 unit/gov/golden + 97 integration). **Indice GitNexus** stale ~12 commit dopo i CHG odierni.
+> **Ultimo aggiornamento:** 2026-04-30 sera — checkpoint-10 su `1c2631c` (post CHG-056 `e7c2666`). Tag: 4 milestone + **10 checkpoint** (`checkpoint/2026-04-30-10` creato e pushato). Catena CHG odierna: 001→...→**056**. **Tabelle Allegato A coperte: 10/10** ✓ + **484 test PASS** (387 unit/gov/golden + 97 integration). **Indice GitNexus** stale ~14 commit dopo i CHG odierni.
 > **Sessione corrente:** TALOS sera (modalità "macina" autorizzata) — Round CHG-052..056. **CRUD-light + replay completo:** load_full + delete_config + UI Reset + UI overrides wiring + replay_session. Loop CFO→DB→UI→orchestrator chiuso. Soglia checkpoint-10 raggiunta (5 CHG significativi).
 
 ---
@@ -182,6 +182,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-054~~ | ~~delete_config_override + UI Reset~~ | Chiuso 2026-04-30 sera — 475 PASS, triade CRUD config_overrides chiusa | — |
 | ~~CHG-055~~ | ~~build_session_input wires overrides UI→orchestrator~~ | Chiuso 2026-04-30 sera — 478 PASS, loop CFO→DB→UI→orchestrator chiuso | — |
 | ~~CHG-056~~ | ~~replay_session what-if su SessionResult ricaricato~~ | Chiuso 2026-04-30 sera — 484 PASS, primo consumer reale load_session_full | — |
+| ~~CHECKPOINT-10~~ | ~~Tag `checkpoint/2026-04-30-10`~~ | Creato e pushato su `1c2631c`. Finestra: CHG-052..056 | — |
 | **NEXT** | **Prossimi step possibili** | Configurabilità aperta | (e) **lookup `Referral_Fee` per categoria** (estensione config_repository con `set/get_text` o numeric per categoria — pattern testato); (β) `upsert_session` decisione Leader semantica; (z) migrazione a `structlog.bind(session_id, tenant_id)` context tracing; (q) refactor UI multi-page ADR-0016; (r) **`io_/extract` Samsung** (Playwright + Tesseract + Keepa) — last big block; (s) golden Samsung 1000 ASIN; (y) `load_session_full`; chiusi: (a/a'/a''/b/b''/c/d/d'/f/g/h/i/j/k/l/m/n/p/t/u/v/x/α) |
 | ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
