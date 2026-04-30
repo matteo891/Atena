@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `464e4f3` (refactor engine.py → TalosSettings.db_url, CHG-030). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / 04 target `3a5e2ed`). Catena CHG odierna: 001→...→030. **Tabelle Allegato A coperte: 10/10** ✓ + **242 test PASS** (221 unit/governance + 21 integration). **Indice GitNexus operativo** (1825 / 2113 / 13 / 4).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `94c31de` (chore backfill hash 464e4f3 + STATUS post CHG-030). Tag: `milestone/stack-frozen-v0.9.0` + **4 checkpoint** (01 / 02 / 03 / 04 target `3a5e2ed`). Catena CHG odierna: 001→...→030. **Tabelle Allegato A coperte: 10/10** ✓ + **242 test PASS** (221 unit/governance + 21 integration). **Indice GitNexus operativo** (1825 / 2113 / 13 / 4).
 > **Sessione corrente:** TALOS — config layer pydantic-settings (CHG-029) + primo consumatore reale `engine.py` via `TalosSettings.db_url` (CHG-030, chiude debito esplicito di CHG-029) + catena del valore scalare F1→F2→ROI→Veto R-08 + sentinella e2e (CHG-022/025/026/027/028) + chiusura ISS-001 + due errata ADR-0010 (CHG-023/024).
 
 ---
