@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-056
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: e7c2666
 adr_ref: ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -171,4 +171,4 @@ zero modifiche a simboli esistenti).
 - Successore atteso: UI bottone "Re-allocate"; confronto pre/post;
   `veto_roi_threshold_override` (richiede re-`compute_vgp_score`);
   evento canonico `session.replayed`.
-- Commit: pending (backfill).
+- Commit: `e7c2666`.
