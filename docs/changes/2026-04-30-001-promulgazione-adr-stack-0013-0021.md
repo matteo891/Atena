@@ -3,7 +3,7 @@ id: CHG-2026-04-30-001
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 8cd06f7
 adr_ref: ADR-0012, ADR-0013, ADR-0014, ADR-0015, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021
 ---
 
@@ -151,5 +151,5 @@ Test manuali documentati (governance — ADR-0011). Codice applicativo non ancor
 - ADR: ADR-0012 (step [6] completato), ADR-0013, ADR-0014, ADR-0015, ADR-0016, ADR-0017, ADR-0018, ADR-0019, ADR-0020, ADR-0021
 - Predecessore: CHG-2026-04-29-009 (Frozen vision)
 - Successore: CHG-2026-04-30-002 (tooling GitNexus + tag milestone)
-- Commit: `<pending>`
+- Commit: `8cd06f7`
 - Issue: ESP-007 (chiusa con questo CHG), ISS-002 (chiusa con questo CHG), HARD-STOP (attivata)
