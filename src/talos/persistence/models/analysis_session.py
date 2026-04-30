@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from talos.persistence.models.cart_item import CartItem
     from talos.persistence.models.listino_item import ListinoItem
     from talos.persistence.models.panchina_item import PanchinaItem
+    from talos.persistence.models.storico_ordine import StoricoOrdine
     from talos.persistence.models.vgp_result import VgpResult
 
 
@@ -84,4 +85,9 @@ class AnalysisSession(Base):
     panchina_items: Mapped[list[PanchinaItem]] = relationship(
         back_populates="session",
         passive_deletes=True,
+    )
+    # Storico ordini: NO passive_deletes/cascade (registro permanente,
+    # FK senza CASCADE — cancellazione padre fallirà se ci sono storico).
+    storico_ordini: Mapped[list[StoricoOrdine]] = relationship(
+        back_populates="session",
     )

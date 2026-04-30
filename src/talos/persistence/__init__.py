@@ -16,6 +16,7 @@ from talos.persistence.models import (
     ConfigOverride,
     ListinoItem,
     PanchinaItem,
+    StoricoOrdine,
     VgpResult,
 )
 
@@ -27,5 +28,6 @@ __all__ = [
     "ConfigOverride",
     "ListinoItem",
     "PanchinaItem",
+    "StoricoOrdine",
     "VgpResult",
 ]

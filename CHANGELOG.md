@@ -9,6 +9,27 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-04-30 — Ottava tabella Allegato A: storico_ordini (R-03 registro permanente + RLS)
+
+`StoricoOrdine` (tabella `storico_ordini`) è l'ottava delle 10 tabelle dell'Allegato A. **R-03 ORDER-DRIVEN MEMORY**: registro permanente degli ordini. Differenza chiave: FK `session_id`/`cart_item_id` **senza** `ON DELETE CASCADE` (aderenza letterale Allegato A — un registro contabile non si cascade-cancella). Seconda tabella con RLS Zero-Trust (pattern identico a `config_overrides`). Revision Alembic `a074ee67895c`.
+
+### Added
+- `src/talos/persistence/models/storico_ordine.py` — `class StoricoOrdine(Base)` con 8 colonne (id BigInt PK, session_id+cart_item_id BigInt FK NOT NULL **senza CASCADE**, asin CHAR(10) NOT NULL, qty Integer NOT NULL, unit_cost_eur Numeric(12,2) NOT NULL, ordered_at TIMESTAMPTZ default NOW NOT NULL, tenant_id BigInt default 1 NOT NULL). Relationship `session: Mapped[AnalysisSession]` + `cart_item: Mapped[CartItem]` (no `passive_deletes`/cascade — registro permanente).
+- `migrations/versions/a074ee67895c_create_storico_ordini_with_rls.py` — Alembic revision (catena: `Revises: 618105641c27`). `op.create_table` con 2 `sa.ForeignKey` **senza `ondelete=`** + `op.execute` per `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation`. Downgrade simmetrico con `DROP POLICY IF EXISTS` + `DISABLE`.
+- `tests/unit/test_storico_ordine_model.py` — 17 test invarianti incluso 2 test espliciti per `fk.ondelete is None` + 3 schema-aware sul file di migration per RLS / policy / downgrade.
+- `docs/changes/2026-04-30-016-storico-ordini-model-with-rls.md`
+
+### Changed
+- `src/talos/persistence/models/analysis_session.py` — relationship `storico_ordini: Mapped[list[StoricoOrdine]]` aggiunta **senza `passive_deletes`** (registro permanente)
+- `src/talos/persistence/models/cart_item.py` — relationship `storico_ordini: Mapped[list[StoricoOrdine]]` aggiunta **senza `passive_deletes`**
+- `src/talos/persistence/models/__init__.py` — re-export `StoricoOrdine`
+- `src/talos/persistence/__init__.py` — re-export `StoricoOrdine`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (15 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **119 passed** (era 102, +17)
+- `alembic upgrade --sql` → DDL + 2 FK senza CASCADE + RLS + POLICY coerenti con Allegato A
+
 ## [0.19.0] — 2026-04-30 — Settima tabella Allegato A: panchina_items (R-09 archivio)
 
 `PanchinaItem` (tabella `panchina_items`) è la settima delle 10 tabelle dell'Allegato A. R-09 archivio degli ASIN con `vgp_score > 0` non scelti per saturazione del budget. Schema isomorfo a `cart_items` ma snello (4 colonne, no `unit_cost_eur`/`locked_in`). Revision Alembic `618105641c27`.

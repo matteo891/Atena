@@ -24,6 +24,7 @@ from talos.persistence.base import Base
 
 if TYPE_CHECKING:
     from talos.persistence.models.analysis_session import AnalysisSession
+    from talos.persistence.models.storico_ordine import StoricoOrdine
     from talos.persistence.models.vgp_result import VgpResult
 
 
@@ -59,3 +60,7 @@ class CartItem(Base):
     # ── Relationships ────────────────────────────────────────────────────
     session: Mapped[AnalysisSession] = relationship(back_populates="cart_items")
     vgp_result: Mapped[VgpResult] = relationship(back_populates="cart_items")
+    # Storico ordini: NO cascade (registro permanente, FK senza CASCADE).
+    storico_ordini: Mapped[list[StoricoOrdine]] = relationship(
+        back_populates="cart_item",
+    )
