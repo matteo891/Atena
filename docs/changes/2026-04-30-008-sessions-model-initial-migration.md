@@ -3,7 +3,7 @@ id: CHG-2026-04-30-008
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 4dcca3c
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -143,4 +143,4 @@ Nuovi test (10): 1 modificato in `test_persistence_skeleton.py` (asserzione inve
 - Predecessore: CHG-2026-04-30-007 (persistence skeleton)
 - Tag intermedio: `checkpoint/2026-04-30-01` (post CHG-007)
 - Successore atteso: prossima tabella dell'Allegato A (probabilmente `asin_master` come lookup table indipendente, o `listino_items` con FK a `sessions`)
-- Commit: `<pending>`
+- Commit: `4dcca3c`
