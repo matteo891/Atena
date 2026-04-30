@@ -3,7 +3,7 @@ id: CHG-2026-04-30-015
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 69cb614
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019, ADR-0018
 ---
 
@@ -86,4 +86,4 @@ Nuovi test (10): 7 invarianti strutturali (tablename, metadata, 4 colonne, PK, 2
 - ADR: ADR-0015 (Allegato A — schema), ADR-0018 (consumatore: `tetris/panchina.py` — R-09 archiviazione), ADR-0014, ADR-0013, ADR-0019
 - Predecessore: CHG-2026-04-30-014 (`cart_items` — schema isomorfo)
 - Successore atteso: prossima tabella Allegato A — `storico_ordini` (RLS + FK doppia, R-03 ORDER-DRIVEN MEMORY) o `locked_in` (RLS standalone, R-04)
-- Commit: `<pending>`
+- Commit: `69cb614`
