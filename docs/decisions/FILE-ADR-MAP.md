@@ -60,7 +60,8 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/orchestrator.py` | ADR-0018 | ADR-0013, ADR-0019 | `run_session(SessionInput) -> SessionResult` end-to-end (enrich + score + tetris + panchina + compounding); file top-level (no directory) ratificato dal Leader 2026-04-30 — gap ADR risolto inline (passa Test di Conformita' #1 ADR-0013 perche' `find -type d` non vede file) — CHG-2026-04-30-039 |
 | `tests/` | ADR-0019 | ADR-0002, ADR-0011 | unit / integration / golden / governance |
 | `tests/integration/` | ADR-0019 | ADR-0015 (RLS + audit), ADR-0011 (test gate) | DB reale via env var `TALOS_DB_URL`; skip module-level se assente — CHG-2026-04-30-019 |
-| `migrations/` | ADR-0015 | — | Alembic; initial migration = Allegato A di ADR-0015; `e965e1b81041` aggiunge UNIQUE INDEX `ux_sessions_tenant_hash` (CHG-2026-04-30-047) |
+| `migrations/` | ADR-0015 | — | Alembic; initial migration = Allegato A di ADR-0015; `e965e1b81041` aggiunge UNIQUE INDEX `ux_sessions_tenant_hash` (CHG-047); `e8b80f77961b` ricrea `idx_config_unique` con `NULLS NOT DISTINCT` (CHG-050) |
+| `src/talos/persistence/config_repository.py` | ADR-0015 | ADR-0014, ADR-0019 | `get_config_override_numeric` + `set_config_override_numeric` (UPSERT `ON CONFLICT`) per `(tenant_id, scope, scope_key, key)` con scope ∈ {global, category, asin}; `with_tenant` Zero-Trust — CHG-2026-04-30-050 |
 | `pyproject.toml` | ADR-0013, ADR-0014 | — | uv + ruff + mypy + pytest config |
 | `uv.lock` | ADR-0013, ADR-0014 | — | Versionato; aggiornato con `uv sync` |
 | `scripts/setup-dev.sh` | ADR-0013 | — | Bootstrap ambiente dev (futuro) |

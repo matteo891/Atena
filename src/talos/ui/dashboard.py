@@ -32,11 +32,13 @@ from talos.persistence import (
     SessionSummary,
     create_app_engine,
     find_session_by_hash,
+    get_config_override_numeric,
     list_recent_sessions,
     load_session_by_id,
     make_session_factory,
     save_session_result,
     session_scope,
+    set_config_override_numeric,
 )
 from talos.persistence.session_repository import _listino_hash
 from talos.tetris import InsufficientBudgetError
@@ -52,6 +54,8 @@ if TYPE_CHECKING:
 DEFAULT_BUDGET_EUR: float = 10_000.0
 # Tenant default per persistenza (MVP single-tenant, ADR-0015).
 DEFAULT_TENANT_ID: int = 1
+# Chiave config override per soglia ROI (CHG-050).
+CONFIG_KEY_VETO_ROI: str = "veto_roi_pct"
 
 
 def get_session_factory_or_none() -> sessionmaker[Session] | None:
@@ -107,8 +111,14 @@ def parse_locked_in(raw: str) -> list[str]:
     return [a.strip() for a in raw.split(",") if a.strip()]
 
 
-def _render_sidebar() -> tuple[float, int, float, int]:
+def _render_sidebar(
+    factory: sessionmaker[Session] | None = None,
+) -> tuple[float, int, float, int]:
     """Sidebar: parametri sessione configurabili dal CFO.
+
+    Se `factory` e' disponibile, la soglia veto ROI viene pre-caricata da
+    `config_overrides` (override persistente per tenant — CHG-050).
+    Bottone "Salva default tenant" per persistere la soglia corrente.
 
     Returns: (budget, velocity_target_days, veto_roi_threshold, lot_size).
     """
@@ -128,15 +138,26 @@ def _render_sidebar() -> tuple[float, int, float, int]:
         step=1,
         help="L05: slider 7..30 giorni, default 15. Modifica la quantita' target F4.",
     )
+    persisted_threshold = fetch_veto_roi_threshold_or_default(factory)
     veto_threshold = st.sidebar.slider(
         "Veto ROI Minimo",
         min_value=0.01,
         max_value=0.50,
-        value=DEFAULT_ROI_VETO_THRESHOLD,
+        value=persisted_threshold,
         step=0.01,
         format="%.2f",
         help="R-08: ASIN con ROI sotto soglia hanno vgp_score=0 (default 8%).",
     )
+    if factory is not None and st.sidebar.button(
+        "Salva soglia ROI come default tenant",
+        key="save_threshold_btn",
+    ):
+        ok, err = try_persist_veto_roi_threshold(factory, threshold=float(veto_threshold))
+        if ok:
+            st.sidebar.success("Soglia salvata.")
+        else:  # pragma: no cover - UI-only error path
+            st.sidebar.error(f"Salvataggio fallito: {err}")
+
     lot_size = st.sidebar.number_input(
         "Lot Size Fornitore",
         min_value=1,
@@ -210,6 +231,55 @@ def fetch_loaded_session_or_none(
             return load_session_by_id(db, session_id, tenant_id=tenant_id)
     except Exception:  # noqa: BLE001 - graceful UI fallback
         return None
+
+
+def fetch_veto_roi_threshold_or_default(
+    factory: sessionmaker[Session] | None,
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+    default: float = DEFAULT_ROI_VETO_THRESHOLD,
+) -> float:
+    """Lookup persistente della soglia veto ROI per il tenant; fallback a `default`.
+
+    Ritorna `default` se factory e' None, query fallisce, o nessun override
+    e' stato registrato. Pattern: la UI carica al boot la soglia salvata,
+    ma graceful degrade se DB non disponibile.
+    """
+    if factory is None:
+        return default
+    try:
+        with session_scope(factory) as db:
+            value = get_config_override_numeric(
+                db,
+                key=CONFIG_KEY_VETO_ROI,
+                tenant_id=tenant_id,
+            )
+    except Exception:  # noqa: BLE001 - graceful UI fallback
+        return default
+    return float(value) if value is not None else default
+
+
+def try_persist_veto_roi_threshold(
+    factory: sessionmaker[Session],
+    *,
+    threshold: float,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, str | None]:
+    """UPSERT della soglia veto ROI come override persistente per il tenant.
+
+    :returns: tupla `(success, error_message)`.
+    """
+    try:
+        with session_scope(factory) as db:
+            set_config_override_numeric(
+                db,
+                key=CONFIG_KEY_VETO_ROI,
+                value=threshold,
+                tenant_id=tenant_id,
+            )
+    except Exception as exc:  # noqa: BLE001 - graceful UI feedback
+        return False, str(exc)
+    return True, None
 
 
 def fetch_existing_session_for_listino(
@@ -314,7 +384,8 @@ def main() -> None:
         "Cruscotto di sessione: input listino + budget → Cart + Panchina + Budget T+1.",
     )
 
-    budget, velocity_target, veto_threshold, lot_size = _render_sidebar()
+    factory_for_sidebar = get_session_factory_or_none()
+    budget, velocity_target, veto_threshold, lot_size = _render_sidebar(factory_for_sidebar)
 
     uploaded = st.file_uploader(
         "Carica Listino di Sessione (CSV)",

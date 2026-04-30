@@ -14,23 +14,29 @@ Modulo non importato dalla pipeline core: per lanciare l'app
 """
 
 from talos.ui.dashboard import (
+    CONFIG_KEY_VETO_ROI,
     DEFAULT_BUDGET_EUR,
     DEFAULT_TENANT_ID,
     fetch_existing_session_for_listino,
     fetch_loaded_session_or_none,
     fetch_recent_sessions_or_empty,
+    fetch_veto_roi_threshold_or_default,
     get_session_factory_or_none,
     parse_locked_in,
     try_persist_session,
+    try_persist_veto_roi_threshold,
 )
 
 __all__ = [
+    "CONFIG_KEY_VETO_ROI",
     "DEFAULT_BUDGET_EUR",
     "DEFAULT_TENANT_ID",
     "fetch_existing_session_for_listino",
     "fetch_loaded_session_or_none",
     "fetch_recent_sessions_or_empty",
+    "fetch_veto_roi_threshold_or_default",
     "get_session_factory_or_none",
     "parse_locked_in",
     "try_persist_session",
+    "try_persist_veto_roi_threshold",
 ]
