@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `750b70d` (CHG-022 `formulas/fee_fba.py` — primo modulo applicativo verbatim L11b). Tag: `milestone/stack-frozen-v0.9.0` + 2 checkpoint. Catena CHG odierna: 001→...→022. **Tabelle Allegato A coperte: 10/10** ✓ + **192 test PASS** (171 unit/governance + 21 integration).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `5ba7e93` (backfill governance post CHG-022). Tag: `milestone/stack-frozen-v0.9.0` + **3 checkpoint** (01 / 02 / 03 — quest'ultimo già su `e563e59` post-CHG-018). Catena CHG odierna: 001→...→022. **Tabelle Allegato A coperte: 10/10** ✓ + **192 test PASS** (171 unit/governance + 21 integration).
 > **Sessione corrente:** TALOS — **prima formula applicativa scritta** (1/9 aree applicative inaugurata). Frontiera infrastruttura→prodotto attraversata: `fee_fba_manual` è il primo file in `src/talos/` che tocca il dominio Talos. Successivi: F1 `cash_inflow.py` o salto direzione su altre formule.
 
 ---
@@ -100,7 +100,8 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-020~~ | ~~DB lifecycle: engine + session + with_tenant~~ | Chiuso 2026-04-30 — 11 unit + 4 integration verdi | — |
 | ~~CHG-021~~ | ~~scripts/db_bootstrap.py: ruoli + FORCE RLS~~ | Chiuso 2026-04-30 — 9 integration verdi | — |
 | ~~CHG-022~~ | ~~formulas/fee_fba.py: prima formula applicativa~~ | Chiuso 2026-04-30 — 8 test verdi | — |
-| **CHECKPOINT-03** | Tag `checkpoint/2026-04-30-03` proposto | In attesa autorizzazione | Soglia ampiamente superata: CHG-014→022 = 9 commit significativi |
+| ~~CHECKPOINT-03~~ | ~~Tag `checkpoint/2026-04-30-03`~~ | Già esistente su `e563e59` (post-CHG-018, creato 15:50 — STATUS era stale fino a 2026-04-30/CHG-022) | — |
+| **CHECKPOINT-04** | Prossimo restore point | A soglia | Da CHG-018 in poi: 4/5 commit significativi (019, 020, 021, 022). Il prossimo CHG significativo trigggera la proposta di tag |
 | **CHG-023** | F1 `formulas/cash_inflow.py` o config layer | Prossimo candidato | (a) F1 `cash_inflow_eur = buy_box - fee_fba - (buy_box * referral_fee)` consuma `fee_fba_manual`; (b) `config/` pydantic-settings centralizza env var |
 | **NEXT** | **Prossimi step possibili** | In attesa | (a) CHG-023 F1 cash_inflow; (b) F2 cash_profit + ROI in CHG separato; (c) `vgp/normalize.py` (versione vettoriale L04b min-max); (d) config layer; (e) `milestone/first-formula-v1.0.0` |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
