@@ -9,6 +9,6 @@ le veda tutte automaticamente in `alembic revision --autogenerate`.
 """
 
 from talos.persistence.base import Base
-from talos.persistence.models import AnalysisSession
+from talos.persistence.models import AnalysisSession, AsinMaster
 
-__all__ = ["AnalysisSession", "Base"]
+__all__ = ["AnalysisSession", "AsinMaster", "Base"]

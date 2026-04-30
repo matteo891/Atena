@@ -9,6 +9,28 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-04-30 — Seconda tabella Allegato A: asin_master (anagrafica ASIN)
+
+`AsinMaster` (tabella `asin_master`) è la seconda delle 10 tabelle dell'Allegato A. Lookup table standalone (no FK) con tutti i campi anagrafici e di connettività. Revision Alembic `d4a7e3cefbb1` in catena alla `9d9ebe778e40` di CHG-008. Migration validata offline.
+
+### Added
+- `src/talos/persistence/models/asin_master.py` — `class AsinMaster(Base)` con 11 colonne (asin CHAR(10) PK, title/brand TEXT NOT NULL, model/connectivity/color_family/category_node TEXT NULL, rom_gb/ram_gb Integer NULL, enterprise Boolean default false NOT NULL, last_seen_at TIMESTAMPTZ default NOW NOT NULL) + indice secondario `idx_asin_brand_model` su (brand, model)
+- `migrations/versions/d4a7e3cefbb1_create_asin_master.py` — Alembic revision (catena: `Revises: 9d9ebe778e40`)
+- `tests/unit/test_asin_master_model.py` — 11 test invarianti (tablename, columns set, PK CHAR(10), NOT NULL, nullable, defaults, indice, costruzione runtime)
+- `docs/changes/2026-04-30-009-asin-master-model.md`
+
+### Changed
+- `src/talos/persistence/models/__init__.py` — re-export anche `AsinMaster`
+- `src/talos/persistence/__init__.py` — re-export anche `AsinMaster`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (9 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **36 passed**
+- `alembic upgrade head --sql` → DDL `asin_master` + indice `idx_asin_brand_model` coerente con Allegato A
+
+### Open question per il Leader
+- L'Allegato A di ADR-0015 non prescrive `NOT NULL` esplicito su `started_at` (CHG-008), `enterprise`, `last_seen_at` (CHG-009). I modelli applicano la convenzione "colonna con `server_default` valido → `nullable=False` nell'ORM" per coerenza interna e chiarezza tipi Python. Va ratificata via errata corrige di ADR-0015 (chiarisce la convenzione) o errata inversa sui modelli (strict letterale).
+
 ## [0.13.0] — 2026-04-30 — Primo modello concreto + initial migration (sessions, Allegato A)
 
 Nucleo centrale del DB pronto. `AnalysisSession` (tabella `sessions`, 7 colonne dell'Allegato A) è il primo dei 10 modelli prescritti da ADR-0015. Migration Alembic `9d9ebe778e40` validata in offline mode (`alembic upgrade head --sql`): DDL output coerente verbatim con l'Allegato A. Tag `checkpoint/2026-04-30-01` su HEAD pre-CHG-008 (5 CHG significativi post stack-frozen).
