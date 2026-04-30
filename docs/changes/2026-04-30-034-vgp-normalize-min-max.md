@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-034
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 7bd60dc
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -152,4 +152,4 @@ caller-of `score.py` quando quello sara' implementato (CHG successivo).
 - Successore atteso: `vgp/score.py` con `compute_vgp_session(listino, config)` —
   consumatore principale di `min_max_normalize` su 3 colonne (ROI, Velocity,
   Cash_Profit)
-- Commit: `[pending]`
+- Commit: `7bd60dc`
