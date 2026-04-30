@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — tag `milestone/first-formula-v1.0.0` su `cc4070e` (catena scalare formule chiusa, blindata da sentinella e2e). Tag: `milestone/stack-frozen-v0.9.0` + **`milestone/first-formula-v1.0.0`** + **5 checkpoint** (01..05 target `cf11e6c`). Catena CHG odierna: 001→...→033. **Tabelle Allegato A coperte: 10/10** ✓ + **258 test PASS** (237 unit/governance + 21 integration). **Indice GitNexus operativo** (1825 / 2113 / 13 / 4).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `7a52b7d` (chore backfill hash cc4070e CHG-033 + STATUS post milestone/first-formula-v1.0.0). Tag: `milestone/stack-frozen-v0.9.0` + **`milestone/first-formula-v1.0.0`** + **5 checkpoint** (01..05 target `cf11e6c`). Catena CHG odierna: 001→...→033. **Tabelle Allegato A coperte: 10/10** ✓ + **258 test PASS** (237 unit/governance + 21 integration). **Indice GitNexus operativo** (1825 / 2113 / 13 / 4).
 > **Sessione corrente:** TALOS — config layer pydantic-settings (CHG-029) + 2 consumatori reali (CHG-030 engine, CHG-031 db_bootstrap, centralizzazione completa env var DB) + **catena scalare formule chiusa**: F1 cash_inflow → F2 cash_profit → F3 compounding (CHG-032) + ROI + Veto R-08 + sentinella e2e estesa con rollup F3 (CHG-022/025/026/027/028/033). Milestone `first-formula-v1.0.0` su `cc4070e`. Chiusura ISS-001 + due errata ADR-0010 (CHG-023/024).
 
 ---
