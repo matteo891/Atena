@@ -25,10 +25,13 @@ _SRC_ROOT = _PROJECT_ROOT / "src" / "talos"
 # Volutamente permissiva: meglio falsi positivi rilevati e annotati con un
 # commento esplicito (regola formale ruff può arrivare in futuro) che
 # scarti silenziosi non rilevati.
+# Fix CHG-2026-04-30-046: `re.MULTILINE` su `^\s*continue\b` per matchare
+# l'inizio di ogni riga (prima il regex matchava solo l'inizio del file —
+# bug silente che aveva esentato i moduli vgp/tetris a torto).
 _DROP_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\.drop\("),
     re.compile(r"\.skip\("),
-    re.compile(r"^\s*continue\b"),
+    re.compile(r"^\s*continue\b", re.MULTILINE),
 )
 
 # I file in cui un eventuale "continue" è benigno (es. governance/test scaffolding).

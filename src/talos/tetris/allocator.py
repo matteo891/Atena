@@ -27,11 +27,19 @@ Versione "happy path" senza:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
+
+
+_logger = logging.getLogger(__name__)
+# Eventi canonici emessi da questo modulo (catalogo ADR-0021 + governance).
+# Pattern stringa-letterale per consentire al governance test
+# `tests/governance/test_log_events_catalog.py` di rilevarli via grep:
+# - "tetris.skipped_budget": riga con cost_total > budget residuo (Pass 2 R-06).
 
 
 # Soglia saturazione R-06 verbatim PROJECT-RAW.md riga 224.
@@ -187,6 +195,15 @@ def allocate_tetris(  # noqa: PLR0913, C901 — 4 col-name override + due passi 
         cost_total = float(row[cost_col]) * qty_value
         if cost_total > cart.remaining:
             # R-06 letterale: prosegue cercando item con VGP inferiore ma costo compatibile.
+            # Evento canonico (R-01 NO SILENT DROPS, ADR-0021).
+            _logger.debug(
+                "tetris.skipped_budget",
+                extra={
+                    "asin": str(row[asin_col]),
+                    "cost": cost_total,
+                    "budget_remaining": cart.remaining,
+                },
+            )
             continue
         cart.add(
             CartItem(

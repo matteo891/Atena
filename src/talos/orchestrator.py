@@ -261,8 +261,14 @@ def run_session(inp: SessionInput) -> SessionResult:
     for item in cart.items:
         match = scored_sorted[scored_sorted["asin"] == item.asin]
         if match.empty:
-            # Difensivo: non dovrebbe mai accadere (allocate_tetris valida).
-            continue
+            # Branch impossibile per costruzione: `allocate_tetris` valida che
+            # ogni ASIN allocato sia presente in `vgp_df`. Se mai si verificasse,
+            # silently skipping nasconderebbe un bug di mapping interno -> raise.
+            msg = (
+                f"BUG interno: ASIN '{item.asin}' nel cart ma assente da "
+                "scored_sorted; mapping VgpResult/Cart corrotto."
+            )
+            raise RuntimeError(msg)
         cash_profit_per_unit = float(match.iloc[0]["cash_profit_eur"])
         cart_profits.append(cash_profit_per_unit * item.qty)
     budget_t1 = compounding_t1(inp.budget, cart_profits)
