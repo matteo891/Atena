@@ -13,11 +13,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CHAR, TIMESTAMP, BigInteger, Integer, Numeric, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from talos.persistence.base import Base
+
+if TYPE_CHECKING:
+    from talos.persistence.models.listino_item import ListinoItem
 
 
 class AnalysisSession(Base):
@@ -29,6 +33,11 @@ class AnalysisSession(Base):
     - `listino_hash` è lo sha256 del file di input (32 bytes hex).
     - `tenant_id` predispone la multi-tenancy (RLS attiva su `storico_ordini`,
       `locked_in`, `config_overrides`); MVP single-tenant con default 1.
+
+    Relationship one-to-many con `ListinoItem`: ogni sessione possiede zero o
+    più righe di listino. Il delete cascade è gestito a livello DB tramite
+    `ON DELETE CASCADE` definita sulla FK di `listino_items.session_id`;
+    `passive_deletes=True` lato ORM evita doppia logica di cascade.
     """
 
     __tablename__ = "sessions"
@@ -54,4 +63,10 @@ class AnalysisSession(Base):
         BigInteger,
         server_default=text("1"),
         nullable=False,
+    )
+
+    # ── Relationships ────────────────────────────────────────────────────
+    listino_items: Mapped[list[ListinoItem]] = relationship(
+        back_populates="session",
+        passive_deletes=True,
     )

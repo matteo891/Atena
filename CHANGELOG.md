@@ -9,6 +9,26 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-04-30 — Terza tabella Allegato A: listino_items (primo con FK + relationship)
+
+`ListinoItem` (tabella `listino_items`) è la terza delle 10 tabelle dell'Allegato A. **Primo modello con Foreign Key** (`session_id → sessions.id ON DELETE CASCADE`) e prima **relationship bidirezionale** (`AnalysisSession.listino_items ↔ ListinoItem.session`). Pattern `passive_deletes=True` lato ORM (cascade gestito dal DB). Revision Alembic `d6ab9ffde2a2` in catena.
+
+### Added
+- `src/talos/persistence/models/listino_item.py` — `class ListinoItem(Base)` con 8 colonne dell'Allegato A: id BigInt PK, session_id BigInt FK NOT NULL (`ondelete=CASCADE`), asin CHAR(10) NULL **senza FK** (Allegato A letterale: match in-flight via Keepa/scraping), raw_title TEXT NOT NULL, cost_eur NUMERIC(12,2) NOT NULL, qty_available Integer NULL, match_status TEXT NULL, match_reason TEXT NULL. Indice `idx_listino_session` su `session_id`. Relationship `session: Mapped[AnalysisSession]` con `back_populates`.
+- `migrations/versions/d6ab9ffde2a2_create_listino_items.py` — Alembic revision (catena: `Revises: d4a7e3cefbb1`). `op.create_table` con `sa.ForeignKey(..., ondelete="CASCADE")` + `op.create_index`.
+- `tests/unit/test_listino_item_model.py` — 12 test invarianti (10 strutturali + 1 relationship bidirezionale + 1 costruzione)
+- `docs/changes/2026-04-30-011-listino-items-model-with-fk.md`
+
+### Changed
+- `src/talos/persistence/models/analysis_session.py` — aggiunta relationship inversa `listino_items: Mapped[list[ListinoItem]] = relationship(back_populates="session", passive_deletes=True)`. Import `relationship`. Forward reference `ListinoItem` in `TYPE_CHECKING`.
+- `src/talos/persistence/models/__init__.py` — re-export anche `ListinoItem`
+- `src/talos/persistence/__init__.py` — re-export anche `ListinoItem`
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (10 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **48 passed** (era 36, +12)
+- `alembic upgrade head --sql` → DDL `listino_items` con `FOREIGN KEY(session_id) REFERENCES sessions (id) ON DELETE CASCADE` + indice `idx_listino_session` coerenti con Allegato A
+
 ## [0.14.1] — 2026-04-30 — Errata Corrige ADR-0015 (regola "DEFAULT → NOT NULL" ratificata)
 
 Risolve la open question dichiarata in CHG-009. Decisione esplicita del Leader (risoluzione (a)): ratifica formale della convenzione "Qualsiasi colonna definita con un `DEFAULT` in Allegato A implica automaticamente il vincolo `NOT NULL` (`nullable=False`)" per garantire allineamento DB/Typing. I modelli esistenti (`AnalysisSession`, `AsinMaster`) erano già conformi: nessun rework di codice.

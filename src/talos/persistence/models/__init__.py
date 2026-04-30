@@ -7,5 +7,6 @@ in modo che `Base.metadata` veda tutte le tabelle quando il package
 
 from talos.persistence.models.analysis_session import AnalysisSession
 from talos.persistence.models.asin_master import AsinMaster
+from talos.persistence.models.listino_item import ListinoItem
 
-__all__ = ["AnalysisSession", "AsinMaster"]
+__all__ = ["AnalysisSession", "AsinMaster", "ListinoItem"]
