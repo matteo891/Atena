@@ -83,6 +83,24 @@ def test_skip_zero_vgp_score() -> None:
     assert cart.asin_list() == ["A", "C"]
 
 
+def test_skip_zero_qty_final_in_pass_2() -> None:
+    """ASIN con qty_final=0 (F5 sotto soglia lotto) saltati nel Pass 2.
+
+    Caso reale: q_m piccolo + velocity_target_days basso -> qty_target < lot_size.
+    F5 Floor azzera la quantita'; allocare 0 pezzi sarebbe no-op.
+    """
+    vgp_df = _df(
+        [
+            ("A_OK", 100.0, 5, 0.9),
+            ("B_NO_QTY", 50.0, 0, 0.6),  # qty_final=0 -> skip
+            ("C_OK", 30.0, 5, 0.4),
+        ],
+    )
+    cart = allocate_tetris(vgp_df, budget=1000.0, locked_in=[])
+    assert cart.asin_list() == ["A_OK", "C_OK"]
+    assert "B_NO_QTY" not in cart.asin_list()
+
+
 def test_continue_on_too_expensive_not_break() -> None:
     """R-06 letterale: cost > remaining -> continue (non break)."""
     vgp_df = _df(

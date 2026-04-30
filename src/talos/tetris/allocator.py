@@ -100,7 +100,7 @@ class Cart:
         self.items.append(item)
 
 
-def allocate_tetris(  # noqa: PLR0913 — 4 col-name override + budget + locked_in + df necessari
+def allocate_tetris(  # noqa: PLR0913, C901 — 4 col-name override + due passi (R-04 + R-06) con skip multipli (score=0, qty=0, over-budget); semantica ADR-0018
     vgp_df: pd.DataFrame,
     budget: float,
     locked_in: list[str],
@@ -174,13 +174,17 @@ def allocate_tetris(  # noqa: PLR0913 — 4 col-name override + budget + locked_
             ),
         )
 
-    # Pass 2 (R-06): VGP decrescente. Skip vgp_score==0. Continue su cost > remaining.
+    # Pass 2 (R-06): VGP decrescente. Skip vgp_score==0. Skip qty<=0. Continue su cost > remaining.
     for _, row in vgp_df[~vgp_df[asin_col].isin(locked_set)].iterrows():
         score = float(row[score_col])
         if score == 0.0:
             # R-05 / R-08 hanno gia' azzerato: skippa.
             continue
-        cost_total = float(row[cost_col]) * int(row[qty_col])
+        qty_value = int(row[qty_col])
+        if qty_value <= 0:
+            # F5 ha azzerato (qty_target sotto soglia lotto fornitore): non comprabile.
+            continue
+        cost_total = float(row[cost_col]) * qty_value
         if cost_total > cart.remaining:
             # R-06 letterale: prosegue cercando item con VGP inferiore ma costo compatibile.
             continue
@@ -188,7 +192,7 @@ def allocate_tetris(  # noqa: PLR0913 — 4 col-name override + budget + locked_
             CartItem(
                 asin=str(row[asin_col]),
                 cost_total=cost_total,
-                qty=int(row[qty_col]),
+                qty=qty_value,
                 vgp_score=score,
                 locked=False,
             ),

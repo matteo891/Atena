@@ -108,8 +108,9 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 
 | File / Pattern | ADR Primario | ADR Secondari | Note |
 |---|---|---|---|
-| `tests/golden/samsung_1000.json` | ADR-0019 | — | Golden dataset sintetico validato dal Leader |
-| `tests/golden/samsung_1000_expected.json` | ADR-0019 | — | Output VGP+Cart+Panchina atteso (byte-exact) |
+| `tests/golden/samsung_1000.json` | ADR-0019 | — | Golden dataset sintetico validato dal Leader (1k ASIN, scope CHG futuro) |
+| `tests/golden/samsung_1000_expected.json` | ADR-0019 | — | Output VGP+Cart+Panchina atteso (byte-exact, 1k ASIN, scope CHG futuro) |
+| `tests/golden/test_pipeline_samsung_mini.py` | ADR-0019 | ADR-0018 | Mini-golden 10 ASIN snapshot byte-exact `run_session` (sentinella pipeline e2e in attesa del 1k ASIN) — CHG-2026-04-30-041 |
 | `tests/golden/html/` | ADR-0017, ADR-0019 | — | HTML statici Amazon per scraping test |
 | `tests/golden/images/` | ADR-0017, ADR-0019 | — | Immagini canoniche per OCR test |
 
