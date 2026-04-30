@@ -73,3 +73,26 @@ def test_dashboard_re_exports_in_init() -> None:
 
     assert hasattr(ui, "parse_locked_in")
     assert hasattr(ui, "DEFAULT_BUDGET_EUR")
+
+
+def test_get_session_factory_returns_none_without_db_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Senza `TALOS_DB_URL`, `get_session_factory_or_none` ritorna None (graceful)."""
+    from talos.config import get_settings  # noqa: PLC0415
+    from talos.ui.dashboard import get_session_factory_or_none  # noqa: PLC0415
+
+    monkeypatch.delenv("TALOS_DB_URL", raising=False)
+    # Invalida la cache lru_cache su get_settings per forzare reload con env modificato.
+    get_settings.cache_clear()
+
+    factory = get_session_factory_or_none()
+    assert factory is None
+
+
+def test_persistence_helpers_re_exported() -> None:
+    """`talos.ui` re-esporta `get_session_factory_or_none`, `try_persist_session`."""
+    from talos import ui  # noqa: PLC0415
+
+    assert hasattr(ui, "get_session_factory_or_none")
+    assert hasattr(ui, "try_persist_session")
+    assert hasattr(ui, "DEFAULT_TENANT_ID")
+    assert ui.DEFAULT_TENANT_ID == 1

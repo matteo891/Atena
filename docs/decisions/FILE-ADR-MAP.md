@@ -97,7 +97,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/persistence/session_repository.py` | ADR-0015 | ADR-0014, ADR-0019 | `save_session_result(db_session, *, session_input, result, tenant_id=1) -> int` — persiste `SessionResult` su `sessions`/`listino_items`/`vgp_results`/`cart_items`/`panchina_items` sotto `with_tenant`; `_listino_hash` deterministico sha256 — CHG-2026-04-30-042 |
 | `src/talos/ui/` | ADR-0016 | ADR-0013, ADR-0015 (RLS), ADR-0019 | Streamlit dashboard + pages + components |
 | `src/talos/ui/__init__.py` | ADR-0016 | ADR-0013 | Package marker `ui/` (inaugurato CHG-2026-04-30-040); re-export `parse_locked_in`, `DEFAULT_BUDGET_EUR` |
-| `src/talos/ui/dashboard.py` | ADR-0016 | ADR-0019 | Entrypoint Streamlit MVP mono-page (sidebar parametri + file upload CSV + chiamata `run_session` + metric + tabelle Cart/Panchina/enriched). Multi-page split (`pages/`, `components/`, `state.py`) di ADR-0016 e' scope CHG futuro — CHG-2026-04-30-040 |
+| `src/talos/ui/dashboard.py` | ADR-0016 | ADR-0019, ADR-0015 | Entrypoint Streamlit MVP mono-page (sidebar parametri + file upload CSV + chiamata `run_session` + metric + tabelle Cart/Panchina/enriched). Sezione persistenza DB con `get_session_factory_or_none` + `try_persist_session` (graceful degrade se `TALOS_DB_URL` assente, bottone "Salva sessione" se DB raggiungibile) — CHG-2026-04-30-040 + CHG-2026-04-30-043 |
 | `src/talos/observability/` | ADR-0021 | ADR-0008, ADR-0019 (test catalogo) | structlog config + catalogo eventi |
 | `src/talos/config/` | ADR-0013 | ADR-0014 | pydantic-settings + override layer |
 | `src/talos/config/__init__.py` | ADR-0013 | — | Re-export `TalosSettings`, `get_settings` (inaugurato CHG-2026-04-30-029) |

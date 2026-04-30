@@ -17,6 +17,8 @@ Refactor multi-page ADR-0016 compliant (`pages/`, `components/`,
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 import streamlit as st
 
@@ -25,11 +27,65 @@ from talos.formulas import (
     DEFAULT_VELOCITY_TARGET_DAYS,
 )
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
+from talos.persistence import (
+    create_app_engine,
+    make_session_factory,
+    save_session_result,
+    session_scope,
+)
 from talos.tetris import InsufficientBudgetError
 from talos.vgp import DEFAULT_ROI_VETO_THRESHOLD
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from talos.orchestrator import SessionResult
+
+
 # Default budget UI (10k EUR) - modificabile dall'utente.
 DEFAULT_BUDGET_EUR: float = 10_000.0
+# Tenant default per persistenza (MVP single-tenant, ADR-0015).
+DEFAULT_TENANT_ID: int = 1
+
+
+def get_session_factory_or_none() -> sessionmaker[Session] | None:
+    """Prova a creare un session factory ORM dal config (`TALOS_DB_URL`).
+
+    Ritorna `None` se la URL non e' settata o se la creazione dell'engine
+    fallisce per qualunque motivo. La dashboard usa il factory per persistere
+    `SessionResult` su click bottone; senza factory la persistenza e'
+    disabilitata gracefully (nessun crash UI).
+    """
+    try:
+        engine = create_app_engine()
+    except (RuntimeError, ValueError, Exception):  # noqa: BLE001 - dashboard graceful degrade
+        return None
+    return make_session_factory(engine)
+
+
+def try_persist_session(
+    factory: sessionmaker[Session],
+    *,
+    session_input: SessionInput,
+    result: SessionResult,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, int | None, str | None]:
+    """Persiste il `SessionResult` via `save_session_result` con error handling.
+
+    :returns: tupla `(success, session_id, error_message)`. Esattamente uno
+        tra `session_id` ed `error_message` e' `None`.
+    """
+    try:
+        with session_scope(factory) as db_session:
+            sid = save_session_result(
+                db_session,
+                session_input=session_input,
+                result=result,
+                tenant_id=tenant_id,
+            )
+    except Exception as exc:  # noqa: BLE001 - graceful UI feedback
+        return False, None, str(exc)
+    return True, sid, None
 
 
 def parse_locked_in(raw: str) -> list[str]:
@@ -190,6 +246,28 @@ def main() -> None:
 
     with st.expander("Listino completo enriched (audit / debug)"):
         st.dataframe(result.enriched_df, use_container_width=True)
+
+    # Persistenza opzionale: graceful degrade se DB non disponibile.
+    factory = get_session_factory_or_none()
+    st.subheader("Persistenza Sessione")
+    if factory is None:
+        st.info(
+            "Persistenza disabilitata. Per attivarla, imposta `TALOS_DB_URL` "
+            "nell'ambiente (es. `postgresql+psycopg://...`).",
+        )
+        return
+
+    if st.button("Salva sessione su DB", key="save_session_btn"):
+        success, sid, err = try_persist_session(
+            factory,
+            session_input=inp,
+            result=result,
+            tenant_id=DEFAULT_TENANT_ID,
+        )
+        if success:
+            st.success(f"Sessione persistita. id = `{sid}`.")
+        else:  # pragma: no cover - UI-only error path
+            st.error(f"Persistenza fallita: {err}")
 
 
 if __name__ == "__main__":  # pragma: no cover - run via streamlit CLI

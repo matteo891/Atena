@@ -15,10 +15,16 @@ Modulo non importato dalla pipeline core: per lanciare l'app
 
 from talos.ui.dashboard import (
     DEFAULT_BUDGET_EUR,
+    DEFAULT_TENANT_ID,
+    get_session_factory_or_none,
     parse_locked_in,
+    try_persist_session,
 )
 
 __all__ = [
     "DEFAULT_BUDGET_EUR",
+    "DEFAULT_TENANT_ID",
+    "get_session_factory_or_none",
     "parse_locked_in",
+    "try_persist_session",
 ]
