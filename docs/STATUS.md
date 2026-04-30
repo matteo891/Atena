@@ -144,6 +144,13 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 
 - **Step 0 del Self-Briefing è bloccante (ADR-0010).** Verifica `git config core.hooksPath` = `scripts/hooks` prima di tutto.
 - **Hooks v2 in vigore (CHG-2026-04-30-003).** Il `pre-commit` invoca `scripts/hooks/pre-commit-app` quando in staging ci sono `*.py`/`pyproject.toml`/`uv.lock` (graceful skip se l'hook applicativo non esiste); il `commit-msg` esenta i commit del bot `github-actions[bot]` con marker `[skip ci]` (esenzione cumulativa, marker da solo non basta).
+- **🔖 Fermaposto operativo (2026-04-30, fine sessione 18 CHG):** schema Allegato A completo 10/10. **Direzione concordata col Leader: opzione (a) Postgres reale via Docker + integration test.** Stato infrastruttura Docker:
+  - `docker --version` → v29.4.1 installato
+  - `/var/run/docker.sock` → root:docker mode 660
+  - Utente `matteo` → **non in gruppo `docker`** al momento del fermaposto
+  - **Azione richiesta dal Leader (FATTA in shell separata):** `sudo usermod -aG docker $USER` + chiusura/riapertura shell WSL
+  - **Prima azione di Claude al rientro:** `docker ps` (validazione gruppo attivo); se OK, lanciare Postgres ephemeral (`docker run -d --name talos-pg-test -e POSTGRES_PASSWORD=test -p 55432:5432 --tmpfs /var/lib/postgresql/data:rw postgres:16-alpine`), settare `TALOS_DB_URL=postgresql+psycopg://postgres:test@localhost:55432/postgres`, eseguire `alembic upgrade head` (primo upgrade reale) e procedere con `tests/integration/` (RLS policy effettiva, trigger audit, FK CASCADE/RESTRICT).
+  - **Se `docker ps` ancora fallisce** dopo restart shell: segnalare al Leader, NON aggirare con sudo o chmod sul socket.
 - **`PROJECT-RAW.md` è in stato `Frozen` dal 2026-04-29 (codename TALOS).** Modifiche alla vision passano per **Errata Corrige** (ADR-0009) o transizione documentata a `Iterating` con motivazione esplicita del Leader.
 - **Regola "Lacune mai completate" (ADR-0012, vincolante).** Continua ad applicarsi anche post-Frozen e post-stack-Frozen. Se emergono ambiguità durante la futura implementazione, marcarle in chat e portarle al Leader, **non inferire**.
 - **Cluster ADR di stack 0013–0021 attivo (CHG-2026-04-30-001).** Ogni nuovo file applicativo deve mappare a un ADR Primario in FILE-ADR-MAP.md (sezione "Codice Applicativo"). Path consentiti: `src/talos/{io_,extract,vgp,tetris,formulas,persistence,ui,observability,config}` + `tests/{unit,integration,golden,governance}` + `migrations/`.
