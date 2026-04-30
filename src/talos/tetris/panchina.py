@@ -18,12 +18,18 @@ output cruscotto = (Cart, Panchina, Budget_T+1).
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
 
     from talos.tetris.allocator import Cart
+
+
+_logger = logging.getLogger(__name__)
+# Evento canonico emesso (ADR-0021):
+# - "panchina.archived": ASIN idoneo (vgp_score>0) non in cart, archiviato per cassa.
 
 
 def build_panchina(
@@ -56,4 +62,13 @@ def build_panchina(
 
     in_cart = set(cart.asin_list())
     eligible = vgp_df[(vgp_df[score_col] > 0) & (~vgp_df[asin_col].isin(in_cart))]
-    return eligible.sort_values(score_col, ascending=False)
+    out = eligible.sort_values(score_col, ascending=False)
+
+    # Telemetria (ADR-0021): emette `panchina.archived` per ogni riga archiviata.
+    for asin, score in zip(out[asin_col], out[score_col], strict=False):
+        _logger.debug(
+            "panchina.archived",
+            extra={"asin": str(asin), "vgp_score": float(score)},
+        )
+
+    return out

@@ -27,6 +27,7 @@ scope di un CHG futuro.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from talos.vgp.normalize import min_max_normalize
@@ -35,6 +36,12 @@ from talos.vgp.veto import DEFAULT_ROI_VETO_THRESHOLD
 if TYPE_CHECKING:
     import pandas as pd
 
+
+_logger = logging.getLogger(__name__)
+# Eventi canonici emessi (ADR-0021):
+# - "vgp.veto_roi_failed": riga vetata da R-08 (asin/roi_pct/threshold).
+# - "vgp.kill_switch_zero": riga killed da R-05 (asin/match_status).
+
 # Pesi VGP verbatim PROJECT-RAW.md riga 329-331 (chiusa L04 Round 3).
 # Modifica richiede errata corrige ADR-0018 (regola ADR-0009).
 ROI_WEIGHT: float = 0.4
@@ -42,7 +49,7 @@ VELOCITY_WEIGHT: float = 0.4
 CASH_PROFIT_WEIGHT: float = 0.2
 
 
-def compute_vgp_score(  # noqa: PLR0913 — i 6 arg sono tutti necessari (1 df + 4 col-name override + 1 threshold); design ADR-0018
+def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name override + 1 threshold + 1 asin_col opzionale per telemetria
     df: pd.DataFrame,
     *,
     roi_col: str = "roi",
@@ -50,6 +57,8 @@ def compute_vgp_score(  # noqa: PLR0913 — i 6 arg sono tutti necessari (1 df +
     cash_profit_col: str = "cash_profit_eur",
     kill_col: str = "kill_mask",
     veto_roi_threshold: float = DEFAULT_ROI_VETO_THRESHOLD,
+    asin_col: str = "asin",
+    match_status_col: str = "match_status",
 ) -> pd.DataFrame:
     """Calcola il VGP Score vettoriale con applicazione di R-05 e R-08.
 
@@ -110,5 +119,45 @@ def compute_vgp_score(  # noqa: PLR0913 — i 6 arg sono tutti necessari (1 df +
     # R-05 + R-08 applicati: vgp_score = 0 dove kill | ~veto_passed.
     blocked = kill_mask | ~out["veto_roi_passed"]
     out["vgp_score"] = out["vgp_score_raw"].where(~blocked, 0.0)
+
+    # Telemetria (ADR-0021). Eventi per-asin a livello DEBUG: silenti in produzione,
+    # capturable nei test via `caplog.at_level(DEBUG, logger="talos.vgp.score")`.
+    # Skip se la colonna `asin_col` non e' presente (caller-friendly: il modulo non
+    # forza il contratto, lo verifica e degrada gracefully).
+    if asin_col in out.columns:
+        # vgp.veto_roi_failed: ASIN non killed ma sotto soglia ROI.
+        veto_only_mask = ~out["veto_roi_passed"] & ~kill_mask
+        for asin, roi_value in zip(
+            out.loc[veto_only_mask, asin_col],
+            out.loc[veto_only_mask, roi_col],
+            strict=False,
+        ):
+            _logger.debug(
+                "vgp.veto_roi_failed",
+                extra={
+                    "asin": str(asin),
+                    "roi_pct": float(roi_value),
+                    "threshold": veto_roi_threshold,
+                },
+            )
+        # vgp.kill_switch_zero: ASIN killed (R-05).
+        if kill_mask.any():
+            killed_match_status = (
+                out.loc[kill_mask, match_status_col]
+                if match_status_col in out.columns
+                else [None] * int(kill_mask.sum())
+            )
+            for asin, match_status in zip(
+                out.loc[kill_mask, asin_col],
+                killed_match_status,
+                strict=False,
+            ):
+                _logger.debug(
+                    "vgp.kill_switch_zero",
+                    extra={
+                        "asin": str(asin),
+                        "match_status": str(match_status) if match_status is not None else "",
+                    },
+                )
 
     return out
