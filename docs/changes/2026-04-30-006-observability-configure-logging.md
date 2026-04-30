@@ -3,7 +3,7 @@ id: CHG-2026-04-30-006
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 9298e70
 adr_ref: ADR-0021, ADR-0019, ADR-0014
 ---
 
@@ -125,4 +125,4 @@ Test automatici eseguiti localmente (Test Gate ADR-0002). Tutti **PASS**.
 - ADR: ADR-0021 (decisione cardine), ADR-0019 (test strategy — governance test attivato), ADR-0014 (mypy strict + ruff strict applicati)
 - Predecessore: CHG-2026-04-30-005 (CI base)
 - Successore atteso: probabilmente primo modulo `persistence/` (ADR-0015) — ora il logging è disponibile per istrumentare le query
-- Commit: `<pending>`
+- Commit: `9298e70`
