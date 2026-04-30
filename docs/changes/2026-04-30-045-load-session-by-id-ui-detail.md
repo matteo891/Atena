@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-045
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 9a55139
 adr_ref: ADR-0015, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -165,4 +165,4 @@ chiuse end-to-end.
 - Successore atteso: `load_session_full` per re-execute pipeline da
   sessione passata; click-on-row UX; `UNIQUE(listino_hash)` migration +
   upsert
-- Commit: `[pending]`
+- Commit: `9a55139`
