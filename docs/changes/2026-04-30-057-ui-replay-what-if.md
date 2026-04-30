@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-057
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: 92bd63b
 adr_ref: ADR-0016, ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -194,4 +194,4 @@ si estende naturalmente a compare runs side-by-side (CHG futuro).
   (`replay_session`).
 - Successore atteso: compare runs side-by-side; persist replay
   (richiede `upsert_session`); telemetria `session.replayed`.
-- Commit: pending (backfill).
+- Commit: `92bd63b`.

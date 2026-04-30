@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-058
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: a40b825
 adr_ref: ADR-0021, ADR-0019, ADR-0009, ADR-0014
 ---
 
@@ -184,4 +184,4 @@ strutturati.
 - Successore atteso: `session.started` / `session.completed`;
   `session_id` nei campi (richiede signature change `replay_session`);
   migrazione `structlog.bind`.
-- Commit: pending (backfill).
+- Commit: `a40b825`.
