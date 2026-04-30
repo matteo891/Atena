@@ -25,7 +25,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from talos.persistence.models import ConfigOverride
@@ -108,6 +108,58 @@ def list_category_referral_fees(
         return {
             str(scope_key): Decimal(value) for scope_key, value in db_session.execute(stmt).all()
         }
+
+
+def delete_config_override(
+    db_session: Session,
+    *,
+    key: str,
+    tenant_id: int = 1,
+    scope: str = SCOPE_GLOBAL,
+    scope_key: str | None = None,
+) -> bool:
+    """Cancella un override per `(tenant_id, scope, scope_key, key)`.
+
+    Reset al default applicativo: il caller successivo
+    `get_config_override_numeric` ritornera' `None` per la stessa chiave.
+    Idempotente: se l'override non esiste, ritorna `False` senza errore.
+
+    Pattern UX: il CFO usa il bottone "Reset" della UI per tornare al
+    default hardcoded (es. `DEFAULT_ROI_VETO_THRESHOLD = 0.08`) senza
+    dover inserire il valore manualmente.
+
+    :returns: `True` se una riga e' stata cancellata, `False` se nessuna
+        riga matchava.
+    :raises ValueError: se `scope` non e' tra gli ammessi.
+    """
+    _validate_scope(scope)
+    scope_key_filter = (
+        ConfigOverride.scope_key.is_(None)
+        if scope_key is None
+        else ConfigOverride.scope_key == scope_key
+    )
+    with with_tenant(db_session, tenant_id):
+        # Pre-check di esistenza per ritornare un bool tipizzato senza
+        # affidarsi a `result.rowcount` (signature `Result[Any]` in
+        # SQLAlchemy 2.0 lo nasconde a mypy strict).
+        existing = db_session.scalar(
+            select(ConfigOverride.id).where(
+                ConfigOverride.tenant_id == tenant_id,
+                ConfigOverride.scope == scope,
+                scope_key_filter,
+                ConfigOverride.key == key,
+            ),
+        )
+        if existing is None:
+            return False
+        stmt = delete(ConfigOverride).where(
+            ConfigOverride.tenant_id == tenant_id,
+            ConfigOverride.scope == scope,
+            scope_key_filter,
+            ConfigOverride.key == key,
+        )
+        db_session.execute(stmt)
+        return True
 
 
 def set_config_override_numeric(  # noqa: PLR0913 — 6 arg necessari (db + key + value + tenant + scope + scope_key) per UPSERT su UNIQUE composito Allegato A

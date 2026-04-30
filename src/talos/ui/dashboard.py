@@ -33,6 +33,7 @@ from talos.persistence import (
     LoadedSession,
     SessionSummary,
     create_app_engine,
+    delete_config_override,
     find_session_by_hash,
     get_config_override_numeric,
     list_category_referral_fees,
@@ -151,15 +152,20 @@ def _render_sidebar(
         format="%.2f",
         help="R-08: ASIN con ROI sotto soglia hanno vgp_score=0 (default 8%).",
     )
-    if factory is not None and st.sidebar.button(
-        "Salva soglia ROI come default tenant",
-        key="save_threshold_btn",
-    ):
-        ok, err = try_persist_veto_roi_threshold(factory, threshold=float(veto_threshold))
-        if ok:
-            st.sidebar.success("Soglia salvata.")
-        else:  # pragma: no cover - UI-only error path
-            st.sidebar.error(f"Salvataggio fallito: {err}")
+    if factory is not None:
+        col_save, col_reset = st.sidebar.columns(2)
+        if col_save.button("Salva soglia ROI", key="save_threshold_btn"):
+            ok, err = try_persist_veto_roi_threshold(factory, threshold=float(veto_threshold))
+            if ok:
+                st.sidebar.success("Soglia salvata.")
+            else:  # pragma: no cover - UI-only error path
+                st.sidebar.error(f"Salvataggio fallito: {err}")
+        if col_reset.button("Reset al default", key="reset_threshold_btn"):
+            ok, err = try_delete_veto_roi_threshold(factory)
+            if ok:
+                st.sidebar.success(f"Soglia resettata al default {DEFAULT_ROI_VETO_THRESHOLD:.2f}.")
+            else:  # pragma: no cover - UI-only error path
+                st.sidebar.error(f"Reset fallito: {err}")
 
     if factory is not None:
         _render_sidebar_referral_fees(factory)
@@ -204,7 +210,8 @@ def _render_sidebar_referral_fees(factory: sessionmaker[Session]) -> None:
             format="%.4f",
             key="ref_fee_value_input",
         )
-        if st.button("Salva referral fee", key="save_ref_fee_btn"):
+        col_save, col_reset = st.columns(2)
+        if col_save.button("Salva", key="save_ref_fee_btn"):
             if not category:
                 st.warning("Inserisci una categoria non vuota.")
             else:
@@ -217,6 +224,18 @@ def _render_sidebar_referral_fees(factory: sessionmaker[Session]) -> None:
                     st.success(f"Referral fee per `{category}` salvato.")
                 else:  # pragma: no cover - UI-only
                     st.error(f"Salvataggio fallito: {err}")
+        if col_reset.button("Reset", key="reset_ref_fee_btn"):
+            if not category:
+                st.warning("Inserisci la categoria da resettare.")
+            else:
+                ok, err = try_delete_category_referral_fee(
+                    factory,
+                    category_node=category,
+                )
+                if ok:
+                    st.success(f"Override per `{category}` rimosso.")
+                else:  # pragma: no cover - UI-only
+                    st.error(f"Reset fallito: {err}")
 
 
 def _render_metrics(saturation: float, budget_t1: float) -> None:
@@ -369,6 +388,52 @@ def try_persist_category_referral_fee(
                 db,
                 key=KEY_REFERRAL_FEE_PCT,
                 value=referral_fee_pct,
+                tenant_id=tenant_id,
+                scope=SCOPE_CATEGORY,
+                scope_key=category_node,
+            )
+    except Exception as exc:  # noqa: BLE001 - graceful UI feedback
+        return False, str(exc)
+    return True, None
+
+
+def try_delete_veto_roi_threshold(
+    factory: sessionmaker[Session],
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, str | None]:
+    """Cancella l'override soglia veto ROI (reset al default applicativo).
+
+    :returns: tupla `(success, error_message)`. `success=True` anche se
+        non c'era un override (idempotenza, nessun errore mostrato al CFO).
+    """
+    try:
+        with session_scope(factory) as db:
+            delete_config_override(
+                db,
+                key=CONFIG_KEY_VETO_ROI,
+                tenant_id=tenant_id,
+            )
+    except Exception as exc:  # noqa: BLE001 - graceful UI feedback
+        return False, str(exc)
+    return True, None
+
+
+def try_delete_category_referral_fee(
+    factory: sessionmaker[Session],
+    *,
+    category_node: str,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, str | None]:
+    """Cancella l'override referral fee per la categoria (reset al raw).
+
+    :returns: tupla `(success, error_message)`.
+    """
+    try:
+        with session_scope(factory) as db:
+            delete_config_override(
+                db,
+                key=KEY_REFERRAL_FEE_PCT,
                 tenant_id=tenant_id,
                 scope=SCOPE_CATEGORY,
                 scope_key=category_node,
