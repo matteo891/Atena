@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `[da aggiornare post-commit]` (CHG-024 chiusura ISS-001 + errata ADR-0007/0010 — verifica empirica STATUS↔runtime tooling). Tag: `milestone/stack-frozen-v0.9.0` + **3 checkpoint** (01 / 02 / 03). Catena CHG odierna: 001→...→024. **Tabelle Allegato A coperte: 10/10** ✓ + **192 test PASS** (171 unit/governance + 21 integration). **Indice GitNexus operativo** (1646 nodes / 1929 edges / 4 flows).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `cea9494` (CHG-024 chiusura ISS-001 + errata ADR-0007/0010 — verifica empirica STATUS↔runtime tooling). Tag: `milestone/stack-frozen-v0.9.0` + **3 checkpoint** (01 / 02 / 03). Catena CHG odierna: 001→...→024. **Tabelle Allegato A coperte: 10/10** ✓ + **192 test PASS** (171 unit/governance + 21 integration). **Indice GitNexus operativo** (1646 nodes / 1929 edges / 4 flows).
 > **Sessione corrente:** TALOS — prima formula applicativa scritta (CHG-022) + due chiusure governance: errata ADR-0010 per verifica STATUS↔git (CHG-023) + chiusura ISS-001 con errata ADR-0007/0010 per verifica STATUS↔runtime tooling (CHG-024).
 
 ---
@@ -64,7 +64,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **DB bootstrap roles: `scripts/db_bootstrap.py` (idempotente, psycopg.sql injection-safe). Materializza la matrice ADR-0015: `talos_admin` (BYPASSRLS, DBA), `talos_app` (NOBYPASSRLS, pool app), `talos_audit` (read-only). FORCE RLS su 3 tabelle. 9 integration test (attributi, GRANT/REVOKE, idempotenza, login).** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-021](changes/2026-04-30-021-db-bootstrap-roles.md) | `aee694c` |
 | **🚀 Frontiera applicativa attraversata: `formulas/fee_fba.py` con `fee_fba_manual` verbatim L11b. Funzione pura + R-01 NO SILENT DROPS via 2 ValueError. 8 test unit (snapshot tolerance + boundary scorporato==100 + monotonia + edge case).** | 0018, 0014, 0013, 0019 | [CHG-2026-04-30-022](changes/2026-04-30-022-formulas-fee-fba.md) | `750b70d` |
 | **Errata corrige ADR-0010: Step 1 esteso con verifica reciproca STATUS↔git (`git tag -l`, `git branch`, `git log <hash>`) per claim su tag/branch/hash. Trigger reale: STATUS marcava CHECKPOINT-03 come "in attesa autorizzazione" mentre il tag esisteva già da 6 ore.** | 0010, 0009, 0008, 0003 | [CHG-2026-04-30-023](changes/2026-04-30-023-errata-adr-0010-tag-verification.md) | `d962445` |
-| **Chiusura ISS-001 + errata ADR-0007/0010: Step 4 esige verifica empirica via `mcp__gitnexus__list_repos` prima di accettare claim documentali di indisponibilità. Rebuild GitNexus riuscito in 3.3s su Node v22 (root cause v24-specific). Indice fresh: 1646 nodes / 1929 edges / 4 flows.** | 0007, 0010, 0009, 0008 | [CHG-2026-04-30-024](changes/2026-04-30-024-chiusura-iss-001-gitnexus-rebuild.md) | `[da aggiornare post-commit]` |
+| **Chiusura ISS-001 + errata ADR-0007/0010: Step 4 esige verifica empirica via `mcp__gitnexus__list_repos` prima di accettare claim documentali di indisponibilità. Rebuild GitNexus riuscito in 3.3s su Node v22 (root cause v24-specific). Indice fresh: 1646 nodes / 1929 edges / 4 flows.** | 0007, 0010, 0009, 0008 | [CHG-2026-04-30-024](changes/2026-04-30-024-chiusura-iss-001-gitnexus-rebuild.md) | `cea9494` |
 
 ---
 

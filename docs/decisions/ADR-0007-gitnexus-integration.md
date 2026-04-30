@@ -87,7 +87,7 @@ Al momento della promulgazione di questo ADR (2026-04-29), `gitnexus analyze` no
 - Governa: utilizzo del server MCP GitNexus, `.gitnexus/`, self-briefing step 1
 - Impatta: velocità del self-briefing, impact analysis pre-modifica, `FILE-ADR-MAP.md`
 - Test: `mcp__gitnexus__query` restituisce risultati post-analyze
-- Commits: introduzione (CHG-2026-04-29-001) + commit dell'errata CHG-2026-04-30-024 (chiusura ISS-001 + arricchimento Test di Conformità)
+- Commits: introduzione (CHG-2026-04-29-001) + `cea9494` (errata CHG-2026-04-30-024, chiusura ISS-001 + arricchimento Test di Conformità)
 
 ## Rollback
 

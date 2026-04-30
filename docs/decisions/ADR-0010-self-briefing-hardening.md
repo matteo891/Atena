@@ -142,7 +142,7 @@ Verifica: pre-commit del commit di sessione, Claude rilegge STATUS.md ed elenca 
 - Governa: protocollo di self-briefing step 0, struttura di `docs/STATUS.md`, regole di anchoring
 - Impatta: `CLAUDE.md` (workflow), `docs/STATUS.md`, ADR-0004 sezione "Flusso di Re-Briefing"
 - Test: verifica meccanica step 0 + verifica manuale anchoring pre-commit
-- Commits: `416ab87` (introduzione, CHG-2026-04-29-002) + `d962445` (errata CHG-2026-04-30-023, verifica STATUS↔git) + commit dell'errata CHG-2026-04-30-024 (verifica STATUS↔runtime tooling)
+- Commits: `416ab87` (introduzione, CHG-2026-04-29-002) + `d962445` (errata CHG-2026-04-30-023, verifica STATUS↔git) + `cea9494` (errata CHG-2026-04-30-024, verifica STATUS↔runtime tooling)
 
 ## Rollback
 

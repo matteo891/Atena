@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-024
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [da aggiornare post-commit]
+status: Committed
+commit: cea9494
 adr_ref: ADR-0007, ADR-0010, ADR-0009, ADR-0008
 ---
 
@@ -167,4 +167,4 @@ Niente test runtime: la modifica è documentale e non tocca codice eseguibile.
 - Predecessore: CHG-2026-04-30-023 (errata ADR-0010 per tag/branch/hash — questo CHG generalizza il principio alla classe tooling)
 - Issue chiusa: ISS-001 (era "Rinviata" — root cause Node v24-specific, risolto da downgrade a v22)
 - Successore atteso: prossima azione applicativa (F1 cash_inflow, config layer, o altro su autorizzazione Leader)
-- Commit: [da aggiornare post-commit]
+- Commit: `cea9494`
