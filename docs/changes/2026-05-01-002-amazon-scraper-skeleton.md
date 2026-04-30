@@ -3,7 +3,7 @@ id: CHG-2026-05-01-002
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" sessione attivata 2026-04-30 sera, prosegue oltre mezzanotte)
 status: Draft
-commit: [pending]
+commit: ba2421c
 adr_ref: ADR-0017, ADR-0014, ADR-0019, ADR-0021
 ---
 
@@ -261,4 +261,4 @@ def _resolve_field(self, asin, field, page, *, missing_ok):
   `_PlaywrightBrowserPage` live + telemetria 5 eventi).
 - Memory: `project_io_extract_design_decisions.md` (D2 ratificata
   "default").
-- Commit: `[pending]`.
+- Commit: `ba2421c`.
