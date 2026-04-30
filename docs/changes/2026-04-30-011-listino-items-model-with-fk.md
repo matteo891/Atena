@@ -3,7 +3,7 @@ id: CHG-2026-04-30-011
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 02a8787
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -139,4 +139,4 @@ Nuovi test (12):
 - ADR: ADR-0015 (Allegato A — schema + regola "DEFAULT → NOT NULL" da CHG-010), ADR-0014 (mypy + ruff strict), ADR-0013 (struttura `models/`), ADR-0019 (test unit invarianti incluso relationship)
 - Predecessore: CHG-2026-04-30-010 (errata DEFAULT → NOT NULL)
 - Successore atteso: prossima tabella Allegato A — probabilmente `vgp_results` (FK doppia: session_id + listino_item_id) o `config_overrides` (RLS attiva, primo modello con policy)
-- Commit: `<pending>`
+- Commit: `02a8787`
