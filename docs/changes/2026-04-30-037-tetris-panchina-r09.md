@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-037
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 00a3c3f
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -118,4 +118,4 @@ Cluster `tetris/` **completo** rispetto al perimetro ADR-0018 (allocator + panch
 - Vision verbatim: PROJECT-RAW.md riga 227 (R-09)
 - Successore atteso: orchestratore di sessione (`session.py` o
   `orchestrator.py`) — pipeline end-to-end
-- Commit: `[pending]`
+- Commit: `00a3c3f`
