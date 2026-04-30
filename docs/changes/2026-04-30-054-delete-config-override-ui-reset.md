@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-054
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: 9a3b0c3
 adr_ref: ADR-0015, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -214,4 +214,4 @@ funzionano identici, sono solo affiancati da Reset addon.
   referral fee).
 - Successore atteso: confirm dialog UX su Reset; bulk reset; audit
   trail config_overrides; multi-page refactor.
-- Commit: pending (backfill).
+- Commit: `9a3b0c3`.
