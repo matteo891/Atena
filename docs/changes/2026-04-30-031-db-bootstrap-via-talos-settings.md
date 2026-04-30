@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-031
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Proposed
-commit: TBD
+status: Committed
+commit: 877b8ea
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -124,4 +124,4 @@ Test integration `test_db_bootstrap.py`: **invariato**. Lo script è invocato vi
 - Predecessore originario: CHG-2026-04-30-021 (`db_bootstrap.py` originale con `os.getenv`)
 - Vision: PROJECT-RAW.md L10 (configurabilità) — questo CHG completa la centralizzazione env var DB
 - Successore atteso: lookup `config_overrides` runtime per soglia ROI (ora sbloccato); centralizzazione `migrations/env.py` (scope separato, basso valore attuale)
-- Commit: TBD
+- Commit: `877b8ea`
