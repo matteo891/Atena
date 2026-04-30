@@ -17,15 +17,16 @@ Tracker operativo del progetto. Ogni voce deve essere tracciabile a un ADR valid
 | 5 | Verdetto: sistema governance a prova di bomba per fase pre-codice | tutti 0001–0011 | Confermato — sistema in produzione |
 | 6 | Vision capture protocol — ADR-0012 + PROJECT-RAW.md template `Draft` | ADR-0012 | Completato (CHG-2026-04-29-003) |
 | 7 | Esposizione bozza dal Leader → riempimento PROJECT-RAW.md `Draft → Iterating → Frozen` | ADR-0012 | **Completato.** Round 1–6 (CHG-004…009). 26/26 lacune chiuse. **Vision `Frozen` dal 2026-04-29** |
-| 8 | Step [6] ADR-0012: proposta scomposizione (Claude in chat) → validazione Leader → ADR di stack | ADR-0012, ADR di stack da promulgare | **In corso** — sbloccato dal Frozen |
+| 8 | Step [6] ADR-0012: proposta scomposizione (Claude in chat) → validazione Leader → ADR di stack | ADR-0012 → ADR-0013…0021 | **Completato.** Validazione bulk Leader (Opzione A) 2026-04-30. 9 ADR di stack promulgati (CHG-2026-04-30-001) |
 | 9 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
-| 10 | Prima linea di codice applicativo | ADR di stack (da promulgare) | Bloccante: dipende da #8 |
+| 10 | Clone `Atena-Core` (purezza infrastrutturale post `milestone/stack-frozen-v0.9.0`) | ADR-0003 | **In corso** — Leader cloning post-tag (HARD STOP attivo) |
+| 11 | Bootstrap primo modulo applicativo (`pyproject.toml` + `src/talos/__init__.py` + `tests/conftest.py`) | ADR-0013, ADR-0014 | Bloccante: subordinato a riapertura esplicita Leader post HARD STOP |
 
 ---
 
 ## Implementazioni in Corso
 
-_Nessuna implementazione di codice attiva al momento. Sessione 2026-04-29: hardening governance — in attesa approvazione Leader per il commit di chiusura._
+_Nessuna implementazione di codice attiva. Sessione 2026-04-30: promulgazione cluster ADR di stack 0013–0021 + tooling GitNexus condiviso + tag `milestone/stack-frozen-v0.9.0`. **HARD STOP** attivo per consentire al Leader il clone di `Atena-Core` nello stato di purezza infrastrutturale._
 
 ---
 
@@ -35,12 +36,16 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 
 | # | Tema | ADR necessario | Note |
 |---|------|---------------|------|
-| A | Stack tecnologico | Da promulgare | Da definire dal Leader, popolato dalla scomposizione del PROJECT-RAW Frozen (ADR-0012) |
-| B | Struttura directory codice applicativo | Da promulgare | Dipende dallo stack |
-| C | CI/CD pipeline | Da promulgare | Dipende dallo stack |
-| D | Branch policy v2 (multi-branch / PR / branch protection) | Da promulgare | Rinviata da ADR-0011; rivedere all'introduzione del primo modulo applicativo |
-| E | GitNexus operativo da PC del Leader | ADR-0007 (esistente, in attesa) | Eseguire `gitnexus analyze` post-fork |
-| F | Task operativi derivati dal PROJECT-RAW Frozen | Da promulgare individualmente | Popolati post-step [7] della pipeline ADR-0012 |
+| ~~A~~ | ~~Stack tecnologico~~ | Coperto da ADR-0014/0015/0016/0017/0018/0021 (CHG-2026-04-30-001) | Chiuso |
+| ~~B~~ | ~~Struttura directory codice applicativo~~ | Coperto da ADR-0013 (CHG-2026-04-30-001) | Chiuso |
+| ~~C~~ | ~~CI/CD pipeline~~ | Coperto da ADR-0020 (CHG-2026-04-30-001) | Chiuso |
+| D | Branch policy v2 (multi-branch / PR / branch protection) | Da promulgare | Rinviata da ADR-0011 + ADR-0020 (single-push MVP); rivedere all'introduzione di multi-developer |
+| E | GitNexus operativo da PC del Leader | ADR-0007 (esistente, in attesa) | Eseguire `gitnexus analyze` post-fork; CI bot (ADR-0020) reindex automatizzato post-merge |
+| F | Task operativi derivati dal PROJECT-RAW Frozen | Da promulgare individualmente | Popolati post-bootstrap del primo modulo applicativo |
+| G | Cloud backup PostgreSQL (post-MVP) | Da promulgare | Out-of-scope MVP per ADR-0015; valutare resilienza off-site post-MVP |
+| H | Metriche / OpenTelemetry (post-MVP) | Da promulgare | Out-of-scope MVP per ADR-0021 |
+| I | Multi-brand timeline (post-MVP) | Task ROADMAP, non ADR | Pianificare entro 4 settimane post-MVP (decisione bulk 2026-04-30) |
+| J | Documentazione utente (README operativo + user-guide CFO) | Task ROADMAP, non ADR | Da pianificare post-bootstrap (decisione bulk 2026-04-30) |
 
 ---
 
@@ -60,3 +65,6 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 | 2026-04-29 | Transizione fork: origin riallineato da `santacrocefrancesco00-ux/Atena` (repo padre, non scrivibile dal Leader operativo) a `matteo891/Atena` (fork operativo) | — | Leader (commit `2abe28e`) |
 | 2026-04-29 | TALOS — Round 5 Q&A: sweep finale, chiuse tutte le 17 residue in un colpo (default + L02=(a) + L14=Streamlit + formula Fee_FBA verbatim per L11b). **0 aperte, 26/26 chiuse**. In attesa dichiarazione esplicita Frozen | ADR-0012 | Leader (CHG-2026-04-29-008) |
 | 2026-04-29 | **TALOS — Round 6: `Frozen` dichiarato esplicitamente dal Leader (*"dichiaro frozen"*). Vision congelata. Sblocco step [6] ADR-0012** | ADR-0012 | Leader (CHG-2026-04-29-009) |
+| 2026-04-30 | **Promulgazione cluster ADR di stack 0013–0021 (validazione bulk Opzione A): src-layout + uv, Python 3.11 + mypy, PostgreSQL Zero-Trust + SQLAlchemy 2.0, Streamlit + caching, Keepa+Playwright+Tesseract fallback chain, VGP+Tetris vettoriale Numpy, pytest + golden Samsung + Hypothesis limitato, GitHub Actions + GitNexus reindex bot, structlog + R-01 dinamico** | ADR-0013–0021 | Leader (CHG-2026-04-30-001) |
+| 2026-04-30 | Integrazione tooling GitNexus condiviso nel repo (CLAUDE.md/AGENTS.md gemelli + skills committate + .gitignore esclusione runtime + git rm --cached lock SQLite) | ADR-0007 | Leader (CHG-2026-04-30-002) |
+| 2026-04-30 | Milestone tag `milestone/stack-frozen-v0.9.0` — restore point pre-codice (purezza infrastrutturale, fonte di clone per `Atena-Core`) | ADR-0003 | Leader (post CHG-2026-04-30-002) |

@@ -3,17 +3,18 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-29 — commit `5f8d664`
-> **Sessione corrente:** TALOS — **`Frozen` dichiarato esplicitamente dal Leader** (Round 6, verbatim: *"dichiaro frozen"*). La vision è congelata: `frontmatter.status: Frozen`, `frozen_at: 2026-04-29`. Sblocco dello step [6] di ADR-0012: Claude può proporre in chat la scomposizione in ADR di stack + task ROADMAP, soggetta a validazione del Leader.
+> **Ultimo aggiornamento:** 2026-04-30 — commit `<pending CHG-2026-04-30-001>`
+> **Sessione corrente:** TALOS — **Step [6] ADR-0012 completato.** Promulgazione del cluster ADR di stack 0013–0021 (9 ADR architettura/process: project structure, linguaggio, persistenza, UI, acquisizione dati, algoritmo VGP/Tetris, test strategy, CI/CD, logging). Validazione bulk Leader (Opzione A) + override puntuali ricevuti e incisi. Sblocco fase codice.
 
 ---
 
 ## Stato in Una Riga
 
-Governance hardened (ADR 0001–0012) + **vision TALOS `Frozen` dal 2026-04-29** (26/26 lacune chiuse). Sblocco step [6] ADR-0012: prossima azione = proposta di scomposizione in chat (Claude) → validazione Leader → ratifica ADR di stack + popolamento ROADMAP applicativo.
+Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + **stack hardened (ADR 0013–0021) dal 2026-04-30**. Tutte le aree precedentemente in gap sono ora coperte. Repo in stato di **purezza infrastrutturale**: zero codice applicativo, ADR cardine pronti per il bootstrap del primo modulo `src/talos/`.
 
 **Repository:** https://github.com/matteo891/Atena (fork operativo del Leader; il repo originale `santacrocefrancesco00-ux/Atena` è del padre)
-**Milestone tag corrente:** `milestone/vision-protocol-v0.6.0` su commit `55ea55f` (restore point pre-esposizione)
+**Milestone tag corrente:** `milestone/stack-frozen-v0.9.0` (atteso post-CHG-2026-04-30-002) — restore point pre-codice
+**Milestone precedente:** `milestone/vision-protocol-v0.6.0` su commit `55ea55f` (pre-esposizione)
 **Codename progetto:** TALOS — *Scaler 500k*
 
 ---
@@ -34,6 +35,10 @@ Governance hardened (ADR 0001–0012) + **vision TALOS `Frozen` dal 2026-04-29**
 | **TALOS — Round 5: sweep finale, chiuse tutte le 17 lacune residue. Vision pronta per Frozen.** | 0012 | [CHG-008](changes/2026-04-29-008-talos-iterating-round-5-sweep-finale.md) | `08beebf` |
 | Backfill CHG-008 | — | (parte di CHG-008) | `8f7333d` |
 | **TALOS — Round 6: `Frozen` dichiarato esplicitamente dal Leader. Vision congelata.** | 0012 | [CHG-009](changes/2026-04-29-009-talos-frozen-declaration.md) | `5f8d664` |
+| Backfill CHG-009 | — | (parte di CHG-009) | `cb14561` |
+| **Promulgazione cluster ADR di stack 0013–0021 (validazione bulk Opzione A)** | 0013–0021 | [CHG-2026-04-30-001](changes/2026-04-30-001-promulgazione-adr-stack-0013-0021.md) | `<pending>` |
+| **Integrazione tooling GitNexus condiviso (CLAUDE.md + AGENTS.md + skills)** | 0007 | [CHG-2026-04-30-002](changes/2026-04-30-002-integrazione-tooling-gitnexus.md) | `<pending>` |
+| **Milestone tag `milestone/stack-frozen-v0.9.0`** | 0003 | (parte di CHG-002) | tag su `<pending>` |
 
 ---
 
@@ -46,10 +51,11 @@ Governance hardened (ADR 0001–0012) + **vision TALOS `Frozen` dal 2026-04-29**
 | ~~ESP-004~~ | ~~Round 4: chiusura L04b~~ | Chiusa in Round 4 (CHG-007) — normalizzazione min-max [0,1] | — |
 | ~~ESP-005~~ | ~~Sweep finale: 17 residue~~ | Chiusa in Round 5 (CHG-008) — tutte le 17 chiuse in un colpo | — |
 | ~~ESP-006~~ | ~~Transizione `Iterating → Frozen`~~ | Chiusa in Round 6 (CHG-009) — Leader: *"dichiaro frozen"* | — |
-| **ESP-007** | **Step [6] ADR-0012: proposta di scomposizione (Claude in chat) → validazione Leader → ratifica ADR di stack** | Prossimo passo | Sbloccato dal Frozen. Output atteso: pacchetto di ADR di stack proposti + task ROADMAP applicativo |
-| **TAG-001** | **Proposta milestone tag GitHub `milestone/vision-frozen-v0.8.0`** | Suggerita | Restore point cruciale pre-scomposizione (ADR-0003); creazione subordinata ad autorizzazione Leader |
+| ~~ESP-007~~ | ~~Step [6] ADR-0012: scomposizione → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — promulgati 9 ADR di stack | — |
+| ~~TAG-001~~ | ~~Milestone tag pre-scomposizione~~ | Sostituito da `milestone/stack-frozen-v0.9.0` (ADR-0003) post-CHG-002 | — |
+| **HARD-STOP** | **Stop categorico richiesto dal Leader post-tag** | Attivo | Il Leader cloning 'Atena-Core' nello stato di purezza infrastrutturale. **Nessuna creazione di cartelle `src/`, `tests/`, ecc., né prima riga di codice** finché il Leader non riapre la fase. |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
-| ISS-002 | Stack tecnologico → ADR di stack | Bloccante per fase codice | Si sblocca dopo Frozen + scomposizione validata; vincoli già parzialmente dichiarati: Python 3.10+, PostgreSQL via Docker, Streamlit/Gradio (LACUNA L14), Numpy vettorizzato |
+| ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
 ### Lacune critiche residue
 
@@ -87,11 +93,9 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 
 ## Prossima Azione
 
-1. **Leader risponde alle 8 lacune critiche** (e progressivamente alle altre 15). Suggerirei di iniziare da L04 (formula VGP) perché è il bottleneck dell'MVP.
-2. Status del file aggiorna `qa_rounds` ad ogni round; Q&A Log cresce; tabella lacune scende verso 0.
-3. Quando il Leader dichiara "Frozen", Claude propone in chat la scomposizione in proposte di ADR di architettura/stack + task ROADMAP.
-4. Leader valida proposta per proposta → Claude promulga gli ADR ratificati e aggiorna ROADMAP.
-5. Solo dopo: prima linea di codice TALOS sotto ADR di stack ratificato.
+1. **HARD STOP attivo (decisione Leader 2026-04-30).** Il Leader procede al clone di `Atena-Core` nello stato di purezza infrastrutturale (post-tag `milestone/stack-frozen-v0.9.0`). **Claude non crea cartelle `src/`/`tests/`/`migrations/` né scrive la prima riga di codice** finché non riceve istruzione esplicita di ripartenza.
+2. Al rientro: Self-Briefing standard (ADR-0010) → Leader autorizza il bootstrap del primo modulo applicativo → Test Gate ADR-0002 si applica da subito.
+3. Verifica della fase codice: ogni nuovo file applicativo deve mappare a un ADR Primario in `docs/decisions/FILE-ADR-MAP.md` (sezione "Codice Applicativo"). Gap → bloccare e segnalare al Leader.
 
 ---
 
@@ -100,16 +104,15 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 > Questo campo è il presidio principale contro le allucinazioni da contesto perso. Leggerlo come se qualcuno avesse lasciato un biglietto.
 
 - **Step 0 del Self-Briefing è bloccante (ADR-0010).** Verifica `git config core.hooksPath` = `scripts/hooks` prima di tutto.
-- **`PROJECT-RAW.md` è in stato `Frozen` dal 2026-04-29 (codename TALOS).** Da questo momento ogni modifica alla vision passa per **Errata Corrige** (ADR-0009) o **transizione documentata a `Iterating`** con motivazione esplicita del Leader. Niente edit diretti silenziosi.
-- **Regola "Lacune mai completate" (ADR-0012, vincolante).** Continua ad applicarsi anche post-Frozen. Se emergono ambiguità durante la scomposizione, marcarle in chat e portarle al Leader, **non inferire**.
-- **Step [6] ADR-0012 sbloccato.** Claude può ora proporre la scomposizione della vision in ADR di stack + task ROADMAP. La proposta avviene **in chat** (non come edit diretto dei file). Solo dopo validazione del Leader si promulgano gli ADR di stack ratificati.
-- **NON scrivere il primo file di codice applicativo** finché almeno un ADR di stack non è ratificato (vincolo CLAUDE.md + ROADMAP obiettivo #10).
+- **HARD STOP attivo (richiesta esplicita Leader, sessione 2026-04-30).** Niente cartelle `src/`, `tests/`, `migrations/`, `.github/workflows/`, niente prima riga di codice. Il Leader sta clonando `Atena-Core` nello stato di purezza infrastrutturale. **Aspettare istruzione esplicita** prima di toccare alcunché.
+- **`PROJECT-RAW.md` è in stato `Frozen` dal 2026-04-29 (codename TALOS).** Modifiche alla vision passano per **Errata Corrige** (ADR-0009) o transizione documentata a `Iterating` con motivazione esplicita del Leader.
+- **Regola "Lacune mai completate" (ADR-0012, vincolante).** Continua ad applicarsi anche post-Frozen e post-stack-Frozen. Se emergono ambiguità durante la futura implementazione, marcarle in chat e portarle al Leader, **non inferire**.
+- **Cluster ADR di stack 0013–0021 attivo (CHG-2026-04-30-001).** Ogni nuovo file applicativo deve mappare a un ADR Primario in FILE-ADR-MAP.md (sezione "Codice Applicativo"). Path consentiti: `src/talos/{io_,extract,vgp,tetris,formulas,persistence,ui,observability,config}` + `tests/{unit,integration,golden,governance}` + `migrations/`.
 - **Repo origin:** `https://github.com/matteo891/Atena` (fork operativo del Leader). Il repo del padre `santacrocefrancesco00-ux/Atena` non è scrivibile da `matteo891`.
-- **Refusi noti nelle Leggi di Talos (R-08 vs R-09):** il testo del Leader cita "Veto ROI (R-09)" mentre in tabella R-09 è Archiviazione e R-08 è Veto ROI. Marcato L09. Non interpretare in autonomia: chiedere conferma.
+- **Refusi noti nelle Leggi di Talos (R-08 vs R-09):** il testo del Leader cita "Veto ROI (R-09)" mentre in tabella R-09 è Archiviazione e R-08 è Veto ROI. Marcato L09 (corretto inline in PROJECT-RAW sez. 4.1.9). Non interpretare in autonomia: chiedere conferma se rilevato altrove.
 - **GitNexus rinviato (ISS-001).** Step 4 self-briefing degrada con dichiarazione esplicita.
-- **Errata corrige post-Frozen (ADR-0009).** Quando PROJECT-RAW.md sarà Frozen, ogni modifica successiva alla vision passa per Errata Corrige o transizione documentata a `Iterating`.
 - **Push immediato post-commit certificato (ADR-0011).**
-- **Test manuali documentati ammessi per governance (ADR-0011), non per codice applicativo.**
+- **Test manuali documentati ammessi per governance (ADR-0011), non per codice applicativo (richiede test automatici).**
 - **Tutti gli ADR sono `Active`.** ADR-0004 è `Active¹` (hardening patch).
 - **Header `Ultimo aggiornamento` di STATUS.md obbligatorio (ADR-0010).** Aggiornare data + commit hash post-commit. Ogni claim ancorato.
 
@@ -120,11 +123,12 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 | ID | Descrizione | Workaround | ADR | Priorità |
 |---|---|---|---|---|
 | ISS-001 | `gitnexus analyze` segfault / exit code 5 su Node v24.15.0; architettura processore macchina locale incompatibile | Saltare step 4 GitNexus nel self-briefing con dichiarazione esplicita; uso futuro da PC operativo Leader | ADR-0007 | Rinviata |
-| ISS-002 | Stack tecnologico → ADR di stack non promulgato | Si sblocca dopo Frozen di TALOS + scomposizione validata | ADR-0012 → ADR di stack | Bloccante per fase codice |
-| ESP-001 | Esposizione bozza progetto | **Chiusa 2026-04-29 con CHG-004** — bozza esposta verbatim, status Iterating | ADR-0012 | Chiusa |
+| ~~ISS-002~~ | ~~Stack tecnologico non promulgato~~ | Chiusa 2026-04-30 con CHG-2026-04-30-001 — cluster ADR 0013–0021 promulgato | ADR-0013–0021 | Chiusa |
+| ESP-001 | Esposizione bozza progetto | Chiusa 2026-04-29 con CHG-004 | ADR-0012 | Chiusa |
 | ESP-002 | Round 2 | Chiusa 2026-04-29 con CHG-005 | ADR-0012 | Chiusa |
 | ESP-003 | Round 3: chiusura L04 + L21 | Chiusa 2026-04-29 con CHG-006; aperta nuova L04b critica | ADR-0012 | Chiusa parzialmente |
 | ESP-004 | Round 4: chiusura L04b | Chiusa 2026-04-29 con CHG-007 — normalizzazione min-max [0,1] | ADR-0012 | Chiusa |
 | ESP-005 | Round 5: sweep finale 17 lacune residue | Chiusa 2026-04-29 con CHG-008 — tutte chiuse in un colpo | ADR-0012 | Chiusa |
 | ESP-006 | Transizione Iterating → Frozen | Chiusa 2026-04-29 con CHG-009 — Leader: "dichiaro frozen" | ADR-0012 | Chiusa |
-| ESP-007 | Step [6] ADR-0012: proposta scomposizione → ADR di stack | Prossimo passo (Claude in chat) | ADR-0012 | Prossima |
+| ~~ESP-007~~ | ~~Step [6] ADR-0012: scomposizione → ADR di stack~~ | Chiusa 2026-04-30 con CHG-2026-04-30-001 — validazione bulk Leader (Opzione A) | ADR-0012 → ADR-0013–0021 | Chiusa |
+| HARD-STOP | Pausa esplicita Leader post-tag stack-frozen | Attiva. Riapertura solo su istruzione esplicita Leader | — | Attiva |

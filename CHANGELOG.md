@@ -9,6 +9,42 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-04-30 — Stack `Frozen` (ADR di stack 0013–0021 promulgati)
+
+Pietra miliare. Tutte le aree precedentemente in gap (stack tecnologico, struttura, CI/CD, test strategy applicativa, logging) sono ora coperte da ADR `Active`. Repo in stato di **purezza infrastrutturale**: zero codice applicativo, ADR cardine pronti per il bootstrap del primo modulo. **HARD STOP** richiesto dal Leader post-tag `milestone/stack-frozen-v0.9.0` per consentire il clone di `Atena-Core`.
+
+### Added
+- `ADR-0013`: Project Structure — `src-layout` + `uv` come tool packaging, 8 aree consentite sotto `src/talos/`
+- `ADR-0014`: Stack Linguaggio & Quality Gates — Python 3.11 + ruff strict + mypy strict + pytest + pre-commit applicativo
+- `ADR-0015`: Stack Persistenza — PostgreSQL 16 + SQLAlchemy 2.0 sync + Alembic + Zero-Trust (RLS + 3 ruoli + audit_log) + pg_dump retention 7gg; **schema iniziale incluso come Allegato A** (10 tabelle)
+- `ADR-0016`: Stack UI — Streamlit + multi-page + caching strategy (`@st.cache_data ttl=600` su Keepa + bottone "Forza Aggiornamento") + idempotency su side-effect + dark mode default
+- `ADR-0017`: Stack Acquisizione Dati — Keepa (libreria community wrapped) + Playwright sync + Tesseract; fallback chain R-01; rate limit hard configurabile; soglia OCR 70 default; PA-API 5 escluso da MVP
+- `ADR-0018`: Algoritmo VGP & Tetris — moduli `vgp/`, `tetris/`, `formulas/`; **pandas** (non polars) + Numpy vettoriale; errore esplicito su edge case Fee_FBA L11b; greedy con Priorità=∞ per locked-in
+- `ADR-0019`: Test Strategy Applicativa — pytest con marker (unit/integration/golden/governance/slow); **golden dataset Samsung 1000 righe sintetico validato dal Leader**; coverage ≥90% core / ≥85% totale; **Hypothesis limitato a `vgp/normalize.py` + `vgp/score.py`**
+- `ADR-0020`: CI/CD Pipeline — GitHub Actions (4 workflow); **single-push diretto su `main` + CI come gate**; GitNexus reindex automatizzato post-merge come bot; GitHub Secrets per `KEEPA_API_KEY` + Postgres test
+- `ADR-0021`: Logging & Telemetria — `structlog` JSON + catalogo eventi canonici (10 eventi); enforcement R-01 sia statico (grep) sia dinamico (test capture handler); rotazione 10MB×7
+- `docs/changes/2026-04-30-001-promulgazione-adr-stack-0013-0021.md`
+
+### Changed
+- `docs/decisions/INDEX.md`: 9 nuove righe nel registro + 9 nuovi nodi nel grafo dipendenze (cluster ADR di stack); aree di codice coperte aggiornate (gap stack/CI-CD/struttura/test/logging tutti chiusi)
+- `docs/decisions/FILE-ADR-MAP.md`: nuova sezione "Codice Applicativo" con path vincolanti per ogni area (`src/talos/io_/keepa_client.py` → ADR-0017, ecc.); CI/CD workflow path; gap noti aggiornati
+- `docs/STATUS.md`: ESP-007 chiusa, ISS-002 chiusa, HARD-STOP attivato; header e Stato in Una Riga riscritti
+- `ROADMAP.md`: obiettivo #8 Completato; #10 (clone Atena-Core) e #11 (bootstrap primo modulo) aggiunti; meta-blocchi A/B/C chiusi; D/E/F aggiornati; G/H/I/J nuovi (post-MVP)
+
+### Tooling — Integrazione GitNexus condivisa (CHG-2026-04-30-002)
+
+- `CLAUDE.md`: blocco `<!-- gitnexus:start -->…end -->` aggiunto (auto-iniettato da `gitnexus init`)
+- `AGENTS.md` aggiunto come gemello multi-agent (Cursor/Cline/Aider)
+- `.claude/skills/gitnexus/` (6 skill: exploring, impact-analysis, debugging, refactoring, guide, cli) committate per allineamento futuri Claude
+- `.gitignore` aggiunto: esclude `.gitnexus/` runtime locale (lock SQLite, WAL)
+- `git rm --cached .gitnexus/lbug` + `lbug.wal` — smesso di tracciare i lock SQLite (erano in repo per errore)
+- `scripts/hooks/{pre-commit,commit-msg}`: cambio modalità a `100755` (executable bit ripristinato; comportamento immutato)
+- `docs/changes/2026-04-30-002-integrazione-tooling-gitnexus.md`
+
+### Tag
+
+- `milestone/stack-frozen-v0.9.0` — restore point pre-codice (decisione Leader, ADR-0003); fonte di clone per `Atena-Core`
+
 ## [0.8.0] — 2026-04-29 — TALOS Vision `Frozen`
 
 Pietra miliare del progetto. La vision di TALOS (Scaler 500k) è ufficialmente **`Frozen`** dopo 6 round di Iterating e 26 lacune chiuse. Sblocca lo step [6] di ADR-0012: proposta di scomposizione in ADR di stack.
