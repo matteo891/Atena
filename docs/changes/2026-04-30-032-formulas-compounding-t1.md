@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-032
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Proposed
-commit: TBD
+status: Committed
+commit: eb04afb
 adr_ref: ADR-0018, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -108,4 +108,4 @@ def compounding_t1(budget_t: float, cash_profits: Iterable[float]) -> float:
 - Predecessori: CHG-2026-04-30-025 (F1 `cash_inflow_eur`), CHG-2026-04-30-026 (F2 `cash_profit_eur` + `roi`)
 - Vision verbatim: PROJECT-RAW.md riga 280 (`Budget_T+1 = Budget_T + Somma(Cash_Profit)`) + R-07 riga 225 ("100% del bonifico Amazon è capitale reinvestibile")
 - Successore atteso: estensione sentinella e2e con F3 (rollup di sessione); versione vettoriale `vgp/`; orchestratore di sessione che persiste `Budget_T+1`; eventuale `milestone/first-formula-v1.0.0` (catena scalare F1→F2→F3 + ROI + Veto chiusa)
-- Commit: TBD
+- Commit: `eb04afb`
