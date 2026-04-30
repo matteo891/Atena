@@ -9,6 +9,27 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-04-30 — Primo modulo applicativo: observability (configure_logging + catalogo eventi)
+
+`src/talos/observability/` ottiene la sua prima implementazione concreta: configurazione `structlog` aderente ad ADR-0021, catalogo dei 10 eventi canonici come fonte di verità statica, helper di session context. Sblocca la disciplina R-01 NO SILENT DROPS dinamica (test governance attivo).
+
+### Added
+- `src/talos/observability/events.py` — `CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]]` con le 10 voci di ADR-0021 + 10 costanti `Final[str]` (`EVENT_*`) per uso applicativo
+- `src/talos/observability/logging_config.py` — `configure_logging(level, json_output)` + `bind_session_context(...)` + `clear_session_context()`. Pipeline structlog: `contextvars.merge_contextvars → add_log_level → TimeStamper(iso) → StackInfoRenderer → format_exc_info → renderer`
+- `tests/unit/test_logging_config.py` — 6 test con `LogCapture`
+- `tests/unit/test_events_catalog.py` — 2 test invarianti del catalogo
+- `tests/governance/test_log_events_catalog.py` — R-01 dinamico (scansiona `src/talos/`, fallisce se trova `.drop`/`.skip`/`continue` senza evento canonico)
+- `docs/changes/2026-04-30-006-observability-configure-logging.md`
+
+### Changed
+- `src/talos/observability/__init__.py` — re-export delle API pubbliche (`CANONICAL_EVENTS`, `configure_logging`, `bind_session_context`, `clear_session_context`)
+- `pyproject.toml` — `[project].dependencies` ora include `structlog>=24.4.0` (prima dipendenza runtime). Commento spiega la sequenza modulo-per-modulo per le altre dipendenze applicative
+- `uv.lock` — `structlog==25.5.0` lockato
+
+### Quality gate verde
+- `ruff check` / `ruff format --check` / `mypy src/` (4 source file) → puliti
+- `pytest tests/unit tests/governance -q` → **12 passed** (2 smoke + 6 logging + 2 catalog + 1 no-root + 1 governance log)
+
 ## [0.10.1] — 2026-04-30 — Prima pipeline CI (server-side quality gate)
 
 Estende il quality gate locale (CHG-004) a GitHub Actions. Errata Corrige di ADR-0020 documenta il rollout staging dei 4 workflow prescritti dall'ADR.

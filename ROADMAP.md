@@ -21,8 +21,9 @@ Tracker operativo del progetto. Ogni voce deve essere tracciabile a un ADR valid
 | 9 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
 | 10 | Clone `Atena-Core` (purezza infrastrutturale post `milestone/stack-frozen-v0.9.0`) | ADR-0003 | **In corso** — Leader cloning post-tag (HARD STOP attivo) |
 | 11 | Bootstrap primo modulo applicativo (`pyproject.toml` + `src/talos/` + `tests/{unit,governance}/` + `scripts/hooks/pre-commit-app` + `scripts/setup-dev.sh` + `README.md`) | ADR-0013, ADR-0014, ADR-0019, ADR-0021 | **Completato** (CHG-2026-04-30-004, commit `b7f78d4`) |
-| 12 | CI base server-side (`.github/workflows/ci.yml`) — replica del pre-commit-app + structure-check + governance-checks | ADR-0020 (errata staging), ADR-0006 | **In corso** (CHG-2026-04-30-005) |
-| 13 | Primo modulo di sostanza (da decidere col Leader: logging/persistenza/...) | TBD | Prossimo |
+| 12 | CI base server-side (`.github/workflows/ci.yml`) — replica del pre-commit-app + structure-check + governance-checks | ADR-0020 (errata staging), ADR-0006 | **Completato** (CHG-2026-04-30-005, run verde in 22s) |
+| 13 | Primo modulo di sostanza: `src/talos/observability/` con `configure_logging` + catalogo eventi canonici (10 voci) | ADR-0021, ADR-0019, ADR-0014 | **In corso** (CHG-2026-04-30-006) |
+| 14 | Prossimo modulo applicativo (probabilmente `persistence/` con Alembic init + primi ORM model + plugin `sqlalchemy[mypy]`) | ADR-0015 | Prossimo |
 
 ---
 
@@ -73,3 +74,4 @@ _Decisioni architetturali future da discutere e formalizzare tramite ADR prima d
 | 2026-04-30 | Errata Corrige ADR-0006 (Git Hooks Enforcement) + side-effect su ADR-0014/0020: hooks v2 con pre-commit-app wiring (graceful skip se assente) e bypass cumulativo `commit-msg` per il bot reindex GitNexus (`[skip ci]` + author `github-actions[bot]`) | ADR-0006, ADR-0014, ADR-0020, ADR-0009 | Leader (CHG-2026-04-30-003) |
 | 2026-04-30 | **Primo commit di codice applicativo** — bootstrap minimale: `pyproject.toml` + `uv.lock` + `src/talos/` scaffold (incluso `observability/` stub) + `tests/{unit,governance}/` con smoke + ADR-0013 enforcement + `scripts/hooks/pre-commit-app` (ruff+format+mypy+pytest) + `scripts/setup-dev.sh` idempotente + `README.md` + `.gitignore` esteso. Quality gate end-to-end PASS (pre-commit-app invocato dal hook governance al commit reale) | ADR-0013, ADR-0014, ADR-0019, ADR-0021, ADR-0006 | Leader (CHG-2026-04-30-004) |
 | 2026-04-30 | **Prima pipeline CI server-side** — `.github/workflows/ci.yml` (3 job: quality-gates + structure-check + governance-checks). Replica esatta del `pre-commit-app` locale su GitHub Actions. Errata Corrige ADR-0020 per documentare il rollout staging dei 4 workflow (gitnexus/release/hooks-check rinviati; job tests parziale alla prima introduzione del modulo applicabile) | ADR-0020, ADR-0006, ADR-0009 | Leader (CHG-2026-04-30-005) |
+| 2026-04-30 | **Primo modulo applicativo: `src/talos/observability/`** — `configure_logging` reale (structlog pipeline ADR-0021 verbatim) + catalogo eventi canonici (10 voci come `Final[str]`) + `bind/clear_session_context`. 6 test unit + 2 test catalogo + 1 test governance R-01 dinamico. `structlog>=24.4.0` aggiunta come prima dipendenza runtime | ADR-0021, ADR-0019, ADR-0014 | Leader (CHG-2026-04-30-006) |

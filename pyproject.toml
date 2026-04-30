@@ -11,9 +11,14 @@ requires-python = ">=3.11,<3.13"
 authors = [{ name = "Leader" }]
 license = { text = "Proprietario" }
 dependencies = [
-    # Vuoto in bootstrap minimale (CHG-2026-04-30-004).
-    # Le dipendenze applicative vanno aggiunte modulo per modulo, ognuna sotto un ADR
-    # specifico (es. SQLAlchemy → ADR-0015, Streamlit → ADR-0016, Keepa → ADR-0017).
+    # Logging strutturato (ADR-0021) — prima dipendenza runtime, introdotta
+    # in CHG-2026-04-30-006. Le altre dipendenze applicative entreranno
+    # modulo per modulo, ognuna sotto il proprio ADR di stack:
+    #   SQLAlchemy/psycopg/Alembic → ADR-0015
+    #   Streamlit                  → ADR-0016
+    #   Keepa/Playwright/Tesseract → ADR-0017
+    #   pandas/numpy               → ADR-0018
+    "structlog>=24.4.0",
 ]
 
 [dependency-groups]
