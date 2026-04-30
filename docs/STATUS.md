@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 sera — commit `a40b825` (feat: telemetria `session.replayed` CHG-058). Tag: 4 milestone + 10 checkpoint. Catena CHG odierna: 001→...→**058**. **Tabelle Allegato A coperte: 10/10** ✓ + **489 test PASS** (389 unit/gov/golden + 100 integration). **Indice GitNexus** stale ~18 commit dopo i CHG odierni.
+> **Ultimo aggiornamento:** 2026-04-30 sera — commit `3550027` (feat: UI compare_session_kpis CHG-059). Tag: 4 milestone + 10 checkpoint. Catena CHG odierna: 001→...→**059**. **Tabelle Allegato A coperte: 10/10** ✓ + **494 test PASS** (394 unit/gov/golden + 100 integration). **Indice GitNexus** stale ~22 commit dopo i CHG odierni.
 > **Sessione corrente:** TALOS sera (modalità "macina" autorizzata) — Round CHG-052..056. **CRUD-light + replay completo:** load_full + delete_config + UI Reset + UI overrides wiring + replay_session. Loop CFO→DB→UI→orchestrator chiuso. Soglia checkpoint-10 raggiunta (5 CHG significativi).
 
 ---
@@ -103,6 +103,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **♻️ What-if `replay_session(loaded, *, locked_in_override, budget_override) -> SessionResult`. Riusa `loaded.enriched_df` (no re-enrichment), riapplica Tetris+panchina+compounding. Primo consumer reale di `load_session_full` (CHG-052). Default override: locked_in/budget originali. `veto_roi_threshold_override` out-of-scope V1. 6 test integration. 484 PASS (387 + 97).** | 0018, 0014, 0019 | [CHG-2026-04-30-056](changes/2026-04-30-056-replay-session-what-if.md) | `e7c2666` |
 | **🔁 UI consumer di `replay_session`: `try_replay_session` graceful + sub-expander "What-if Re-allocate" dentro `_render_loaded_session_detail`. Number_input budget + text_input locked-in CSV + bottone Re-allocate → metric/tabelle nuove (no persist). 3 test integration (success, ID inesistente, R-04 over-budget). 487 PASS (387 + 100).** | 0016, 0018, 0014, 0019 | [CHG-2026-04-30-057](changes/2026-04-30-057-ui-replay-what-if.md) | `92bd63b` |
 | **📡 Telemetria `session.replayed` (errata catalogo ADR-0021): orchestrator emette `_logger.debug` post-replay con `asin_count/locked_in_count/budget/budget_t1`. Catalogo 5/11 eventi viventi. 2 test caplog. 489 PASS (389 + 100).** | 0021, 0019, 0009, 0014 | [CHG-2026-04-30-058](changes/2026-04-30-058-telemetry-session-replayed.md) | `a40b825` |
+| **🔀 UI compare side-by-side `compare_session_kpis(loaded, replayed) -> dict` helper puro + `_render_compare_view` due colonne con metric Budget/Saturazione (delta pp)/Budget T+1/Cart-Panchina counts (delta). Sostituisce "solo replay" di CHG-057 con confronto immediato. 5 test unit (struttura, saturation derivata, NaN placeholder, replayed usa Cart, no div/0). 494 PASS (394 + 100).** | 0016, 0014, 0019 | [CHG-2026-04-30-059](changes/2026-04-30-059-ui-compare-runs-side-by-side.md) | `3550027` |
 
 ---
 
@@ -187,6 +188,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHECKPOINT-10~~ | ~~Tag `checkpoint/2026-04-30-10`~~ | Creato e pushato su `1c2631c`. Finestra: CHG-052..056 | — |
 | ~~CHG-057~~ | ~~UI try_replay_session + sub-expander what-if~~ | Chiuso 2026-04-30 sera — 487 PASS, consumer visivo replay_session | — |
 | ~~CHG-058~~ | ~~telemetria session.replayed (errata ADR-0021)~~ | Chiuso 2026-04-30 sera — 489 PASS, catalogo 5/11 viventi | — |
+| ~~CHG-059~~ | ~~UI compare_session_kpis side-by-side originale/replay~~ | Chiuso 2026-04-30 sera — 494 PASS, pattern UX what-if comparison | — |
 | **NEXT** | **Prossimi step possibili** | Configurabilità aperta | (e) **lookup `Referral_Fee` per categoria** (estensione config_repository con `set/get_text` o numeric per categoria — pattern testato); (β) `upsert_session` decisione Leader semantica; (z) migrazione a `structlog.bind(session_id, tenant_id)` context tracing; (q) refactor UI multi-page ADR-0016; (r) **`io_/extract` Samsung** (Playwright + Tesseract + Keepa) — last big block; (s) golden Samsung 1000 ASIN; (y) `load_session_full`; chiusi: (a/a'/a''/b/b''/c/d/d'/f/g/h/i/j/k/l/m/n/p/t/u/v/x/α) |
 | ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |

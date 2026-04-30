@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-059
 date: 2026-04-30
 author: Claude (su autorizzazione Leader, modalità "macina" sessione 2026-04-30 sera)
-status: Pending
-commit: pending
+status: Committed
+commit: 3550027
 adr_ref: ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -185,4 +185,4 @@ UI side-by-side (CHG-059). Pattern estendibile a confronti
 - Successore atteso: diff a livello ASIN (cart originale ∩/∪/−
   cart replay); compare runs storici (sessione A vs sessione B);
   storico replay (`session.replayed` aggregato).
-- Commit: pending (backfill).
+- Commit: `3550027`.
