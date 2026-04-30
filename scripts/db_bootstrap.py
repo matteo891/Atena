@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """DB bootstrap idempotente: ruoli + GRANT/REVOKE + FORCE RLS (CHG-2026-04-30-021).
 
+Da CHG-2026-04-30-031 le 4 env var DB fluiscono via `TalosSettings`
+(`db_url_superuser`, `admin_password`, `app_password`, `audit_password`).
+
 ADR-0015 sezione "Ruoli" — Zero-Trust matrix:
 - talos_admin  : LOGIN, NOSUPERUSER, BYPASSRLS, CREATEDB, CREATEROLE  (DBA + Alembic)
 - talos_app    : LOGIN, NOSUPERUSER, NOBYPASSRLS                       (pool applicativo)
@@ -23,18 +26,16 @@ Idempotente: rieseguibile senza errori.
 
 from __future__ import annotations
 
-import os
 import sys
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import psycopg
 from psycopg import sql
 
-_REQUIRED_ENV: Final = (
-    "TALOS_ADMIN_PASSWORD",
-    "TALOS_APP_PASSWORD",
-    "TALOS_AUDIT_PASSWORD",
-)
+from talos.config import get_settings
+
+if TYPE_CHECKING:
+    from talos.config import TalosSettings
 
 _DATA_TABLES: Final = (
     "sessions",
@@ -51,9 +52,12 @@ _DATA_TABLES: Final = (
 _RLS_TABLES: Final = ("config_overrides", "locked_in", "storico_ordini")
 
 
-def _resolve_superuser_url() -> str:
-    """URL di connessione superuser. Strippa il prefisso `+psycopg` (forma SQLAlchemy)."""
-    url = os.getenv("TALOS_DB_URL_SUPERUSER") or os.getenv("TALOS_DB_URL")
+def _resolve_superuser_url(settings: TalosSettings) -> str:
+    """URL di connessione superuser. Strippa il prefisso `+psycopg` (forma SQLAlchemy).
+
+    Priorità: `db_url_superuser` (TALOS_DB_URL_SUPERUSER) → `db_url` (TALOS_DB_URL).
+    """
+    url = settings.db_url_superuser or settings.db_url
     if not url:
         msg = (
             "TALOS_DB_URL_SUPERUSER (o TALOS_DB_URL) non settato. "
@@ -63,8 +67,15 @@ def _resolve_superuser_url() -> str:
     return url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
-def _check_required_env() -> None:
-    missing = [k for k in _REQUIRED_ENV if not os.getenv(k)]
+def _check_required_settings(settings: TalosSettings) -> None:
+    """Verifica che le 3 password ruoli siano presenti via env var TALOS_*."""
+    missing: list[str] = []
+    if not settings.admin_password:
+        missing.append("TALOS_ADMIN_PASSWORD")
+    if not settings.app_password:
+        missing.append("TALOS_APP_PASSWORD")
+    if not settings.audit_password:
+        missing.append("TALOS_AUDIT_PASSWORD")
     if missing:
         msg = "Env var richieste assenti: " + ", ".join(missing)
         raise RuntimeError(msg)
@@ -142,11 +153,15 @@ def _force_rls(cur: psycopg.Cursor) -> None:
 
 def bootstrap() -> None:
     """Entry point: idempotente, esce con 0 al successo, raise on failure."""
-    _check_required_env()
-    url = _resolve_superuser_url()
-    admin_pwd = os.environ["TALOS_ADMIN_PASSWORD"]
-    app_pwd = os.environ["TALOS_APP_PASSWORD"]
-    audit_pwd = os.environ["TALOS_AUDIT_PASSWORD"]
+    settings = get_settings()
+    _check_required_settings(settings)
+    url = _resolve_superuser_url(settings)
+    admin_pwd = settings.admin_password
+    app_pwd = settings.app_password
+    audit_pwd = settings.audit_password
+    assert admin_pwd is not None  # noqa: S101 — narrowing post _check_required_settings
+    assert app_pwd is not None  # noqa: S101 — narrowing post _check_required_settings
+    assert audit_pwd is not None  # noqa: S101 — narrowing post _check_required_settings
 
     admin_attrs = sql.SQL("NOSUPERUSER BYPASSRLS CREATEDB CREATEROLE")
     app_attrs = sql.SQL("NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE")

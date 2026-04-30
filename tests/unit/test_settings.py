@@ -78,3 +78,57 @@ def test_extra_kwarg_at_construction_rejected() -> None:
     """
     with pytest.raises(ValidationError, match="typo_field"):
         TalosSettings(typo_field="noise")  # type: ignore[call-arg]
+
+
+# ---------------------------------------------------------------------------
+# Campi DB bootstrap (CHG-2026-04-30-031)
+# ---------------------------------------------------------------------------
+
+
+def test_db_url_superuser_default_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Senza env var, `db_url_superuser` e' None."""
+    monkeypatch.delenv("TALOS_DB_URL_SUPERUSER", raising=False)
+    settings = TalosSettings()
+    assert settings.db_url_superuser is None
+
+
+def test_db_url_superuser_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TALOS_DB_URL_SUPERUSER` letta come stringa."""
+    monkeypatch.setenv("TALOS_DB_URL_SUPERUSER", "postgresql://postgres:x@h:5432/postgres")
+    settings = TalosSettings()
+    assert settings.db_url_superuser == "postgresql://postgres:x@h:5432/postgres"
+
+
+def test_passwords_default_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Senza env var, le 3 password ruoli sono None."""
+    for var in ("TALOS_ADMIN_PASSWORD", "TALOS_APP_PASSWORD", "TALOS_AUDIT_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
+    settings = TalosSettings()
+    assert settings.admin_password is None
+    assert settings.app_password is None
+    assert settings.audit_password is None
+
+
+def test_passwords_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Le 3 env var TALOS_*_PASSWORD popolano i campi."""
+    admin_value = "admin_pwd_x"
+    app_value = "app_pwd_y"
+    audit_value = "audit_pwd_z"
+    monkeypatch.setenv("TALOS_ADMIN_PASSWORD", admin_value)
+    monkeypatch.setenv("TALOS_APP_PASSWORD", app_value)
+    monkeypatch.setenv("TALOS_AUDIT_PASSWORD", audit_value)
+    settings = TalosSettings()
+    assert settings.admin_password == admin_value
+    assert settings.app_password == app_value
+    assert settings.audit_password == audit_value
+
+
+def test_db_url_superuser_independent_from_db_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`db_url_superuser` e `db_url` sono campi distinti, indipendenti."""
+    monkeypatch.delenv("TALOS_DB_URL", raising=False)
+    monkeypatch.setenv("TALOS_DB_URL_SUPERUSER", "postgresql://postgres:x@h/p")
+    settings = TalosSettings()
+    assert settings.db_url is None
+    assert settings.db_url_superuser == "postgresql://postgres:x@h/p"

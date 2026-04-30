@@ -35,9 +35,9 @@ class TalosSettings(BaseSettings):
     db_url: str | None = Field(
         default=None,
         description=(
-            "URL connessione PostgreSQL (env: TALOS_DB_URL). Opzionale: "
-            "module-import non deve fallire in test/CI senza DB. Errore "
-            "esplicito al call site quando serve davvero."
+            "URL connessione PostgreSQL pool app (env: TALOS_DB_URL). "
+            "Opzionale: module-import non deve fallire in test/CI senza DB. "
+            "Errore esplicito al call site quando serve davvero."
         ),
     )
     roi_veto_threshold: float = Field(
@@ -46,6 +46,35 @@ class TalosSettings(BaseSettings):
             "Soglia Veto ROI R-08 come frazione decimale "
             "(env: TALOS_ROI_VETO_THRESHOLD). Default 0.08 (verbatim). "
             "Override per L10 chiusa Round 5 (configurabilita' soglia)."
+        ),
+    )
+    db_url_superuser: str | None = Field(
+        default=None,
+        description=(
+            "URL connessione superuser per bootstrap ruoli/RLS "
+            "(env: TALOS_DB_URL_SUPERUSER). Usata da scripts/db_bootstrap.py; "
+            "fallback su db_url se assente. Opzionale: errore al call site."
+        ),
+    )
+    admin_password: str | None = Field(
+        default=None,
+        description=(
+            "Password ruolo talos_admin (env: TALOS_ADMIN_PASSWORD). "
+            "Richiesta da scripts/db_bootstrap.py."
+        ),
+    )
+    app_password: str | None = Field(
+        default=None,
+        description=(
+            "Password ruolo talos_app (env: TALOS_APP_PASSWORD). "
+            "Richiesta da scripts/db_bootstrap.py."
+        ),
+    )
+    audit_password: str | None = Field(
+        default=None,
+        description=(
+            "Password ruolo talos_audit (env: TALOS_AUDIT_PASSWORD). "
+            "Richiesta da scripts/db_bootstrap.py."
         ),
     )
 

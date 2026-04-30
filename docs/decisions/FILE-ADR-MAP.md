@@ -91,7 +91,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/observability/` | ADR-0021 | ADR-0008, ADR-0019 (test catalogo) | structlog config + catalogo eventi |
 | `src/talos/config/` | ADR-0013 | ADR-0014 | pydantic-settings + override layer |
 | `src/talos/config/__init__.py` | ADR-0013 | — | Re-export `TalosSettings`, `get_settings` (inaugurato CHG-2026-04-30-029) |
-| `src/talos/config/settings.py` | ADR-0014 | ADR-0019 | `TalosSettings(BaseSettings)` env_prefix `TALOS_`; campi `db_url`, `roi_veto_threshold`; validator (0,1] su soglia; `get_settings` singleton via `lru_cache` — CHG-2026-04-30-029 |
+| `src/talos/config/settings.py` | ADR-0014 | ADR-0019 | `TalosSettings(BaseSettings)` env_prefix `TALOS_`; campi `db_url`, `roi_veto_threshold`, `db_url_superuser`, `admin_password`, `app_password`, `audit_password`; validator (0,1] su soglia; `get_settings` singleton via `lru_cache` — CHG-2026-04-30-029 + CHG-2026-04-30-031 |
 | `selectors.yaml` | ADR-0017 | — | Configurazione vivente Amazon scraping |
 | `.streamlit/config.toml` | ADR-0016 | — | Theme dark default |
 
