@@ -58,6 +58,7 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/` | ADR-0013 | — | src-layout; 8 aree consentite |
 | `src/talos/__init__.py` | ADR-0013 | ADR-0021 (bootstrap logging) | Inizializza package + structlog |
 | `tests/` | ADR-0019 | ADR-0002, ADR-0011 | unit / integration / golden / governance |
+| `tests/integration/` | ADR-0019 | ADR-0015 (RLS + audit), ADR-0011 (test gate) | DB reale via env var `TALOS_DB_URL`; skip module-level se assente — CHG-2026-04-30-019 |
 | `migrations/` | ADR-0015 | — | Alembic; initial migration = Allegato A di ADR-0015 |
 | `pyproject.toml` | ADR-0013, ADR-0014 | — | uv + ruff + mypy + pytest config |
 | `uv.lock` | ADR-0013, ADR-0014 | — | Versionato; aggiornato con `uv sync` |
