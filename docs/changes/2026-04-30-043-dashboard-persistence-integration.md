@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-043
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Draft
-commit: [hash — aggiornare immediatamente post-commit]
+status: Committed
+commit: 316940b
 adr_ref: ADR-0016, ADR-0015, ADR-0014, ADR-0019
 ---
 
@@ -183,4 +183,4 @@ nuovi simboli `get_session_factory_or_none`, `try_persist_session`,
   (save_session_result)
 - Successore atteso: CHG-044 `load_session_by_id` + `list_recent_sessions`
   per pagina storico; CHG futuro caching factory `@st.cache_resource`
-- Commit: `[pending]`
+- Commit: `316940b`
