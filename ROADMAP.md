@@ -20,7 +20,7 @@ Tracker operativo del progetto. Ogni voce deve essere tracciabile a un ADR valid
 | 8 | Step [6] ADR-0012: proposta scomposizione (Claude in chat) → validazione Leader → ADR di stack | ADR-0012 → ADR-0013…0021 | **Completato.** Validazione bulk Leader (Opzione A) 2026-04-30. 9 ADR di stack promulgati (CHG-2026-04-30-001) |
 | 9 | Fork repo su PC operativo Leader + verifica `gitnexus analyze` (ISS-001) | ADR-0007 | Rinviato — bloccato da setup PC operativo |
 | 10 | Clone `Atena-Core` (purezza infrastrutturale post `milestone/stack-frozen-v0.9.0`) | ADR-0003 | **In corso** — Leader cloning post-tag (HARD STOP attivo) |
-| 11 | Bootstrap primo modulo applicativo (`pyproject.toml` + `src/talos/__init__.py` + `tests/conftest.py`) | ADR-0013, ADR-0014 | Bloccante: subordinato a riapertura esplicita Leader post HARD STOP |
+| 11 | Bootstrap primo modulo applicativo (`pyproject.toml` + `src/talos/` + `tests/{unit,governance}/` + `scripts/hooks/pre-commit-app` + `scripts/setup-dev.sh` + `README.md`) | ADR-0013, ADR-0014, ADR-0019, ADR-0021 | **Pronto per commit** (CHG-2026-04-30-004) — quality gate verde, in attesa permesso Leader |
 
 ---
 

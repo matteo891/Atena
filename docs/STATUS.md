@@ -56,7 +56,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~ESP-007~~ | ~~Step [6] ADR-0012: scomposizione → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — promulgati 9 ADR di stack | — |
 | ~~TAG-001~~ | ~~Milestone tag pre-scomposizione~~ | Sostituito da `milestone/stack-frozen-v0.9.0` (ADR-0003) post-CHG-002 | — |
 | ~~HARD-STOP~~ | ~~Stop categorico post-tag~~ | Sciolto 2026-04-30 dal Leader ("rompi pure l'hard stop e continua") | — |
-| **CHG-004** | **Bootstrap minimale: `pyproject.toml` + `uv.lock` + `src/talos/__init__.py` + `tests/conftest.py` + `scripts/hooks/pre-commit-app`** | In preparazione | Subordinato a permesso esplicito Leader per il commit (Test Gate ADR-0002) |
+| **CHG-004** | **Bootstrap minimale codice — pronto per commit, in attesa permesso Leader (Test Gate ADR-0002)** | Pending approval | Quality gate locale verde: ruff/format/mypy/pytest tutti PASS; pre-commit-app E2E PASS |
 | ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 

@@ -1,0 +1,41 @@
+#!/bin/bash
+# ADR-0014: Pre-commit applicativo (lint + type + unit + governance).
+# Invocato dallo `scripts/hooks/pre-commit` di governance (ADR-0006, errata
+# CHG-2026-04-30-003) quando in staging ci sono *.py / pyproject.toml / uv.lock.
+#
+# Exit non-zero blocca il commit. Diagnostica esplicita prima dell'exit.
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Garantisce che ~/.local/bin sia in PATH (uv installato di default lì).
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
+if ! command -v uv >/dev/null 2>&1; then
+    echo ""
+    echo "ERROR: COMMIT BLOCCATO — ADR-0014 (toolchain mancante)"
+    echo "──────────────────────────────────────────────────────"
+    echo "uv non disponibile in PATH. Installazione richiesta:"
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
+    echo "──────────────────────────────────────────────────────"
+    exit 1
+fi
+
+echo "→ ruff check src/ tests/"
+uv run --quiet ruff check src/ tests/
+
+echo "→ ruff format --check src/ tests/"
+uv run --quiet ruff format --check src/ tests/
+
+echo "→ mypy src/"
+uv run --quiet mypy src/
+
+echo "→ pytest unit + governance (markers: not slow)"
+uv run --quiet pytest tests/unit tests/governance -m "not slow" -q
+
+echo ""
+echo "Pre-commit applicativo: PASS"

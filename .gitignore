@@ -8,3 +8,23 @@
 # graph reindexato (Errata Corrige di ADR-0006 alla prima introduzione di
 # CI riconoscerà i commit `[skip ci]` del bot).
 .gitnexus/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# Virtualenv (gestito da uv, mai committare)
+.venv/
+
+# Tool caches (uv, pytest, ruff, mypy, coverage)
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
