@@ -3,7 +3,7 @@ id: CHG-2026-04-30-007
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
 status: Committed
-commit: <pending>
+commit: 088b410
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -88,4 +88,4 @@ Dettaglio nuovi test (3): `test_base_subclasses_declarative_base`, `test_base_ha
 - ADR: ADR-0015 (decisione cardine — qui solo skeleton, modelli e DDL in CHG futuri), ADR-0014 (plugin mypy attivato), ADR-0013 (struttura `src/talos/persistence/` + `migrations/`), ADR-0019 (test unit)
 - Predecessore: CHG-2026-04-30-006 (`observability/configure_logging`)
 - Successore atteso: primo modello concreto (es. `sessions` o `asin_master`) + Alembic revision iniziale + eventuale Postgres in Docker per integration test
-- Commit: `<pending>`
+- Commit: `088b410`
