@@ -2,8 +2,8 @@
 id: CHG-2026-04-30-030
 date: 2026-04-30
 author: Claude (su autorizzazione Leader)
-status: Proposed
-commit: TBD
+status: Committed
+commit: 464e4f3
 adr_ref: ADR-0015, ADR-0014, ADR-0013, ADR-0019
 ---
 
@@ -108,4 +108,4 @@ I 4 test esistenti restano invariati nella semantica:
 - Predecessore: CHG-2026-04-30-029 (config layer pydantic-settings) — questo CHG è il "Successore atteso" inscritto
 - Vision: PROJECT-RAW.md L10 (configurabilità) — questo CHG aggiunge il primo nodo applicativo che fluisce via settings
 - Successore atteso: refactor `scripts/db_bootstrap.py` per centralizzazione completa; lookup `config_overrides` runtime per soglia ROI
-- Commit: TBD
+- Commit: `464e4f3`
