@@ -1,0 +1,304 @@
+"""AmazonScraper — Playwright + selectors.yaml + cadence umana (ADR-0017 canale 2).
+
+CHG-2026-05-01-002 inaugura il secondo canale della fallback chain
+ADR-0017. Decisioni di design (D2 ratificata "default" Leader
+2026-04-30 sera, memory `project_io_extract_design_decisions.md`):
+
+- D2.a Selector fallback: B = CSS -> XPath (2 livelli, no aria).
+- D2.b User-agent: A = singolo UA realistico fisso.
+- D2.c Browser context: A = fresh ogni run (no `storage_state.json`).
+
+Adapter pattern: `BrowserPageProtocol` isola Playwright per
+testabilita' senza Chromium. Test unit usano mock page;
+`_PlaywrightBrowserPage` e' uno skeleton (`NotImplementedError`)
+da ratificare nell'integratore CHG-2026-05-01-005 (richiede
+`playwright install chromium`).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from typing import TYPE_CHECKING, Protocol
+
+import yaml
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/123.0.0.0 Safari/537.36"
+)
+DEFAULT_DELAY_RANGE_S = (1.5, 4.0)
+DEFAULT_SELECTORS_YAML = Path(__file__).parent / "selectors.yaml"
+AMAZON_IT_PRODUCT_URL = "https://www.amazon.it/dp/{asin}"
+
+
+@dataclass(frozen=True)
+class ScrapedProduct:
+    """Risposta normalizzata dal scraping di amazon.it.
+
+    Un campo `None` significa che il selettore corrispondente non
+    ha trovato match, oppure il parsing Decimal e' fallito. Il
+    caller (fallback chain, CHG futuro) decide la strategia
+    (es. AMBIGUO + R-01 log).
+    """
+
+    asin: str
+    title: str | None
+    buybox_eur: Decimal | None
+
+
+class SelectorMissError(Exception):
+    """Tutti i selettori (CSS + XPath) hanno fallito per un campo richiesto.
+
+    R-01 NO SILENT DROPS: il caller deve loggare `scrape.selector_fail`
+    (catalogo ADR-0021) e attivare il fallback (OCR / AMBIGUO).
+    """
+
+    def __init__(self, asin: str, *, field: str, attempted: list[str]) -> None:
+        super().__init__(
+            f"Selector miss su {field} per ASIN {asin}; attempted: {attempted}",
+        )
+        self.asin = asin
+        self.field = field
+        self.attempted = attempted
+
+
+class BrowserPageProtocol(Protocol):
+    """Interfaccia minimal per una pagina browser.
+
+    Astrazione dietro Playwright Page per testabilita' senza
+    Chromium. Test mockano questo Protocol; runtime e'
+    `_PlaywrightBrowserPage` (skeleton in CHG-2026-05-01-002,
+    completato in CHG-2026-05-01-005).
+    """
+
+    def goto(self, url: str) -> None:
+        """Naviga alla URL richiesta (o solleva su errore)."""
+        ...
+
+    def query_selector_text(self, selector: str) -> str | None:
+        """Ritorna text-content del primo elemento CSS, o None se assente."""
+        ...
+
+    def query_selector_xpath_text(self, xpath: str) -> str | None:
+        """Ritorna text-content del primo elemento XPath, o None se assente."""
+        ...
+
+
+@dataclass(frozen=True)
+class _SelectorChain:
+    """Raggruppa CSS + XPath fallback per un singolo campo (D2.a)."""
+
+    css: list[str]
+    xpath: list[str]
+
+
+def load_selectors(
+    path: Path = DEFAULT_SELECTORS_YAML,
+) -> Mapping[str, _SelectorChain]:
+    """Carica e parse `selectors.yaml`. Solleva su YAML malformato.
+
+    Schema atteso:
+
+        amazon_it:
+          <field_name>:
+            css: [<selettore1>, <selettore2>, ...]
+            xpath: [<xpath1>, <xpath2>, ...]
+    """
+    with path.open("r", encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh)
+    if not isinstance(raw, dict) or "amazon_it" not in raw:
+        msg = f"selectors.yaml invalido in {path}: manca chiave radice 'amazon_it'"
+        raise ValueError(msg)
+    fields = raw["amazon_it"]
+    if not isinstance(fields, dict):
+        msg = f"selectors.yaml invalido in {path}: 'amazon_it' deve essere un mapping"
+        raise TypeError(msg)
+    out: dict[str, _SelectorChain] = {}
+    for field_name, chain_raw in fields.items():
+        if not isinstance(chain_raw, dict):
+            msg = (
+                f"selectors.yaml invalido: campo '{field_name}' deve avere chiavi 'css' e/o 'xpath'"
+            )
+            raise TypeError(msg)
+        css_list = chain_raw.get("css") or []
+        xpath_list = chain_raw.get("xpath") or []
+        out[field_name] = _SelectorChain(css=list(css_list), xpath=list(xpath_list))
+    return out
+
+
+def parse_eur(raw: str) -> Decimal | None:
+    """Parser robusto per prezzi in EUR (italiano + anglo-sassone).
+
+    Esempi gestiti:
+      - "€ 199,99" / "199,99 €" -> Decimal('199.99')
+      - "EUR 1.234,56"          -> Decimal('1234.56')
+      - "1,234.56"              -> Decimal('1234.56') (anglo)
+      - "199.99"                -> Decimal('199.99')
+
+    Heuristica: se sono presenti sia ',' che '.', l'ULTIMO dei due
+    e' il separatore decimale (l'altro e' migliaia). Se solo virgola,
+    diventa decimale. Se solo punto, e' gia' decimale.
+
+    Ritorna None su input non parsabile (R-01: il caller decide).
+    """
+    cleaned = raw.replace("€", "").replace("EUR", "").replace("\xa0", " ").strip()
+    if not cleaned:
+        return None
+    has_comma = "," in cleaned
+    has_dot = "." in cleaned
+    if has_comma and has_dot:
+        if cleaned.rindex(",") > cleaned.rindex("."):
+            # Italiano: 1.234,56 -> 1234.56
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            # Anglo: 1,234.56 -> 1234.56
+            cleaned = cleaned.replace(",", "")
+    elif has_comma:
+        cleaned = cleaned.replace(",", ".")
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return None
+
+
+class AmazonScraper:
+    """Scraper Amazon.it con fallback CSS->XPath e cadence umana.
+
+    Uso runtime:
+
+        scraper = AmazonScraper()
+        page = _PlaywrightBrowserPage(...)  # CHG-2026-05-01-005 integratore
+        product = scraper.scrape_product("B0CN3VDM4G", page=page)
+
+    Uso test (mock page, no Chromium):
+
+        scraper = AmazonScraper(selectors_path=tmp_yaml)
+        product = scraper.scrape_product("X", page=mock_page)
+    """
+
+    def __init__(
+        self,
+        *,
+        user_agent: str = DEFAULT_USER_AGENT,
+        delay_range_s: tuple[float, float] = DEFAULT_DELAY_RANGE_S,
+        selectors_path: Path = DEFAULT_SELECTORS_YAML,
+    ) -> None:
+        self._user_agent = user_agent
+        self._delay_range_s = delay_range_s
+        self._selectors = load_selectors(selectors_path)
+
+    @property
+    def user_agent(self) -> str:
+        return self._user_agent
+
+    @property
+    def delay_range_s(self) -> tuple[float, float]:
+        return self._delay_range_s
+
+    def scrape_product(self, asin: str, *, page: BrowserPageProtocol) -> ScrapedProduct:
+        """Scrape product page per `asin` usando la `page` iniettata.
+
+        Logica:
+          1. Naviga a `https://www.amazon.it/dp/{asin}`.
+          2. Per ogni campo (`product_title`, `buybox_price`):
+             tenta tutti i selettori CSS in ordine; se tutti
+             falliscono, tenta gli XPath. Primo match -> vince.
+          3. Parsing Decimal su `buybox_price` (gestione virgola
+             decimale italiana via `parse_eur`).
+          4. Ritorna `ScrapedProduct` (campi opzionali = None su miss).
+
+        Raises:
+            SelectorMissError: solo se invocato in modalita'
+            `missing_ok=False` su `_resolve_field`. La signature
+            pubblica usa `missing_ok=True` (caller gestisce i None).
+        """
+        url = AMAZON_IT_PRODUCT_URL.format(asin=asin)
+        page.goto(url)
+        title_raw = self._resolve_field(asin, "product_title", page, missing_ok=True)
+        buybox_raw = self._resolve_field(asin, "buybox_price", page, missing_ok=True)
+        return ScrapedProduct(
+            asin=asin,
+            title=title_raw,
+            buybox_eur=parse_eur(buybox_raw) if buybox_raw is not None else None,
+        )
+
+    def _resolve_field(
+        self,
+        asin: str,
+        field: str,
+        page: BrowserPageProtocol,
+        *,
+        missing_ok: bool,
+    ) -> str | None:
+        """Tenta CSS chain, poi XPath chain. Primo non-empty vince."""
+        if field not in self._selectors:
+            msg = f"Campo '{field}' non presente in selectors.yaml"
+            raise KeyError(msg)
+        chain = self._selectors[field]
+        attempted: list[str] = []
+        for css in chain.css:
+            attempted.append(f"css:{css}")
+            value = page.query_selector_text(css)
+            if value is not None and value.strip():
+                return value.strip()
+        for xpath in chain.xpath:
+            attempted.append(f"xpath:{xpath}")
+            value = page.query_selector_xpath_text(xpath)
+            if value is not None and value.strip():
+                return value.strip()
+        if missing_ok:
+            return None
+        raise SelectorMissError(asin, field=field, attempted=attempted)
+
+
+class _PlaywrightBrowserPage:
+    """Adapter live su Playwright sync. Skeleton CHG-2026-05-01-002.
+
+    Mette a contratto `BrowserPageProtocol` ma le sue chiamate
+    runtime a Playwright richiedono `playwright install chromium`
+    (~150 MB) + context manager `sync_playwright()`. In
+    CHG-2026-05-01-002 lo skeleton lancia `NotImplementedError`
+    esplicito (R-01 NO SILENT DROPS).
+
+    L'integratore CHG-2026-05-01-005 lo completera' con:
+      - `with sync_playwright() as p:`
+      - `browser = p.chromium.launch(headless=True)`
+      - `context = browser.new_context(user_agent=...)`
+      - `page = context.new_page()`
+      - delay random `random.uniform(*delay_range_s)` pre-goto
+
+    I test devono iniettare un mock via parametro `page=` di
+    `AmazonScraper.scrape_product`.
+    """
+
+    def __init__(self, user_agent: str = DEFAULT_USER_AGENT) -> None:
+        self._user_agent = user_agent
+
+    def goto(self, url: str) -> None:
+        msg = (
+            f"_PlaywrightBrowserPage.goto({url!r}) non implementato in "
+            "CHG-2026-05-01-002. Richiede `playwright install chromium` + "
+            "context manager `sync_playwright()`. Ratifica live in "
+            "CHG-2026-05-01-005 integratore. Test devono iniettare un mock."
+        )
+        raise NotImplementedError(msg)
+
+    def query_selector_text(self, selector: str) -> str | None:
+        msg = (
+            f"_PlaywrightBrowserPage.query_selector_text({selector!r}) "
+            "non implementato in CHG-2026-05-01-002 (vedi goto)."
+        )
+        raise NotImplementedError(msg)
+
+    def query_selector_xpath_text(self, xpath: str) -> str | None:
+        msg = (
+            f"_PlaywrightBrowserPage.query_selector_xpath_text({xpath!r}) "
+            "non implementato in CHG-2026-05-01-002 (vedi goto)."
+        )
+        raise NotImplementedError(msg)

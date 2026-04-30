@@ -26,8 +26,13 @@ dependencies = [
     "keepa>=1.4.0,<2",
     "tenacity>=8.0.0,<10",
     "pyrate-limiter>=3.0.0,<5",
+    # Acquisizione scraping amazon.it (ADR-0017, canale 2) — CHG-2026-05-01-002
+    # Chromium NON viene installato qui; va eseguito a parte
+    # `uv run playwright install chromium` (~150 MB, scope CHG-005 integratore).
+    "playwright>=1.40.0,<2",
+    "pyyaml>=6.0,<7",
     # Le altre dipendenze applicative entreranno modulo per modulo:
-    #   Playwright/Tesseract → ADR-0017
+    #   Tesseract → ADR-0017
     "pydantic-settings>=2.14.0",
 ]
 
@@ -40,6 +45,8 @@ dev = [
     "hypothesis>=6.100.0",
     # Type stubs per pandas (mypy strict, ADR-0014) — CHG-2026-04-30-034
     "pandas-stubs>=2.2.0",
+    # Type stubs per pyyaml (mypy strict, ADR-0014) — CHG-2026-05-01-002
+    "types-PyYAML>=6.0,<7",
 ]
 
 [build-system]

@@ -1,0 +1,40 @@
+# Selettori Amazon.it per scraping (ADR-0017 canale 2)
+#
+# Versione 1 — inaugurato CHG-2026-05-01-002.
+#
+# Convenzione (D2.a ratificata "default" Leader 2026-04-30 sera):
+# per ogni campo, due liste ordinate. Si prova prima la `css`
+# (rapida); se tutti i selettori falliscono, si prova la `xpath`.
+# Il primo selettore che ritorna testo non vuoto vince.
+#
+# Quando Amazon cambia layout, aggiornare i selettori dell'inizio
+# della lista. Tracciabilita': ogni mismatch viene loggato come
+# evento canonico `scrape.selector_fail` (ADR-0021 dormiente,
+# attivato in CHG-2026-05-01-005 integratore).
+
+amazon_it:
+  product_title:
+    css:
+      - "#productTitle"
+      - "h1[data-feature-name='title']"
+      - "h1#title span"
+    xpath:
+      - "//h1[@id='productTitle']"
+      - "//*[@data-feature-name='title']//h1"
+
+  buybox_price:
+    css:
+      - "#corePrice_feature_div .a-price .a-offscreen"
+      - "#price_inside_buybox"
+      - "[data-action='show-all-offers-display'] .a-price .a-offscreen"
+      - "#priceblock_ourprice"
+    xpath:
+      - "//*[@id='corePrice_feature_div']//*[contains(@class, 'a-offscreen')]"
+      - "//*[@id='price_inside_buybox']"
+      - "//*[@id='priceblock_ourprice']"
+
+  asin_marker:
+    css:
+      - "#ASIN[type='hidden']"
+    xpath:
+      - "//input[@id='ASIN']"
