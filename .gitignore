@@ -1,0 +1,10 @@
+# Local Claude Code settings (machine-specific, never commit)
+.claude/settings.local.json
+
+# GitNexus runtime — la directory `.gitnexus/` contiene database SQLite (lock,
+# WAL, lbug) + meta.json con path assoluti machine-specific. Esclusa
+# integralmente da commit locali. Il bot CI definito in ADR-0020 farà
+# `git add -f .gitnexus/` esplicito post-merge per pubblicare il knowledge
+# graph reindexato (Errata Corrige di ADR-0006 alla prima introduzione di
+# CI riconoscerà i commit `[skip ci]` del bot).
+.gitnexus/
