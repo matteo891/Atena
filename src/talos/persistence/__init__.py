@@ -9,6 +9,7 @@ le veda tutte automaticamente in `alembic revision --autogenerate`.
 """
 
 from talos.persistence.base import Base
+from talos.persistence.engine import create_app_engine
 from talos.persistence.models import (
     AnalysisSession,
     AsinMaster,
@@ -20,6 +21,11 @@ from talos.persistence.models import (
     PanchinaItem,
     StoricoOrdine,
     VgpResult,
+)
+from talos.persistence.session import (
+    make_session_factory,
+    session_scope,
+    with_tenant,
 )
 
 __all__ = [
@@ -34,4 +40,8 @@ __all__ = [
     "PanchinaItem",
     "StoricoOrdine",
     "VgpResult",
+    "create_app_engine",
+    "make_session_factory",
+    "session_scope",
+    "with_tenant",
 ]

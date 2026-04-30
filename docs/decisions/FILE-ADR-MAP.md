@@ -77,6 +77,8 @@ Navigazione inversa: da un file qualsiasi al suo ADR di riferimento.
 | `src/talos/tetris/` | ADR-0018 | ADR-0013, ADR-0019, ADR-0021 | allocator, panchina (R-04..R-09) |
 | `src/talos/formulas/` | ADR-0018 | ADR-0019 | F1..F5 + fee_fba (L11b verbatim) |
 | `src/talos/persistence/` | ADR-0015 | ADR-0013, ADR-0019 | SQLAlchemy 2.0 + RLS bootstrap |
+| `src/talos/persistence/engine.py` | ADR-0015 | ADR-0014 | Factory `create_app_engine` (env var `TALOS_DB_URL`) — CHG-2026-04-30-020 |
+| `src/talos/persistence/session.py` | ADR-0015 | ADR-0014 | `make_session_factory` + `session_scope` + `with_tenant` (Zero-Trust SET LOCAL) — CHG-2026-04-30-020 |
 | `src/talos/ui/` | ADR-0016 | ADR-0013, ADR-0015 (RLS), ADR-0019 | Streamlit dashboard + pages + components |
 | `src/talos/ui/dashboard.py` | ADR-0016 | — | Entrypoint Streamlit |
 | `src/talos/observability/` | ADR-0021 | ADR-0008, ADR-0019 (test catalogo) | structlog config + catalogo eventi |
