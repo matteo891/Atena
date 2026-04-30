@@ -3,8 +3,8 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-04-30 — commit `d962445` (CHG-023 errata ADR-0010 — verifica reciproca STATUS↔git allo Step 1). Tag: `milestone/stack-frozen-v0.9.0` + **3 checkpoint** (01 / 02 / 03). Catena CHG odierna: 001→...→023. **Tabelle Allegato A coperte: 10/10** ✓ + **192 test PASS** (171 unit/governance + 21 integration).
-> **Sessione corrente:** TALOS — prima formula applicativa scritta (CHG-022) + chiusura governance: errata ADR-0010 inscrive verifica reciproca contro stale STATUS (CHG-023, trigger reale dell'errore di oggi).
+> **Ultimo aggiornamento:** 2026-04-30 — commit `[da aggiornare post-commit]` (CHG-024 chiusura ISS-001 + errata ADR-0007/0010 — verifica empirica STATUS↔runtime tooling). Tag: `milestone/stack-frozen-v0.9.0` + **3 checkpoint** (01 / 02 / 03). Catena CHG odierna: 001→...→024. **Tabelle Allegato A coperte: 10/10** ✓ + **192 test PASS** (171 unit/governance + 21 integration). **Indice GitNexus operativo** (1646 nodes / 1929 edges / 4 flows).
+> **Sessione corrente:** TALOS — prima formula applicativa scritta (CHG-022) + due chiusure governance: errata ADR-0010 per verifica STATUS↔git (CHG-023) + chiusura ISS-001 con errata ADR-0007/0010 per verifica STATUS↔runtime tooling (CHG-024).
 
 ---
 
@@ -64,6 +64,7 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | **DB bootstrap roles: `scripts/db_bootstrap.py` (idempotente, psycopg.sql injection-safe). Materializza la matrice ADR-0015: `talos_admin` (BYPASSRLS, DBA), `talos_app` (NOBYPASSRLS, pool app), `talos_audit` (read-only). FORCE RLS su 3 tabelle. 9 integration test (attributi, GRANT/REVOKE, idempotenza, login).** | 0015, 0014, 0013, 0019 | [CHG-2026-04-30-021](changes/2026-04-30-021-db-bootstrap-roles.md) | `aee694c` |
 | **🚀 Frontiera applicativa attraversata: `formulas/fee_fba.py` con `fee_fba_manual` verbatim L11b. Funzione pura + R-01 NO SILENT DROPS via 2 ValueError. 8 test unit (snapshot tolerance + boundary scorporato==100 + monotonia + edge case).** | 0018, 0014, 0013, 0019 | [CHG-2026-04-30-022](changes/2026-04-30-022-formulas-fee-fba.md) | `750b70d` |
 | **Errata corrige ADR-0010: Step 1 esteso con verifica reciproca STATUS↔git (`git tag -l`, `git branch`, `git log <hash>`) per claim su tag/branch/hash. Trigger reale: STATUS marcava CHECKPOINT-03 come "in attesa autorizzazione" mentre il tag esisteva già da 6 ore.** | 0010, 0009, 0008, 0003 | [CHG-2026-04-30-023](changes/2026-04-30-023-errata-adr-0010-tag-verification.md) | `d962445` |
+| **Chiusura ISS-001 + errata ADR-0007/0010: Step 4 esige verifica empirica via `mcp__gitnexus__list_repos` prima di accettare claim documentali di indisponibilità. Rebuild GitNexus riuscito in 3.3s su Node v22 (root cause v24-specific). Indice fresh: 1646 nodes / 1929 edges / 4 flows.** | 0007, 0010, 0009, 0008 | [CHG-2026-04-30-024](changes/2026-04-30-024-chiusura-iss-001-gitnexus-rebuild.md) | `[da aggiornare post-commit]` |
 
 ---
 
@@ -102,11 +103,13 @@ Governance hardened (ADR 0001–0012) + vision TALOS `Frozen` dal 2026-04-29 + *
 | ~~CHG-021~~ | ~~scripts/db_bootstrap.py: ruoli + FORCE RLS~~ | Chiuso 2026-04-30 — 9 integration verdi | — |
 | ~~CHG-022~~ | ~~formulas/fee_fba.py: prima formula applicativa~~ | Chiuso 2026-04-30 — 8 test verdi | — |
 | ~~CHG-023~~ | ~~Errata ADR-0010: verifica reciproca STATUS↔git~~ | Chiuso 2026-04-30 — modifica solo governance, no codice | — |
+| ~~CHG-024~~ | ~~Chiusura ISS-001 + errata ADR-0007/0010: verifica empirica STATUS↔runtime tooling~~ | Chiuso 2026-04-30 — modifica solo governance + auto-aggiornamento blocco GitNexus in CLAUDE/AGENTS | — |
+| ~~ISS-001~~ | ~~`gitnexus analyze` segfault su Node v24.15.0~~ | Risolta 2026-04-30 con CHG-024 — root cause Node v24-specific; risolto da downgrade a v22.22.2 (oggi default in nvm). Indice fresh, 1646/1929/4. | — |
 | ~~CHECKPOINT-03~~ | ~~Tag `checkpoint/2026-04-30-03`~~ | Già esistente su `e563e59` (post-CHG-018, creato 15:50) | — |
 | **CHECKPOINT-04** | Prossimo restore point | A soglia | Da CHG-018 in poi: 4/5 commit significativi (CHG-019/020/021/022). CHG-023 è governance/errata, non significativo. Il prossimo CHG significativo trigggera la proposta di tag |
 | **CHG-023** | F1 `formulas/cash_inflow.py` o config layer | Prossimo candidato | (a) F1 `cash_inflow_eur = buy_box - fee_fba - (buy_box * referral_fee)` consuma `fee_fba_manual`; (b) `config/` pydantic-settings centralizza env var |
 | **NEXT** | **Prossimi step possibili** | In attesa | (a) CHG-023 F1 cash_inflow; (b) F2 cash_profit + ROI in CHG separato; (c) `vgp/normalize.py` (versione vettoriale L04b min-max); (d) config layer; (e) `milestone/first-formula-v1.0.0` |
-| ISS-001 | `gitnexus analyze` non eseguibile (architettura processore) | Rinviata | Uso futuro da PC operativo Leader |
+| ~~ISS-001~~ | ~~`gitnexus analyze` non eseguibile (architettura processore)~~ | Risolta in CHG-024 | Root cause vera: Node v24.15.0-specific segfault. Risolta da downgrade a v22.22.2. Indice operativo. |
 | ~~ISS-002~~ | ~~Stack tecnologico → ADR di stack~~ | Chiusa in CHG-2026-04-30-001 — Python 3.11 + PostgreSQL 16 + SQLAlchemy 2.0 sync + Streamlit + Keepa/Playwright/Tesseract + structlog | — |
 
 ### Lacune critiche residue
@@ -166,7 +169,8 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 - **Cluster ADR di stack 0013–0021 attivo (CHG-2026-04-30-001).** Ogni nuovo file applicativo deve mappare a un ADR Primario in FILE-ADR-MAP.md (sezione "Codice Applicativo"). Path consentiti: `src/talos/{io_,extract,vgp,tetris,formulas,persistence,ui,observability,config}` + `tests/{unit,integration,golden,governance}` + `migrations/`.
 - **Repo origin:** `https://github.com/matteo891/Atena` (fork operativo del Leader). Il repo del padre `santacrocefrancesco00-ux/Atena` non è scrivibile da `matteo891`.
 - **Refusi noti nelle Leggi di Talos (R-08 vs R-09):** il testo del Leader cita "Veto ROI (R-09)" mentre in tabella R-09 è Archiviazione e R-08 è Veto ROI. Marcato L09 (corretto inline in PROJECT-RAW sez. 4.1.9). Non interpretare in autonomia: chiedere conferma se rilevato altrove.
-- **GitNexus rinviato (ISS-001).** Step 4 self-briefing degrada con dichiarazione esplicita.
+- **GitNexus operativo dal 2026-04-30 (ISS-001 risolta in CHG-024).** Step 4 self-briefing **non va saltato**: eseguire sempre `mcp__gitnexus__list_repos` empirica come prima azione dello step. Se `staleness.commitsBehind > 0` o `lastCommit ≠ git rev-parse HEAD`, eseguire `npx -y gitnexus analyze` su Node v22 (verificare prima `node --version` = `v22.x`; Node v24.15.0 segfault, vedi ISS-001 risolta). Solo errore tecnico effettivo (transport/timeout/server down) giustifica la dichiarazione "GitNexus non disponibile", citando l'errore verbatim come ancora.
+- **Regola generale (ADR-0010 errata CHG-024):** ogni claim documentale di indisponibilità tooling in STATUS richiede verifica empirica al re-entry, non può essere accettato dal contesto. Vale per qualsiasi server MCP, container, runner CI futuro.
 - **Push immediato post-commit certificato (ADR-0011).**
 - **Test manuali documentati ammessi per governance (ADR-0011), non per codice applicativo (richiede test automatici).**
 - **Tutti gli ADR sono `Active`.** ADR-0004 è `Active¹` (hardening patch).
@@ -178,7 +182,7 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
 
 | ID | Descrizione | Workaround | ADR | Priorità |
 |---|---|---|---|---|
-| ISS-001 | `gitnexus analyze` segfault / exit code 5 su Node v24.15.0; architettura processore macchina locale incompatibile | Saltare step 4 GitNexus nel self-briefing con dichiarazione esplicita; uso futuro da PC operativo Leader | ADR-0007 | Rinviata |
+| ~~ISS-001~~ | ~~`gitnexus analyze` segfault / exit code 5 su Node v24.15.0~~ | Risolta 2026-04-30 (CHG-024) — root cause Node v24-specific (non architettura processore). Risolto da downgrade a Node v22.22.2 (oggi default in nvm). Indice operativo: `lastCommit == HEAD`, 1646 nodes / 1929 edges / 12 clusters / 4 flows. Vincolo: `gitnexus analyze` su Node v22 (Node v24 sconsigliato finché upstream non risolve). | ADR-0007 | Risolta |
 | ~~ISS-002~~ | ~~Stack tecnologico non promulgato~~ | Chiusa 2026-04-30 con CHG-2026-04-30-001 — cluster ADR 0013–0021 promulgato | ADR-0013–0021 | Chiusa |
 | ESP-001 | Esposizione bozza progetto | Chiusa 2026-04-29 con CHG-004 | ADR-0012 | Chiusa |
 | ESP-002 | Round 2 | Chiusa 2026-04-29 con CHG-005 | ADR-0012 | Chiusa |

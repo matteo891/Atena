@@ -11,6 +11,9 @@ errata:
   - date: 2026-04-30
     chg: CHG-2026-04-30-023
     summary: "Step 1 esteso con verifica reciproca STATUS↔git per claim su tag/branch/hash pubblicati (`git tag -l '<pattern>'` o equivalente). Test di Conformità arricchito con scenario corrispondente. Chiarisce convenzione interpretativa: STATUS è fonte di verità sulla storia documentata, non sullo stato git corrente quando i due possono divergere."
+  - date: 2026-04-30
+    chg: CHG-2026-04-30-024
+    summary: "Esteso il principio di verifica reciproca (CHG-023) alla classe 'claim di indisponibilità tooling'. Step 4 del Self-Briefing esige una chiamata MCP empirica (es. `mcp__gitnexus__list_repos`) prima di dichiarare il tool non disponibile; un claim documentale stale in STATUS non è sufficiente. Test di Conformità arricchito con scenario corrispondente."
 ---
 
 ## Contesto
@@ -58,6 +61,14 @@ La sequenza canonica e unica del Self-Briefing è quella già definita in CLAUDE
 ```
 
 **Verifica reciproca STATUS ↔ git (errata 2026-04-30 / CHG-023).** Quando lo Step 1 incontra in STATUS un'affermazione su esistenza, proposta o assenza di un tag git, di un branch o di un commit hash specifico, esegue la verifica corrispondente sul repository (`git tag -l '<pattern>'`, `git branch --list`, `git log <hash>`) prima di agire. Se la verifica diverge da STATUS, segnalare al Leader e correggere STATUS prima di qualsiasi azione: STATUS è fonte di verità sulla **storia documentata**, non sullo **stato git corrente** quando i due possono divergere. Costo: <1 secondo. Beneficio: chiude la classe di errori "STATUS stale propaga decisioni sbagliate".
+
+**Verifica reciproca STATUS ↔ runtime tooling (errata 2026-04-30 / CHG-024).** Quando STATUS dichiara non disponibile uno strumento esterno (server MCP, container, runner CI, indice GitNexus, ecc.), Claude esegue una chiamata empirica economica al re-entry **prima** di accettare il claim. Esempi: per GitNexus, `mcp__gitnexus__list_repos`. Tre outcome possibili:
+
+1. **Errore tecnico** (transport error, timeout, server non risponde) → solo allora si dichiara "tool non disponibile", **citando l'errore esatto come ancora**.
+2. **Risposta con indice/stato stale** (es. `staleness.commitsBehind > 0` o `lastCommit ≠ git rev-parse HEAD`) → eseguire il rebuild/refresh appropriato (es. `npx -y gitnexus analyze`); se il rebuild fallisce, allora documentare il fail come ancora.
+3. **Risposta fresh** (es. `lastCommit == HEAD`, `staleness` assente) → il claim documentale di STATUS è obsoleto: aggiornare STATUS (chiusura Issue o errata) e procedere normalmente con lo step.
+
+Solo errori effettivi giustificano "tool non disponibile". Un claim documentale di indisponibilità in STATUS, scritto in una sessione passata, non sopravvive alla verifica empirica del re-entry. Principio sotteso (uguale a CHG-023): STATUS è fonte di verità sulla **storia documentata**, non sullo **stato runtime corrente** quando i due possono divergere.
 
 La sezione "Flusso di Re-Briefing" di ADR-0004 è marcata come **superseduta da questo ADR** tramite hardening patch (ADR-0009, applicata in CHG-2026-04-29-002). Il resto di ADR-0004 rimane normativo.
 
@@ -120,7 +131,8 @@ Una sessione che non produce alcun commit (audit, esplorazione, briefing) **non*
 | STATUS.md con claim non ancorato | Errore di rilettura, riformulare o rimuovere |
 | Sessione di sola lettura | Esenzione esplicita dichiarata, STATUS.md non modificato |
 | Sezione "Flusso di Re-Briefing" di ADR-0004 letta in isolamento | Lettore vede il blocco "Superseduta da ADR-0010" e segue ADR-0010 |
-| STATUS afferma stato di tag/branch/hash, repo dice diversamente (errata 2026-04-30) | Errore di rilettura: segnalare al Leader, correggere STATUS prima di agire |
+| STATUS afferma stato di tag/branch/hash, repo dice diversamente (errata 2026-04-30 CHG-023) | Errore di rilettura: segnalare al Leader, correggere STATUS prima di agire |
+| STATUS afferma indisponibilità tooling, runtime risponde alla call empirica (errata 2026-04-30 CHG-024) | Errore di rilettura: aggiornare STATUS (chiusura Issue o errata), procedere con lo step |
 
 Verifica: pre-commit del commit di sessione, Claude rilegge STATUS.md ed elenca eventuali claim non ancorati al Leader.
 
@@ -130,7 +142,7 @@ Verifica: pre-commit del commit di sessione, Claude rilegge STATUS.md ed elenca 
 - Governa: protocollo di self-briefing step 0, struttura di `docs/STATUS.md`, regole di anchoring
 - Impatta: `CLAUDE.md` (workflow), `docs/STATUS.md`, ADR-0004 sezione "Flusso di Re-Briefing"
 - Test: verifica meccanica step 0 + verifica manuale anchoring pre-commit
-- Commits: `416ab87` (introduzione, CHG-2026-04-29-002) + commit dell'errata 2026-04-30 (CHG-2026-04-30-023)
+- Commits: `416ab87` (introduzione, CHG-2026-04-29-002) + `d962445` (errata CHG-2026-04-30-023, verifica STATUS↔git) + commit dell'errata CHG-2026-04-30-024 (verifica STATUS↔runtime tooling)
 
 ## Rollback
 
@@ -147,3 +159,13 @@ Se lo step 0 si rivela troppo invasivo (falsi positivi, ambienti con configurazi
   - Frontmatter `errata:` esteso con voce 2026-04-30.
   - Campo `Commits:` riallineato (sostituito placeholder con commit di hardening + commit dell'errata).
 - **Motivo:** sessione 2026-04-30 (CHG-019..022) ha ripetutamente aggiornato STATUS con la riga "CHECKPOINT-03 proposto, in attesa autorizzazione" mentre il tag `checkpoint/2026-04-30-03` esisteva già da 6 ore (creato 15:50 post-CHG-018). La regola "ogni claim ancorato" di Regola 2 copre il **caso scrittore** ma non il **caso lettore**: chi rilegge STATUS deve confermare che le ancore puntino ancora alla realtà attuale. L'errata inscrive la verifica reciproca, chiudendo la classe di errori "STATUS stale propaga decisioni sbagliate".
+
+### 2026-04-30 — CHG-2026-04-30-024
+
+- **Tipo:** errata corrige (chiarimento di convenzione interpretativa — generalizzazione del principio di CHG-023).
+- **Modifica:**
+  - Sezione "Sequenza di Re-Briefing — Fonte Unica": aggiunto paragrafo "Verifica reciproca STATUS ↔ runtime tooling" dopo quello su STATUS↔git. Lo Step 4 (e per estensione ogni step che dipende da tooling esterno) incorpora una chiamata empirica economica (es. `mcp__gitnexus__list_repos`) prima di accettare un claim documentale di indisponibilità. Tre outcome canonici: errore tecnico → "non disponibile" ancorato all'errore; risposta stale → rebuild/refresh; risposta fresh → STATUS obsoleto, aggiornare e procedere.
+  - Sezione "Test di Conformità": aggiunta riga "STATUS afferma indisponibilità tooling, runtime risponde alla call empirica → errore di rilettura, aggiornare STATUS, procedere con lo step".
+  - Frontmatter `errata:` esteso con voce 2026-04-30 / CHG-024.
+  - Campo `Commits:` esteso con il commit di questo errata.
+- **Motivo:** sessione 2026-04-30 (questa) ha dichiarato Step 4 "GitNexus non disponibile" basandosi sul claim ISS-001 stale di STATUS, senza alcuna verifica empirica. Su sollecitazione del Leader la chiamata `mcp__gitnexus__list_repos` è risposta immediatamente; il rebuild via `npx -y gitnexus analyze` è completato in 3.3s su Node v22. ISS-001 era documentale, non runtime. Il principio di CHG-023 (verifica reciproca per tag/branch/hash) si generalizza naturalmente: ogni claim documentale di stato esterno richiede verifica empirica al re-entry. Step 0 (hooks via `git config core.hooksPath`) era già conforme; questo errata estende la simmetria allo Step 4 e a ogni futuro step dipendente da tooling esterno.
