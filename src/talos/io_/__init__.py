@@ -3,12 +3,21 @@
 Inaugurato in CHG-2026-05-01-001 con `KeepaClient` (canale 1
 fallback chain). Esteso in CHG-2026-05-01-002 con `AmazonScraper`
 (canale 2 Playwright). Esteso in CHG-2026-05-01-003 con
-`OcrPipeline` (canale 3 Tesseract).
+`OcrPipeline` (canale 3 Tesseract). Esteso in
+CHG-2026-05-01-006 con la fallback chain orchestratrice
+`lookup_product` (composizione Keepa primario + Scraper
+fallback su buybox/title).
 
 Vedi memory `project_io_extract_design_decisions.md` per il
 pacchetto D1-D5 ratificato dal Leader.
 """
 
+from talos.io_.fallback_chain import (
+    SOURCE_KEEPA,
+    SOURCE_SCRAPER,
+    ProductData,
+    lookup_product,
+)
 from talos.io_.keepa_client import (
     KeepaApiAdapter,
     KeepaClient,
@@ -48,6 +57,8 @@ __all__ = [
     "DEFAULT_SELECTORS_YAML",
     "DEFAULT_TESSERACT_LANG",
     "DEFAULT_USER_AGENT",
+    "SOURCE_KEEPA",
+    "SOURCE_SCRAPER",
     "AmazonScraper",
     "BrowserPageProtocol",
     "KeepaApiAdapter",
@@ -59,12 +70,14 @@ __all__ = [
     "OcrPipeline",
     "OcrResult",
     "OcrStatus",
+    "ProductData",
     "RawOcrData",
     "ScrapedProduct",
     "SelectorMissError",
     "TesseractAdapter",
     "binarize_otsu",
     "load_selectors",
+    "lookup_product",
     "otsu_threshold",
     "parse_eur",
 ]
