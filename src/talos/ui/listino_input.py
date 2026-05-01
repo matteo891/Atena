@@ -526,6 +526,43 @@ def count_eligible_for_overrides(resolved: list[ResolvedRow]) -> int:
     return sum(1 for r in resolved if r.is_ambiguous and r.asin and len(r.candidates) > 1)
 
 
+def count_resolved(resolved: list[ResolvedRow]) -> int:
+    """Count righe risolte (ASIN truthy) — pattern simmetrico a `count_*` family.
+
+    Helper puro single source of truth: una riga è "risolta" se
+    `r.asin` è truthy (string non vuota). Cache hit + miss con
+    selected != None → asin popolato. Resolver fail / cache miss
+    senza candidato → `asin=""` (R-01 UX-side: row visibile ma
+    non risolta). Pattern coerente con `n_resolved` inline storicamente
+    usato in `dashboard.py` (CHG-2026-05-01-029 chiude duplicazione).
+    """
+    return sum(1 for r in resolved if r.asin)
+
+
+def count_cache_hit(resolved: list[ResolvedRow]) -> int:
+    """Count righe con `is_cache_hit=True` — usato anche da `format_cache_hit_caption`.
+
+    Helper puro: aggregazione del flag `ResolvedRow.is_cache_hit`
+    (CHG-019). Cache disabilitata (`factory=None`) → `is_cache_hit=False`
+    sempre, count = 0. Pattern coerente con telemetria `cache.hit`
+    di CHG-025 (count aggregato lato UI vs eventi individuali lato
+    consumer).
+    """
+    return sum(1 for r in resolved if r.is_cache_hit)
+
+
+def count_with_verified_buybox(resolved: list[ResolvedRow]) -> int:
+    """Count righe con `verified_buybox_eur is not None` (Buy Box live CHG-022).
+
+    Helper puro: aggregazione del flag `ResolvedRow.verified_buybox_eur`.
+    Cache hit (CHG-022 dec. 2) o lookup fail → `None` → fallback a
+    `prezzo_eur` per VGP/ROI. Una riga con buybox verificato indica
+    ROI accurato (Amazon NEW reale invece del costo fornitore).
+    Usato anche da `format_buybox_verified_caption`.
+    """
+    return sum(1 for r in resolved if r.verified_buybox_eur is not None)
+
+
 def format_buybox_verified_caption(resolved: list[ResolvedRow]) -> str:
     """Caption UX rate Buy Box verificato live nel flow CFO.
 
@@ -546,7 +583,7 @@ def format_buybox_verified_caption(resolved: list[ResolvedRow]) -> str:
     if not resolved:
         return ""
     n_total = len(resolved)
-    n_verified = sum(1 for r in resolved if r.verified_buybox_eur is not None)
+    n_verified = count_with_verified_buybox(resolved)
     pct = n_verified / n_total * 100
     return f"Buy Box verificato: {n_verified}/{n_total} righe ({pct:.0f}%)."
 
@@ -570,7 +607,7 @@ def format_cache_hit_caption(resolved: list[ResolvedRow]) -> str:
     if not resolved:
         return ""
     n_total = len(resolved)
-    n_hits = sum(1 for r in resolved if r.is_cache_hit)
+    n_hits = count_cache_hit(resolved)
     pct = n_hits / n_total * 100
     return f"Cache: {n_hits}/{n_total} hit ({pct:.0f}%)."
 

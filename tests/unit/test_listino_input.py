@@ -18,7 +18,10 @@ from talos.ui.listino_input import (
     ResolvedRow,
     apply_candidate_overrides,
     build_listino_raw_from_resolved,
+    count_cache_hit,
     count_eligible_for_overrides,
+    count_resolved,
+    count_with_verified_buybox,
     format_buybox_verified_caption,
     format_cache_hit_caption,
     format_confidence_badge,
@@ -385,6 +388,90 @@ def test_count_eligible_mixed() -> None:
         _resolved_eligibility(is_ambiguous=True, asin="", n_candidates=3),
     ]
     assert count_eligible_for_overrides(rows) == 3
+
+
+# ---------------------------------------------------------------------------
+# `count_resolved` / `count_cache_hit` / `count_with_verified_buybox`
+# (CHG-2026-05-01-029 — extension count family)
+# ---------------------------------------------------------------------------
+
+
+def test_count_resolved_empty_returns_zero() -> None:
+    """Lista vuota -> 0."""
+    assert count_resolved([]) == 0
+
+
+def test_count_resolved_all_resolved() -> None:
+    """Tutte le righe risolte (asin truthy) -> N."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=False, asin=f"B0CSTC2RD{i}") for i in range(5)]
+    assert count_resolved(rows) == 5
+
+
+def test_count_resolved_all_unresolved() -> None:
+    """Tutte le righe non risolte (asin='') -> 0."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=False, asin="") for _ in range(4)]
+    assert count_resolved(rows) == 0
+
+
+def test_count_resolved_mixed() -> None:
+    """3 risolte + 2 non risolte -> 3."""
+    rows = [
+        *[_resolved_with_cache_hit(is_cache_hit=False, asin=f"B0CSTC2RD{i}") for i in range(3)],
+        *[_resolved_with_cache_hit(is_cache_hit=False, asin="") for _ in range(2)],
+    ]
+    assert count_resolved(rows) == 3
+
+
+def test_count_cache_hit_empty_returns_zero() -> None:
+    """Lista vuota -> 0."""
+    assert count_cache_hit([]) == 0
+
+
+def test_count_cache_hit_all_hits() -> None:
+    """Tutte hit -> N."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=True) for _ in range(4)]
+    assert count_cache_hit(rows) == 4
+
+
+def test_count_cache_hit_all_misses() -> None:
+    """Tutte miss (factory=None o cache fredda) -> 0."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=False) for _ in range(5)]
+    assert count_cache_hit(rows) == 0
+
+
+def test_count_cache_hit_mixed() -> None:
+    """2 hit + 7 miss -> 2."""
+    rows = [
+        *[_resolved_with_cache_hit(is_cache_hit=True) for _ in range(2)],
+        *[_resolved_with_cache_hit(is_cache_hit=False) for _ in range(7)],
+    ]
+    assert count_cache_hit(rows) == 2
+
+
+def test_count_with_verified_buybox_empty_returns_zero() -> None:
+    """Lista vuota -> 0."""
+    assert count_with_verified_buybox([]) == 0
+
+
+def test_count_with_verified_buybox_all_verified() -> None:
+    """Tutte con Buy Box live -> N."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=Decimal("599.00")) for _ in range(3)]
+    assert count_with_verified_buybox(rows) == 3
+
+
+def test_count_with_verified_buybox_none_verified() -> None:
+    """Tutte fallback (cache hit / lookup fail) -> 0."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=None) for _ in range(6)]
+    assert count_with_verified_buybox(rows) == 0
+
+
+def test_count_with_verified_buybox_mixed() -> None:
+    """4 verified + 8 fallback -> 4."""
+    rows = [
+        *[_resolved_with_buybox(verified_buybox_eur=Decimal("599.00")) for _ in range(4)],
+        *[_resolved_with_buybox(verified_buybox_eur=None) for _ in range(8)],
+    ]
+    assert count_with_verified_buybox(rows) == 4
 
 
 # ---------------------------------------------------------------------------

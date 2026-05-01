@@ -880,6 +880,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
         apply_candidate_overrides,
         build_listino_raw_from_resolved,
         count_eligible_for_overrides,
+        count_resolved,
         format_buybox_verified_caption,
         format_cache_hit_caption,
         format_confidence_badge,
@@ -1005,7 +1006,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     st.markdown("**Anteprima risoluzione:**")
     st.dataframe(preview_df, use_container_width=True)
 
-    n_resolved = sum(1 for r in resolved_with_overrides if r.asin)
+    n_resolved = count_resolved(resolved_with_overrides)
     n_total = len(resolved_with_overrides)
     n_ambiguous = sum(1 for r in resolved_with_overrides if r.is_ambiguous and r.asin)
     n_overrides = len(overrides)
