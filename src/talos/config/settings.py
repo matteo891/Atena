@@ -27,7 +27,12 @@ class TalosSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="TALOS_",
-        env_file=None,  # nessun .env in repo: env da shell/CI/secrets
+        # `.env` locale (gitignored) per ergonomia sviluppo locale: pydantic-settings
+        # carica le var da .env nel cwd al boot. Le env var dirette dalla shell/CI
+        # hanno PRECEDENZA su .env (pattern standard pydantic-settings) — la CI
+        # continua a iniettare secrets via env senza file.
+        env_file=".env",
+        env_file_encoding="utf-8",
         extra="forbid",
         case_sensitive=False,
     )

@@ -3,9 +3,16 @@
 Pattern: monkeypatch.setenv + get_settings.cache_clear() prima di
 ogni test che si aspetta valori non-default. Senza cache_clear, la
 prima istanza vince e i test successivi vedono lo stato vecchio.
+
+Isolamento cwd: dal CHG-2026-05-01-014 `TalosSettings` legge `.env`
+nel cwd. Il fixture autouse fa `monkeypatch.chdir(tmp_path)` per
+impedire che il `.env` reale del repo (con secrets locali) inquini i
+test che asseriscono "default None senza env var".
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
@@ -13,12 +20,19 @@ from pydantic import ValidationError
 from talos.config import TalosSettings, get_settings
 from talos.vgp import DEFAULT_ROI_VETO_THRESHOLD
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 pytestmark = pytest.mark.unit
 
 
 @pytest.fixture(autouse=True)
-def _clear_settings_cache() -> None:
-    """Resetta il singleton funzionale prima di ogni test."""
+def _isolate_settings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Isola ogni test da `.env` locale del repo + reset singleton cache."""
+    monkeypatch.chdir(tmp_path)
     get_settings.cache_clear()
 
 
@@ -223,3 +237,44 @@ def test_ocr_threshold_above_100_rejected(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("TALOS_OCR_CONFIDENCE_THRESHOLD", "101")
     with pytest.raises(ValidationError, match="ocr_confidence_threshold"):
         TalosSettings()
+
+
+# ---------------------------------------------------------------------------
+# Caricamento .env locale (CHG-2026-05-01-014)
+# ---------------------------------------------------------------------------
+
+
+def test_loads_keepa_key_from_dotenv_in_cwd(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`.env` nel cwd popola i campi via pydantic-settings (`env_file='.env'`)."""
+    monkeypatch.delenv("TALOS_KEEPA_API_KEY", raising=False)
+    (tmp_path / ".env").write_text("TALOS_KEEPA_API_KEY=secret_from_env_file\n")
+    monkeypatch.chdir(tmp_path)
+    settings = TalosSettings()
+    assert settings.keepa_api_key == "secret_from_env_file"
+
+
+def test_shell_env_var_takes_precedence_over_dotenv(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pattern pydantic-settings: env var dirette > `.env` (CI override-friendly)."""
+    (tmp_path / ".env").write_text("TALOS_KEEPA_API_KEY=key_from_file\n")
+    monkeypatch.setenv("TALOS_KEEPA_API_KEY", "key_from_shell")
+    monkeypatch.chdir(tmp_path)
+    settings = TalosSettings()
+    assert settings.keepa_api_key == "key_from_shell"
+
+
+def test_no_dotenv_no_env_var_returns_none(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Senza `.env` nel cwd e senza env var: default None (CI senza secrets)."""
+    monkeypatch.delenv("TALOS_KEEPA_API_KEY", raising=False)
+    assert not (tmp_path / ".env").exists()
+    monkeypatch.chdir(tmp_path)
+    settings = TalosSettings()
+    assert settings.keepa_api_key is None

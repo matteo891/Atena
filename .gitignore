@@ -20,6 +20,13 @@ dist/
 # Virtualenv (gestito da uv, mai committare)
 .venv/
 
+# Secrets locali (API keys, credenziali). Lette runtime da TalosSettings via
+# pydantic-settings (env vars). MAI committare. Il loader di pydantic-settings
+# legge automaticamente .env nella working dir.
+.env
+.env.local
+.env.*.local
+
 # Tool caches (uv, pytest, ruff, mypy, coverage)
 .pytest_cache/
 .ruff_cache/
