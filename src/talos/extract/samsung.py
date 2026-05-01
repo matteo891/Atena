@@ -268,6 +268,7 @@ class SamsungExtractor:
         *,
         supplier: SamsungEntities,
         amazon: SamsungEntities,
+        asin: str | None = None,
     ) -> MatchResult:
         """Confronta fornitore vs Amazon e calcola status R-05.
 
@@ -278,6 +279,16 @@ class SamsungExtractor:
         R-05 hard: model mismatch (entrambi non None ma diversi)
         forza `MISMATCH` a prescindere dalla confidence aggregata.
         Il caller (orchestrator + vgp.score) forza `vgp_score=0`.
+
+        Args:
+            supplier: entita' estratte dal listino fornitore.
+            amazon: entita' estratte dall'Amazon detail page.
+            asin: ASIN Amazon target. Quando fornito, popola
+                `extract.kill_switch.asin` (catalogo ADR-0021)
+                con il valore reale; altrimenti viene usato il
+                sentinel `"<n/a>"` (backward compat CHG-005).
+                Aggiunto in CHG-2026-05-01-007 per chiudere il
+                gap "asin reale nella telemetria R-05".
         """
         max_weight = sum(self._weights.values())
         matched_fields: list[str] = []
@@ -310,7 +321,7 @@ class SamsungExtractor:
             _logger.debug(
                 "extract.kill_switch",
                 extra={
-                    "asin": "<n/a>",
+                    "asin": asin if asin is not None else "<n/a>",
                     "reason": "model_mismatch",
                     "mismatch_field": "model",
                     "expected": supplier.model,
