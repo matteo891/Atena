@@ -52,17 +52,27 @@ from talos.io_.scraper import (
     parse_bsr_text,
     parse_eur,
 )
+from talos.io_.serp_search import (
+    AMAZON_IT_SEARCH_URL_TEMPLATE,
+    DEFAULT_SERP_MAX_RESULTS,
+    AmazonSerpAdapter,
+    SerpBrowserProtocol,
+    SerpResult,
+)
 
 __all__ = [
     "AMAZON_IT_PRODUCT_URL",
+    "AMAZON_IT_SEARCH_URL_TEMPLATE",
     "DEFAULT_DELAY_RANGE_S",
     "DEFAULT_OCR_CONFIDENCE_THRESHOLD",
     "DEFAULT_SELECTORS_YAML",
+    "DEFAULT_SERP_MAX_RESULTS",
     "DEFAULT_TESSERACT_LANG",
     "DEFAULT_USER_AGENT",
     "SOURCE_KEEPA",
     "SOURCE_SCRAPER",
     "AmazonScraper",
+    "AmazonSerpAdapter",
     "BrowserPageProtocol",
     "BsrEntry",
     "KeepaApiAdapter",
@@ -78,6 +88,8 @@ __all__ = [
     "RawOcrData",
     "ScrapedProduct",
     "SelectorMissError",
+    "SerpBrowserProtocol",
+    "SerpResult",
     "TesseractAdapter",
     "binarize_otsu",
     "load_selectors",

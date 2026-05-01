@@ -569,6 +569,21 @@ class _PlaywrightBrowserPage:
         elements = self._page.query_selector_all(selector)
         return [elem.inner_text() for elem in elements]
 
+    def evaluate(self, expression: str) -> object:
+        """Esegue espressione JavaScript nel contesto della pagina.
+
+        Soddisfa `SerpBrowserProtocol` (CHG-2026-05-01-017) per estrazione
+        strutturata multi-attributo (es. lista risultati SERP con asin +
+        title + price per riga). Espressione hardcoded nel sorgente Talos,
+        nessun input esterno: niente injection.
+
+        Ritorna `object` in linea con `page.evaluate` di Playwright (Any-like);
+        caller fa `cast` o `isinstance` check.
+        """
+        if self._page is None:
+            return None
+        return self._page.evaluate(expression)
+
     def close(self) -> None:
         """Rilascia risorse Playwright in ordine inverso di creazione.
 
