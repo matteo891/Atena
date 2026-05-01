@@ -3,7 +3,7 @@ id: CHG-2026-05-01-016
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — apertura blocco asin_resolver post ratifica decisioni 1-5)
 status: Draft
-commit: TBD
+commit: b86baea
 adr_ref: ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -284,4 +284,4 @@ class ResolutionResult:
   visibile, non skip).
 - Successore atteso: CHG-2026-05-01-017 `_AmazonSerpAdapter` live
   (Playwright SERP `amazon.it/s?k=<query>` -> top-N ASIN + titoli).
-- Commit: TBD (backfill post-commit).
+- Commit: `b86baea`.
