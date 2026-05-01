@@ -510,6 +510,31 @@ def apply_candidate_overrides(
     return out
 
 
+def format_buybox_verified_caption(resolved: list[ResolvedRow]) -> str:
+    """Caption UX rate Buy Box verificato live nel flow CFO.
+
+    Frontend-only: aggrega `ResolvedRow.verified_buybox_eur is not None`
+    su tutto il listino risolto. Espone immediatamente al CFO l'accuratezza
+    del ROI calcolato downstream (Buy Box reale Amazon NEW vs fallback
+    `prezzo_eur` fornitore — CHG-2026-05-01-022).
+
+    Format: ``"Buy Box verificato: {verified}/{total} righe ({pct:.0f}%)."``
+    Helper puro testabile mock-only.
+
+    >>> format_buybox_verified_caption([])
+    ''
+    >>> # Casi coperti da `tests/unit/test_listino_input.py`.
+
+    Lista vuota → stringa vuota (caller suppress dal caption finale).
+    """
+    if not resolved:
+        return ""
+    n_total = len(resolved)
+    n_verified = sum(1 for r in resolved if r.verified_buybox_eur is not None)
+    pct = n_verified / n_total * 100
+    return f"Buy Box verificato: {n_verified}/{n_total} righe ({pct:.0f}%)."
+
+
 def format_cache_hit_caption(resolved: list[ResolvedRow]) -> str:
     """Caption UX hit rate cache `description_resolutions` per il flow CFO.
 

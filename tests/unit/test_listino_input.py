@@ -18,6 +18,7 @@ from talos.ui.listino_input import (
     ResolvedRow,
     apply_candidate_overrides,
     build_listino_raw_from_resolved,
+    format_buybox_verified_caption,
     format_cache_hit_caption,
     format_confidence_badge,
     parse_descrizione_prezzo_csv,
@@ -216,6 +217,78 @@ def test_format_cache_hit_caption_includes_unresolved_rows() -> None:
         _resolved_with_cache_hit(is_cache_hit=False, asin=""),
     ]
     assert format_cache_hit_caption(rows) == "Cache: 1/2 hit (50%)."
+
+
+# ---------------------------------------------------------------------------
+# `format_buybox_verified_caption` (CHG-2026-05-01-027)
+# ---------------------------------------------------------------------------
+
+
+def _resolved_with_buybox(
+    *,
+    verified_buybox_eur: Decimal | None,
+    asin: str = "B0CSTC2RDW",
+) -> ResolvedRow:
+    """Helper minimo: ResolvedRow con verified_buybox_eur per stat aggregata."""
+    return ResolvedRow(
+        descrizione="Galaxy S24",
+        prezzo_eur=Decimal("549.00"),
+        asin=asin,
+        confidence_pct=95.0,
+        is_ambiguous=False,
+        is_cache_hit=False,
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+        notes=(),
+        verified_buybox_eur=verified_buybox_eur,
+    )
+
+
+def test_format_buybox_verified_caption_empty_returns_empty_string() -> None:
+    """Lista vuota -> stringa vuota (caller suppress dal caption finale)."""
+    assert format_buybox_verified_caption([]) == ""
+
+
+def test_format_buybox_verified_caption_all_verified() -> None:
+    """Tutti hanno Buy Box live -> 100%."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=Decimal("599.00")) for _ in range(5)]
+    assert format_buybox_verified_caption(rows) == "Buy Box verificato: 5/5 righe (100%)."
+
+
+def test_format_buybox_verified_caption_none_verified() -> None:
+    """Tutti fallback (cache hit / lookup fail) -> 0%."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=None) for _ in range(4)]
+    assert format_buybox_verified_caption(rows) == "Buy Box verificato: 0/4 righe (0%)."
+
+
+def test_format_buybox_verified_caption_mixed() -> None:
+    """Mixed 3 verified / 12 totali -> 25%."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=Decimal("599.00")) for _ in range(3)] + [
+        _resolved_with_buybox(verified_buybox_eur=None) for _ in range(9)
+    ]
+    assert format_buybox_verified_caption(rows) == "Buy Box verificato: 3/12 righe (25%)."
+
+
+def test_format_buybox_verified_caption_single_verified() -> None:
+    """Single verified -> 100%."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=Decimal("549.00"))]
+    assert format_buybox_verified_caption(rows) == "Buy Box verificato: 1/1 righe (100%)."
+
+
+def test_format_buybox_verified_caption_single_fallback() -> None:
+    """Single fallback (no Buy Box live) -> 0%."""
+    rows = [_resolved_with_buybox(verified_buybox_eur=None)]
+    assert format_buybox_verified_caption(rows) == "Buy Box verificato: 0/1 righe (0%)."
+
+
+def test_format_buybox_verified_caption_includes_unresolved_rows() -> None:
+    """Righe non risolte (asin='') contate nel total con buybox=None per definizione."""
+    rows = [
+        _resolved_with_buybox(verified_buybox_eur=Decimal("599.00")),
+        _resolved_with_buybox(verified_buybox_eur=None, asin=""),
+    ]
+    assert format_buybox_verified_caption(rows) == "Buy Box verificato: 1/2 righe (50%)."
 
 
 # ---------------------------------------------------------------------------

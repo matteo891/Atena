@@ -879,6 +879,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     from talos.ui.listino_input import (  # noqa: PLC0415
         apply_candidate_overrides,
         build_listino_raw_from_resolved,
+        format_buybox_verified_caption,
         format_cache_hit_caption,
         format_confidence_badge,
         parse_descrizione_prezzo_csv,
@@ -1008,10 +1009,12 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     n_ambiguous = sum(1 for r in resolved_with_overrides if r.is_ambiguous and r.asin)
     n_overrides = len(overrides)
     cache_caption = format_cache_hit_caption(resolved_with_overrides)
+    buybox_caption = format_buybox_verified_caption(resolved_with_overrides)
     caption = (
         f"Risolti {n_resolved}/{n_total} (di cui {n_ambiguous} ambigui)."
         + (f" Override CFO applicati: {n_overrides}." if n_overrides else "")
         + (f" {cache_caption}" if cache_caption else "")
+        + (f" {buybox_caption}" if buybox_caption else "")
         + " Le righe ambigue restano nel listino: il CFO valuta caso per caso."
     )
     st.caption(caption)
