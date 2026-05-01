@@ -178,11 +178,14 @@ def _parse_serp_payload(
     lista parziale vale).
     """
     if not isinstance(raw, list):
+        # CHG-2026-05-01-037 (B1.4): allineato al catalogo ADR-0021
+        # `scrape.selector_fail` (`asin`/`selector_name`/`html_snippet_hash`).
+        # Drift pre-esistente da CHG-005 sanato.
         _logger.debug(
             "scrape.selector_fail",
             asin="<serp>",
-            field="serp_payload",
-            selectors_tried=["data-component-type=s-search-result"],
+            selector_name="serp_payload",
+            html_snippet_hash="<no-html>",
         )
         return []
 

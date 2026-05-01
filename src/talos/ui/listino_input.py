@@ -72,24 +72,31 @@ _logger = structlog.get_logger(__name__)
 _CACHE_TABLE_DESCRIPTION_RESOLUTIONS: str = "description_resolutions"
 
 
-def _emit_cache_hit(*, table: str, tenant_id: int) -> None:
+def _emit_cache_hit(*, table: str) -> None:
     """Emette evento canonico `cache.hit` (catalogo ADR-0021).
 
-    Helper puro: testabile via caplog. Tracking efficacia cache
+    Helper puro: testabile via LogCapture. Tracking efficacia cache
     `description_resolutions`: `n_hits / (n_hits + n_misses)` =
     cache hit rate per tenant.
+
+    CHG-2026-05-01-037 (B1.4): `tenant_id` rimosso dalla firma; ora
+    ereditato dal bind context UI (`bind_request_context` in
+    `_render_descrizione_prezzo_flow`).
     """
-    _logger.debug("cache.hit", table=table, tenant_id=tenant_id)
+    _logger.debug("cache.hit", table=table)
 
 
-def _emit_cache_miss(*, table: str, tenant_id: int) -> None:
+def _emit_cache_miss(*, table: str) -> None:
     """Emette evento canonico `cache.miss` (catalogo ADR-0021).
 
-    Helper puro: testabile via caplog. Cache miss → resolve live
+    Helper puro: testabile via LogCapture. Cache miss → resolve live
     + `upsert_resolution` (consumo quota Keepa/SERP). Tracking costo
     operativo del flow descrizione+prezzo.
+
+    CHG-2026-05-01-037 (B1.4): `tenant_id` rimosso dalla firma; ora
+    ereditato dal bind context UI.
     """
-    _logger.debug("cache.miss", table=table, tenant_id=tenant_id)
+    _logger.debug("cache.miss", table=table)
 
 
 # Colonne obbligatorie del CSV "umano" descrizione+prezzo.
@@ -278,15 +285,9 @@ def resolve_listino_with_cache(
                 if cached is not None:
                     cached_asin = cached.asin.strip()
                     cached_confidence = float(cached.confidence_pct)
-                    _emit_cache_hit(
-                        table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS,
-                        tenant_id=tenant_id,
-                    )
+                    _emit_cache_hit(table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS)
                 else:
-                    _emit_cache_miss(
-                        table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS,
-                        tenant_id=tenant_id,
-                    )
+                    _emit_cache_miss(table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS)
 
         if cached_asin is not None and cached_confidence is not None:
             out.append(

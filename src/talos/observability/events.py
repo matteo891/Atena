@@ -8,16 +8,25 @@ un evento del catalogo (R-01 NO SILENT DROPS dinamico).
 
 Aggiungere un evento al catalogo richiede change document ed è side-effect
 di un nuovo modulo applicativo. Rimuoverlo richiede supersessione di ADR-0021.
+
+**Campi context-bound (CHG-2026-05-01-037, B1.4)**: i campi
+`request_id`, `tenant_id`, `session_id`, `listino_hash` sono ereditati
+automaticamente dal pipeline `merge_contextvars` quando un caller più
+esterno chiama `bind_request_context` / `bind_session_context`. Non
+sono più richiesti come `extra` esplicito sui singoli emit. Le tuple
+qui sotto elencano solo i campi event-specific (NON ereditati). Vedi
+ADR-0021 sezione "Campi context-bound".
 """
 
 from typing import Final
 
 # ── Catalogo eventi canonici (17 voci) ──────────────────────────────────────
-# Mapping: event_name → tuple di campi obbligatori da passare nel kwargs
-# del logger. La tupla è il contratto che il chiamante deve onorare; il
-# test di governance verificherà solo la presenza dell'evento, mentre il
-# rispetto dei campi è disciplina dei chiamanti (eventualmente promuovibile
-# a verifica statica via mypy in futuro).
+# Mapping: event_name → tuple di campi obbligatori event-specific (NON
+# context-bound). I campi context-bound (request_id, tenant_id, session_id,
+# listino_hash) sono ereditati dal bind helper e non vanno più passati
+# esplicitamente come kwargs/extra. Il test di governance verifica solo la
+# presenza dell'evento; il rispetto dei campi event-specific è disciplina
+# dei chiamanti (eventualmente promuovibile a verifica statica via mypy).
 
 CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # Estrazione (ADR-0017 / 0018) — SamsungExtractor + filtro Kill-Switch
@@ -46,8 +55,12 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     "ui.override_applied": ("n_overrides", "n_eligible"),
     "ui.resolve_failed": ("reason", "n_rows"),
     # Cache `description_resolutions` (ADR-0015) — errata CHG-2026-05-01-025
-    "cache.hit": ("table", "tenant_id"),
-    "cache.miss": ("table", "tenant_id"),
+    # CHG-2026-05-01-037 (B1.4): tenant_id rimosso dalla tupla — ora ereditato
+    # dal bind UI (`bind_request_context(tenant_id=DEFAULT_TENANT_ID)` in
+    # `_render_descrizione_prezzo_flow`). Resta `table` come unico campo
+    # event-specific.
+    "cache.hit": ("table",),
+    "cache.miss": ("table",),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).

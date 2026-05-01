@@ -255,3 +255,82 @@ contesto (`tenant_id` deciso a livello applicativo) e pattern coerente
 con `_emit_ui_*` di `dashboard.py`. Catalogo ora **17 voci totali**.
 Modifica additiva, non altera la semantica degli eventi esistenti —
 non richiede supersessione.
+
+**2026-05-01 (CHG-2026-05-01-035 + 036 + 037) — campi context-bound + B1.4 pulizia.**
+Il blocco B1 ("structlog.bind context tracing", round 6) ha
+formalizzato un nuovo concetto: i **campi context-bound**.
+
+### Bind helpers (CHG-035 + 036)
+
+`talos.observability.logging_config` espone:
+
+- `bind_request_context(*, tenant_id, request_id=None) -> str`:
+  binda `request_id` (UUID4 auto-generato se None) + `tenant_id`.
+  Idempotente (riusa `request_id` esistente in caso di nesting,
+  rispetta il caller più esterno).
+- `bind_session_context(*, session_id, listino_hash, velocity_target,
+  budget_eur)`: estende il context request-level con metadati
+  sessione DB (POST-save).
+- `clear_request_context()` / `clear_session_context()`: alias di
+  `structlog.contextvars.clear_contextvars()` (pulisce TUTTI i
+  contextvars).
+- `is_request_context_bound() -> bool`: helper introspettivo per
+  pattern `is_outer` nei caller annidati (chiama clear solo se
+  bind originator).
+
+### Campi context-bound
+
+I 4 campi seguenti sono **ereditati automaticamente** dal pipeline
+`structlog.contextvars.merge_contextvars` quando un caller esterno
+binda. **Non vanno passati esplicitamente come `kwargs` agli emit
+canonici**:
+
+| Campo | Bound da | Quando |
+|---|---|---|
+| `request_id` | `bind_request_context` | Ingresso `run_session` / `replay_session` / flow UI |
+| `tenant_id` | `bind_request_context` | Ingresso `run_session` / `replay_session` / flow UI |
+| `session_id` | `bind_session_context` | Post-save `try_persist_session` o post-load `try_replay_session` |
+| `listino_hash` | `bind_session_context` | Post-save `try_persist_session` o post-load `try_replay_session` |
+
+Le tuple obbligatorie del catalogo `CANONICAL_EVENTS` ora elencano
+solo i campi **event-specific** (NON ereditati). Esempio:
+
+```python
+"cache.hit": ("table",)              # post-CHG-037 (era ("table", "tenant_id"))
+"cache.miss": ("table",)             # post-CHG-037 (era ("table", "tenant_id"))
+```
+
+### Adozione (CHG-035 + 036)
+
+- **`orchestrator.py` (B1.2)**: `run_session` / `replay_session`
+  wrappati in `try/finally` con `bind_request_context(tenant_id=1)` +
+  `clear_request_context()`. Pattern `is_outer` per nesting.
+- **`ui/dashboard.py` (B1.3)**: `_render_descrizione_prezzo_flow`
+  wrappato analogamente (tutti i 4 emit UI + 2 cache emit ereditano).
+  `try_persist_session` post-save chiama `bind_session_context`.
+
+### Pulizia drift (CHG-037)
+
+- **`cache.hit` / `cache.miss`**: `tenant_id` rimosso dalla tupla
+  obbligatoria del catalogo + dagli helper `_emit_cache_hit/miss` +
+  dai callsite. Ora ereditato dal bind UI.
+- **`io_/serp_search.py:scrape.selector_fail`**: drift di campi
+  pre-esistente da CHG-005 (`field`/`selectors_tried` invece di
+  `selector_name`/`html_snippet_hash`) sanato. L'emit serp ora
+  conforme al catalogo (`asin="<serp>"`, `selector_name="serp_payload"`,
+  `html_snippet_hash="<no-html>"`).
+
+Catalogo resta a **17 voci totali** (nessuna aggiunta/rimozione,
+solo riformalizzazione campi). Modifica additiva — non richiede
+supersessione (regola ADR-0001 non si applica). `tenant_id` esplicito
+non più obbligatorio è cambiamento *sottrattivo* sul contratto della
+tupla, ma non sul **payload finale** dell'evento (ora arricchito da
+context-bind invece che da kwarg). Pattern equivalente a livello
+osservato in produzione.
+
+### Tenant provider futuro
+
+Tenant hardcoded `_DEFAULT_TENANT_ID = 1` in `orchestrator.py` e
+`DEFAULT_TENANT_ID = 1` in `ui/dashboard.py`. Provider iniettato
+(da `TalosSettings` o argomento `SessionInput.tenant_id`) è scope
+multi-tenant futuro — registrato nei commenti `_DEFAULT_TENANT_ID`.
