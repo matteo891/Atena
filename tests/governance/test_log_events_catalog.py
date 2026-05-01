@@ -35,7 +35,10 @@ _DROP_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 # I file in cui un eventuale "continue" è benigno (es. governance/test scaffolding).
-_EXEMPT_FILES: frozenset[str] = frozenset({})
+# `document_parser.py`: i `continue` skippano pagine PDF/tabelle DOCX vuote
+# durante il loop interno di estrazione; il fallimento totale solleva ValueError
+# esplicito (R-01 al confine del modulo). CHG-2026-05-02-007.
+_EXEMPT_FILES: frozenset[str] = frozenset({"src/talos/ui/document_parser.py"})
 
 
 def _file_uses_canonical_event(content: str) -> bool:

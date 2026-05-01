@@ -40,6 +40,10 @@ dependencies = [
     "rapidfuzz>=3.0,<4",
     "pydantic-settings>=2.14.0",
     "playwright-stealth>=2.0.3",
+    # Multi-format upload CFO (CHG-2026-05-02-007) — PDF/XLSX/DOCX
+    "pdfplumber>=0.11.0,<1",
+    "openpyxl>=3.1.0,<4",
+    "python-docx>=1.1.0,<2",
 ]
 
 [dependency-groups]
@@ -109,6 +113,12 @@ enable_error_code = ["redundant-self", "redundant-expr", "truthy-bool"]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 
 # Librerie senza py.typed marker (ADR-0014 deroga documentata).
+# pdfplumber + python-docx (CHG-2026-05-02-007): no stubs ufficiali per pdfplumber.
+# python-docx ha tipi parziali. Override mypy per ignore_missing_imports.
+[[tool.mypy.overrides]]
+module = ["pdfplumber", "pdfplumber.*", "docx", "docx.*"]
+ignore_missing_imports = true
+
 # pytesseract (CHG-2026-05-01-003): no stubs ufficiali. Importato dal
 # `_LiveTesseractAdapter` (live ratificato in CHG-2026-05-01-011).
 # playwright-stealth (CHG-2026-05-01-012): plugin community, no stubs.

@@ -315,13 +315,54 @@ def _render_sidebar(
         _render_sidebar_referral_fees(factory)
 
     lot_size = st.sidebar.number_input(
-        "Lot Size Fornitore",
+        "Lotto fornitore",
         min_value=1,
         value=DEFAULT_LOT_SIZE,
         step=1,
         help="F5: Floor(qty_target / lot) * lot. Default Samsung MVP = 5.",
     )
+
+    if factory is not None:
+        with st.sidebar.expander("Manutenzione cache"):
+            st.caption(
+                "La cache `description_resolutions` mappa descrizione → ASIN. "
+                "Svuotala se vuoi forzare il re-resolve live SERP+Keepa.",
+            )
+            if st.button("Svuota cache risoluzioni", key="clear_cache_btn"):
+                ok, n_deleted, err = try_clear_description_cache(factory)
+                if ok:
+                    st.success(f"Cache svuotata: {n_deleted} righe rimosse.")
+                else:
+                    st.error(f"Reset fallito: {err}")  # pragma: no cover
+
     return float(budget), int(velocity_target), float(veto_threshold), int(lot_size)
+
+
+def try_clear_description_cache(
+    factory: sessionmaker[Session],
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, int, str | None]:
+    """Svuota cache `description_resolutions` per il tenant. Ritorna (ok, n_rimosse, err)."""
+    from sqlalchemy import text  # noqa: PLC0415
+
+    try:
+        with session_scope(factory) as db:
+            n_before = int(
+                db.execute(
+                    text(
+                        "SELECT COUNT(*) FROM description_resolutions WHERE tenant_id = :tid",
+                    ),
+                    {"tid": tenant_id},
+                ).scalar_one(),
+            )
+            db.execute(
+                text("DELETE FROM description_resolutions WHERE tenant_id = :tid"),
+                {"tid": tenant_id},
+            )
+            return True, n_before, None
+    except Exception as exc:  # noqa: BLE001 - UI graceful
+        return False, 0, str(exc)
 
 
 def _render_sidebar_referral_fees(factory: sessionmaker[Session]) -> None:
@@ -1021,24 +1062,26 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
     )
 
     uploaded = st.file_uploader(
-        "Carica Listino (CSV descrizione+prezzo)",
-        type=["csv"],
+        "Carica listino (CSV / XLSX / PDF / DOCX)",
+        type=["csv", "xlsx", "xls", "pdf", "docx"],
         help=(
             "Colonne minime: `descrizione`, `prezzo` (costo fornitore EUR). "
-            "Opzionali: `v_tot` (vendite mensili stimate), `s_comp` (competitor), "
-            "`category_node`. Se `v_tot` non è specificato, viene stimato dal "
-            "BSR Amazon (formula MVP placeholder, vedi `v_tot_source` in audit)."
+            "Opzionali: `v_tot` (vendite mensili stimate), `s_comp`, `category_node`. "
+            "PDF/DOCX devono contenere tabelle native (no scansioni)."
         ),
         key="descrizione_prezzo_uploader",
     )
     if uploaded is None:
-        st.info("Carica un CSV per iniziare.")
+        st.info("Carica un listino per iniziare.")
         return None
 
+    from talos.ui.document_parser import parse_uploaded_document  # noqa: PLC0415
+
+    suffix = uploaded.name.rsplit(".", 1)[-1] if "." in uploaded.name else ""
     try:
-        df_raw = pd.read_csv(uploaded)
+        df_raw = parse_uploaded_document(uploaded, suffix)
     except (pd.errors.ParserError, ValueError) as exc:  # pragma: no cover - UI-only
-        st.error(f"Errore parsing CSV: {exc}")
+        st.error(f"Errore parsing file: {exc}")
         return None
 
     try:
@@ -1230,16 +1273,62 @@ def _render_ambiguous_candidate_overrides(
     return overrides
 
 
+_TALOS_CSS = """
+<style>
+  html, body, [class*="css"] { font-family: 'Georgia', 'Cambria', serif; }
+  h1, h2, h3 { letter-spacing: 0.5px; font-weight: 600; }
+  .talos-header {
+    padding: 0.5rem 0 1rem 0;
+    border-bottom: 1px solid #C9A96133;
+    margin-bottom: 1rem;
+  }
+  .talos-title {
+    font-size: 2.2rem; font-weight: 700; color: #E6EDF3; margin: 0;
+  }
+  .talos-tagline {
+    color: #C9A961; font-size: 0.95rem; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-top: 0.25rem;
+  }
+  .talos-subtitle {
+    color: #8B949E; font-size: 0.95rem; margin-top: 0.5rem;
+  }
+  [data-testid="stMetricValue"] { font-size: 1.6rem; font-weight: 600; }
+  [data-testid="stMetricLabel"] {
+    color: #8B949E; text-transform: uppercase; letter-spacing: 1px;
+    font-size: 0.75rem;
+  }
+  .stButton > button {
+    border: 1px solid #C9A96155;
+    transition: all 150ms ease-in-out;
+  }
+  .stButton > button:hover { border-color: #C9A961; background: #C9A96111; }
+  [data-testid="stSidebar"] h2 { color: #C9A961; font-size: 1.1rem; }
+  [data-testid="stDataFrame"] { padding: 0.5rem 0; }
+  .stCaption { color: #8B949E !important; font-style: italic; }
+</style>
+"""
+
+
 def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Streamlit multi-step
     """Entrypoint Streamlit. Eseguito da `streamlit run`."""
     st.set_page_config(
         page_title="TALOS — Cruscotto Sessione",
         layout="wide",
-        page_icon=":dart:",
+        page_icon="◆",
+        initial_sidebar_state="expanded",
     )
-    st.title("TALOS — Scaler 500k")
-    st.caption(
-        "Cruscotto di sessione: input listino + budget → Cart + Panchina + Budget T+1.",
+    st.markdown(_TALOS_CSS, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="talos-header">
+          <div class="talos-title">◆ TALOS</div>
+          <div class="talos-tagline">Scaler 500k · FBA Wholesale Engine</div>
+          <div class="talos-subtitle">
+            Listino → ASIN verificati live → VGP score → allocazione Tetris budget.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     factory_for_sidebar = get_session_factory_or_none()
@@ -1248,45 +1337,50 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
     # Decisione Leader 2026-05-01 round 4 (delta=A): convivenza dei 2 flow
     # CSV. Default = nuovo (descrizione+prezzo); legacy disponibile per
     # CSV gia' strutturati con ASIN noto.
+    st.subheader("1 · Listino di sessione")
     mode = st.radio(
-        "Formato listino",
-        options=("Descrizione + prezzo (nuovo)", "ASIN gia' noto (legacy)"),
+        "Formato sorgente",
+        options=("Descrizione + prezzo", "ASIN già noto"),
         horizontal=True,
         key="listino_input_mode",
+        help="Scegli il formato del file fornitore. Default consigliato: descrizione+prezzo.",
     )
 
     locked_in_raw = st.text_input(
-        "ASIN Locked-in (separati da virgola)",
+        "ASIN Locked-in (separati da virgola, opzionale)",
         value="",
-        help="R-04: ASIN forzati con priorita' infinita prima del Pass 2 Tetris.",
+        help="R-04: ASIN forzati con priorità infinita prima del Pass 2 Tetris.",
     )
     locked_in = parse_locked_in(locked_in_raw)
 
     listino: pd.DataFrame | None = None
-    if mode == "Descrizione + prezzo (nuovo)":
+    if mode == "Descrizione + prezzo":
         listino = _render_descrizione_prezzo_flow(factory_for_sidebar)
         if listino is None:
             return
     else:
         uploaded = st.file_uploader(
-            "Carica Listino di Sessione (CSV)",
-            type=["csv"],
+            "Carica listino strutturato (CSV / XLSX)",
+            type=["csv", "xlsx", "xls"],
             help=f"Colonne richieste: {', '.join(REQUIRED_INPUT_COLUMNS)}.",
             key="listino_legacy_uploader",
         )
         if uploaded is None:
-            st.info("Carica un CSV per iniziare.")
+            st.info("Carica un listino per iniziare.")
             return
 
+        from talos.ui.document_parser import parse_uploaded_document  # noqa: PLC0415
+
+        suffix = uploaded.name.rsplit(".", 1)[-1] if "." in uploaded.name else ""
         try:
-            listino = pd.read_csv(uploaded)
+            listino = parse_uploaded_document(uploaded, suffix)
         except (pd.errors.ParserError, ValueError) as exc:  # pragma: no cover - UI-only
-            st.error(f"Errore parsing CSV: {exc}")
+            st.error(f"Errore parsing file: {exc}")
             return
 
-        if not st.button("Esegui Sessione"):
+        if not st.button("Esegui sessione", type="primary"):
             st.dataframe(listino.head(20), use_container_width=True)
-            st.caption(f"Anteprima ({min(len(listino), 20)} righe). Premi 'Esegui Sessione'.")
+            st.caption(f"Anteprima ({min(len(listino), 20)} righe). Premi 'Esegui sessione'.")
             return
 
     inp = build_session_input(

@@ -1,0 +1,21 @@
+# TALOS dashboard theme — CHG-2026-05-02-007 UI redesign.
+# Palette finance sobria: blu notte + accent oro tenue.
+
+[theme]
+base = "dark"
+primaryColor = "#C9A961"             # oro tenue (accent CTA)
+backgroundColor = "#0E1117"          # blu notte profondo
+secondaryBackgroundColor = "#161B22" # pannelli/sidebar
+textColor = "#E6EDF3"                # bianco morbido (alta leggibilità)
+font = "serif"
+
+[server]
+headless = true
+runOnSave = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = true
