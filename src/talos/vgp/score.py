@@ -27,8 +27,9 @@ scope di un CHG futuro.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
+
+import structlog
 
 from talos.vgp.normalize import min_max_normalize
 from talos.vgp.veto import DEFAULT_ROI_VETO_THRESHOLD
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 # Eventi canonici emessi (ADR-0021):
 # - "vgp.veto_roi_failed": riga vetata da R-08 (asin/roi_pct/threshold).
 # - "vgp.kill_switch_zero": riga killed da R-05 (asin/match_status).
@@ -121,7 +122,7 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
     out["vgp_score"] = out["vgp_score_raw"].where(~blocked, 0.0)
 
     # Telemetria (ADR-0021). Eventi per-asin a livello DEBUG: silenti in produzione,
-    # capturable nei test via `caplog.at_level(DEBUG, logger="talos.vgp.score")`.
+    # capturable nei test via `structlog.testing.LogCapture` (fixture in conftest).
     # Skip se la colonna `asin_col` non e' presente (caller-friendly: il modulo non
     # forza il contratto, lo verifica e degrada gracefully).
     if asin_col in out.columns:
@@ -134,11 +135,9 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
         ):
             _logger.debug(
                 "vgp.veto_roi_failed",
-                extra={
-                    "asin": str(asin),
-                    "roi_pct": float(roi_value),
-                    "threshold": veto_roi_threshold,
-                },
+                asin=str(asin),
+                roi_pct=float(roi_value),
+                threshold=veto_roi_threshold,
             )
         # vgp.kill_switch_zero: ASIN killed (R-05).
         if kill_mask.any():
@@ -154,10 +153,8 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
             ):
                 _logger.debug(
                     "vgp.kill_switch_zero",
-                    extra={
-                        "asin": str(asin),
-                        "match_status": str(match_status) if match_status is not None else "",
-                    },
+                    asin=str(asin),
+                    match_status=str(match_status) if match_status is not None else "",
                 )
 
     return out
