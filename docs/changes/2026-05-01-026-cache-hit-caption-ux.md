@@ -3,7 +3,7 @@ id: CHG-2026-05-01-026
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" estesa round 5+ — quick win UX hit rate cache)
 status: Draft
-commit: pending
+commit: f41bbec
 adr_ref: ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -240,4 +240,4 @@ def test_format_cache_hit_caption_mixed() -> None:
   evidenza, (B1) `structlog.bind` context tracing, (B2) refactor UI
   multi-page ADR-0016, (β) `upsert_session` semantica, (POLICY-001)
   Velocity bsr_chain.
-- Commit: pending.
+- Commit: `f41bbec`.
