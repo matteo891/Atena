@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-05-01 — **Fase 3 Path B 2/3 + Chromium runtime sbloccato** post-CHG-013 + system libs installate Leader-side. Tag: 7 milestone + **12 checkpoint** (checkpoint-13 in proposta). **687 test PASS, 0 SKIPPED** (565 unit/gov/golden + 122 integration; era 660+6 skipped). Catena CHG 2026-05-01: 001..013 (5 Fase 1 Path B + 3 Fase 3 Path B = `_LiveTesseractAdapter` + `_PlaywrightBrowserPage` + BSR multi-livello). **Catalogo eventi canonici ADR-0021: 10/11 viventi** (invariato).
+> **Ultimo aggiornamento:** 2026-05-01 fine round 3 — **Fase 3 Path B 2/3 + smoke live OK**. HEAD `3b62bfd` (post `gitnexus analyze` refresh). Tag: 7 milestone + **13 checkpoint** (`checkpoint/2026-05-01-13` su `4691bd4`). **687 test PASS, 0 SKIPPED** (565 unit/gov/golden + 122 integration). Catena CHG 2026-05-01: 001..013 (5 Fase 1 Path B + 3 Fase 3 Path B + 4 fix post-test-live). **Catalogo eventi canonici ADR-0021: 10/11 viventi** (invariato). **Indice GitNexus fresh** (4142 nodes / 5392 edges / 73 clusters / 16 flows). **Path B scraping-only ~92-94% utilizzabile validato live** su B0CSTC2RDW (Samsung S24 reale).
 > **Sessione corrente:** TALOS round 2 (modalità "macina" riautorizzata Leader 2026-05-01) — Leader ha ratificato **Path B** ("obiettivo prodotto funzionante") come MVP target. Sequenza in 3 fasi: **Fase 1 (mock-testabile, no setup) ✓ CHIUSA**, Fase 2 (installazioni di sistema in sospeso), Fase 3 (live adapters + 5 decisioni Leader pre-flight). **5 CHG di Fase 1 (006..010)**: tutto il valore architetturale producibile senza Tesseract/Chromium/Keepa key è in produzione. Zero nuove deps, zero nuovi eventi canonici. Sentinelle e2e mock-only ancorano il flusso per Fase 3.
 
 ---
@@ -415,6 +415,43 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
   - `project_io_extract_design_decisions.md` (D1-D5 default ratificate, aggiornata con stato "applicato" post-CHG-005)
   - `project_session_handoff_2026-05-01.md` (handoff completo, leggere DOPO PM e sera 2026-04-30)
   - `project_mvp_progress_estimate.md` (refresh con Path A/Path B distinti)
+
+### 🔄 Handoff sessione 2026-05-01 round 3 (post `3b62bfd` — Fase 3 Path B 2/3 + smoke live)
+
+> **Per il prossimo Claude (post `/clear`).** Riprendi da QUI. La sessione round 3 ha consolidato Fase 1 Path B (chiusa post CHG-010) e aperto Fase 3 Path B (2/3 live ratificati). Tutti i CHG sono in produzione, working tree clean, push aggiornato. **Memory dettagliata: `project_session_handoff_2026-05-01-round3.md`** — leggere DOPO PM/sera/round 1 in ordine cronologico.
+
+- **HEAD `3b62bfd`**, branch `main`. **687 PASS, 0 SKIPPED** (565+122). Quality gate verde.
+- **Tag `checkpoint/2026-05-01-13`** su `4691bd4` chiude round 3.
+- **Catena CHG round 3**:
+  - **CHG-006** `0c9b93a`: `lookup_product` fallback chain orchestratrice
+  - **CHG-007** `45fac4b`: `SamsungExtractor.match(asin=...)` kwarg telemetria R-05
+  - **CHG-008** `1e57c10`: `build_asin_master_input` bridge + sentinella e2e mock
+  - **CHG-009** `1a9369d`: `lookup_products` bulk wrapper
+  - **CHG-010** `e425d14`: `acquire_and_persist` orchestratore — **Fase 1 Path B chiusa**
+  - **CHG-011** `001b066`: `_LiveTesseractAdapter` live + bug fix R-01 `OcrPipeline.has_text`
+  - **CHG-012** `e553b5f`: `_PlaywrightBrowserPage` live + dep `playwright-stealth`
+  - **CHG-013** `8ef6259`: scraper BSR multi-livello generalizzato (`BsrEntry` + `bsr_chain`)
+  - 4 fix governance/post-live: `4691bd4` (data URL utf-8), `90e8600` (selettori BSR 2025 + sort)
+- **Decisioni Leader ratificate**: Path B = MVP target; Cookie GDPR A; Stealth B medium (playwright-stealth 2.0.3); Timeout goto 60s; BSR generalizzato a qualsiasi gerarchia Amazon; sort `bsr_chain` per `rank` ascending = "specifico→ampio".
+- **Setup di sistema completato Leader-side**:
+  - ✅ Tesseract 5.3.4 (lingue ita+eng+osd)
+  - ✅ Chromium binary `~/.cache/ms-playwright/chromium_headless_shell-1217/`
+  - ✅ Chromium runtime libs (`libnspr4`/`libnss3`/etc.) — TEST-DEBT-001 chiuso
+  - ❌ `TALOS_KEEPA_API_KEY` NOT_SET (Leader: in arrivo)
+- **Test debt**: ~~001~~ ~~002~~ ~~003~~ chiusi (003 ~80%, residuo browser umano); 004 ⏳ Keepa key + POLICY-001 ⏳ Velocity bsr_chain.
+- **5 bug emersi dai test live (i mock NON li avrebbero rilevati)**:
+  1. `:-soup-contains` (BeautifulSoup) non valido in Chromium DOM → SyntaxError
+  2. `data:text/html,...` interpretato come latin1 in Chromium → mojibake € → â‚¬
+  3. Layout Amazon.it 2025: rank root + sub entrambi in `table.a-keyvalue.prodDetTable`, non in 2 sezioni separate
+  4. Ordine HTML BSR: root prima di sub (richiesto sort `key=rank` asc)
+  5. R-01 `OcrPipeline`: rumore puro → conf=95 con text vuoto → pre-fix dichiarava OK (fix `has_text` check)
+- **Re-entry routine**:
+  1. Self-Briefing standard (CLAUDE.md).
+  2. Verificare container Postgres `talos-pg-test` (UP da 20h+; se DOWN, comando in handoff memory).
+  3. ⚠️ **Modalità "macina" round 3 NON persiste**: prossima sessione = default ADR-0002 (permesso esplicito Leader pre-commit).
+  4. Se Keepa key arriva: aprire CHG-014 `_LiveKeepaAdapter` (decisione Leader BSR Keepa idx 3 SALES vs altro pendente — default proposto SALES).
+  5. Se Keepa NON arriva: Path B scraping-only e' utilizzabile live; prossimi candidati = POLICY-001 Velocity policy bsr_chain (½ sessione) oppure smoke browser umano UI Streamlit (validazione interazione utente reale, residuo TEST-DEBT-003).
+- **Stima MVP onesta fine round 3**: Path A ~92% codice + ~88-90% validato; Path B ~95% codice + **~92-94% validato live**.
 
 ### 🔄 Aggiornamento sessione 2026-05-01 round 2 (Fase 1 Path B — fallback chain mock-only)
 
