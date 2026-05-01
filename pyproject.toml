@@ -39,6 +39,7 @@ dependencies = [
     # Estrattore Samsung NLP (ADR-0017 + R-05) — CHG-2026-05-01-004
     "rapidfuzz>=3.0,<4",
     "pydantic-settings>=2.14.0",
+    "playwright-stealth>=2.0.3",
 ]
 
 [dependency-groups]
@@ -108,10 +109,12 @@ enable_error_code = ["redundant-self", "redundant-expr", "truthy-bool"]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 
 # Librerie senza py.typed marker (ADR-0014 deroga documentata).
-# pytesseract (CHG-2026-05-01-003): no stubs ufficiali. Importato solo dal
-# `_LiveTesseractAdapter` skeleton; runtime scope CHG-2026-05-01-005.
+# pytesseract (CHG-2026-05-01-003): no stubs ufficiali. Importato dal
+# `_LiveTesseractAdapter` (live ratificato in CHG-2026-05-01-011).
+# playwright-stealth (CHG-2026-05-01-012): plugin community, no stubs.
+# Importato dal `_PlaywrightBrowserPage` (live ratificato in CHG-012).
 [[tool.mypy.overrides]]
-module = ["pytesseract.*"]
+module = ["pytesseract.*", "playwright_stealth.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

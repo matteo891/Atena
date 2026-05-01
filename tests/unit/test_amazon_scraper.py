@@ -26,7 +26,6 @@ from talos.io_ import (
     load_selectors,
     parse_eur,
 )
-from talos.io_.scraper import _PlaywrightBrowserPage
 
 pytestmark = pytest.mark.unit
 
@@ -304,23 +303,7 @@ def test_scrape_product_buybox_unparsable_returns_none(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# _PlaywrightBrowserPage skeleton — tutti i metodi raise NotImplementedError
+# _PlaywrightBrowserPage — CHG-2026-05-01-012: live ratificato.
+# Test runtime spostati in tests/integration/test_live_playwright.py
+# (richiedono Chromium installato + system deps libnspr4/libnss3/...).
 # ---------------------------------------------------------------------------
-
-
-def test_playwright_page_goto_raises_not_implemented() -> None:
-    page = _PlaywrightBrowserPage()
-    with pytest.raises(NotImplementedError, match="goto"):
-        page.goto("https://www.amazon.it/dp/X")
-
-
-def test_playwright_page_query_selector_raises_not_implemented() -> None:
-    page = _PlaywrightBrowserPage()
-    with pytest.raises(NotImplementedError, match="query_selector_text"):
-        page.query_selector_text("#x")
-
-
-def test_playwright_page_query_selector_xpath_raises_not_implemented() -> None:
-    page = _PlaywrightBrowserPage()
-    with pytest.raises(NotImplementedError, match="query_selector_xpath_text"):
-        page.query_selector_xpath_text("//x")

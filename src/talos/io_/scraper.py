@@ -22,16 +22,27 @@ da ratificare nell'integratore CHG-2026-05-01-005 (richiede
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, Self
 
 import yaml
+from playwright.sync_api import sync_playwright
+from playwright_stealth import Stealth
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from playwright.sync_api import (
+        Browser,
+        BrowserContext,
+        Page,
+        Playwright,
+        ViewportSize,
+    )
 
 _logger = logging.getLogger(__name__)
 
@@ -276,48 +287,141 @@ class AmazonScraper:
         raise SelectorMissError(asin, field=field, attempted=attempted)
 
 
+DEFAULT_PLAYWRIGHT_TIMEOUT_MS = 60_000  # 60s (decisione Leader B, CHG-012)
+COOKIE_CONSENT_SELECTOR_AMAZON = "#sp-cc-accept"
+
+
 class _PlaywrightBrowserPage:
-    """Adapter live su Playwright sync. Skeleton CHG-2026-05-01-002.
+    """Adapter live su Playwright sync. Ratificato in CHG-2026-05-01-012.
 
-    Mette a contratto `BrowserPageProtocol` ma le sue chiamate
-    runtime a Playwright richiedono `playwright install chromium`
-    (~150 MB) + context manager `sync_playwright()`. In
-    CHG-2026-05-01-002 lo skeleton lancia `NotImplementedError`
-    esplicito (R-01 NO SILENT DROPS).
+    Decisioni Leader Fase 3 (default ratificati 2026-05-01):
 
-    L'integratore CHG-2026-05-01-005 lo completera' con:
-      - `with sync_playwright() as p:`
-      - `browser = p.chromium.launch(headless=True)`
-      - `context = browser.new_context(user_agent=...)`
-      - `page = context.new_page()`
-      - delay random `random.uniform(*delay_range_s)` pre-goto
+    - **Cookie consent GDPR Amazon (A)**: post-goto, click best-effort
+      su `#sp-cc-accept`; nessuna eccezione se l'overlay non c'e'.
+    - **Stealth strategy (B medium)**: `playwright-stealth` applicato
+      al page nel `_ensure_started` (riduce fingerprint
+      `navigator.webdriver`, sec-ch-ua, plugins, ecc.) + viewport
+      realistico (1920x1080) + UA fisso (D2.b).
+    - **Timeout `goto` (B)**: 60s default (configurabile via `__init__`).
 
-    I test devono iniettare un mock via parametro `page=` di
-    `AmazonScraper.scrape_product`.
+    Pattern lazy-init + context manager: il browser viene aperto
+    al primo `goto` (o all'`__enter__`); `close()` rilascia tutte
+    le risorse Playwright (page -> context -> browser -> playwright
+    process). Riusabile fra piu' ASIN nello stesso ciclo (riuso
+    context Chromium come previsto da `lookup_products` CHG-009).
+
+    Esempio uso runtime:
+
+        with _PlaywrightBrowserPage() as page:
+            for asin in asin_list:
+                product = scraper.scrape_product(asin, page=page)
+
+    Esempio uso test:
+
+        page = _PlaywrightBrowserPage()
+        try:
+            page.goto("data:text/html,<h1 id='t'>x</h1>")
+            assert page.query_selector_text("#t") == "x"
+        finally:
+            page.close()
     """
 
-    def __init__(self, user_agent: str = DEFAULT_USER_AGENT) -> None:
+    def __init__(
+        self,
+        *,
+        user_agent: str = DEFAULT_USER_AGENT,
+        timeout_ms: int = DEFAULT_PLAYWRIGHT_TIMEOUT_MS,
+        viewport: ViewportSize | None = None,
+        apply_stealth: bool = True,
+    ) -> None:
         self._user_agent = user_agent
+        self._timeout_ms = timeout_ms
+        # ViewportSize e' un TypedDict; copia per evitare default mutabile condiviso.
+        self._viewport: ViewportSize = (
+            viewport if viewport is not None else {"width": 1920, "height": 1080}
+        )
+        self._apply_stealth = apply_stealth
+        # Lazy-init: aperti al primo `goto()` o al `__enter__`.
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
+        self._page: Page | None = None
+
+    def _ensure_started(self) -> Page:
+        if self._page is not None:
+            return self._page
+        self._playwright = sync_playwright().start()
+        self._browser = self._playwright.chromium.launch(headless=True)
+        self._context = self._browser.new_context(
+            user_agent=self._user_agent,
+            viewport=self._viewport,
+        )
+        self._context.set_default_timeout(self._timeout_ms)
+        self._page = self._context.new_page()
+        if self._apply_stealth:
+            Stealth().apply_stealth_sync(self._page)
+        return self._page
 
     def goto(self, url: str) -> None:
-        msg = (
-            f"_PlaywrightBrowserPage.goto({url!r}) non implementato in "
-            "CHG-2026-05-01-002. Richiede `playwright install chromium` + "
-            "context manager `sync_playwright()`. Ratifica live in "
-            "CHG-2026-05-01-005 integratore. Test devono iniettare un mock."
-        )
-        raise NotImplementedError(msg)
+        page = self._ensure_started()
+        page.goto(url, wait_until="domcontentloaded")
+        # Cookie consent GDPR (decisione A): best-effort, no raise.
+        self._dismiss_cookie_overlay(page)
+
+    @staticmethod
+    def _dismiss_cookie_overlay(page: Page) -> None:
+        """Chiude overlay GDPR Amazon se presente. R-01 best-effort.
+
+        L'overlay puo' non comparire (ASIN non-Amazon, sessione gia'
+        consensata via cookie, A/B test Amazon). Il fallimento del
+        click NON deve far fallire lo scraping.
+        """
+        with contextlib.suppress(Exception):
+            btn = page.query_selector(COOKIE_CONSENT_SELECTOR_AMAZON)
+            if btn is not None:
+                btn.click(timeout=2_000)
 
     def query_selector_text(self, selector: str) -> str | None:
-        msg = (
-            f"_PlaywrightBrowserPage.query_selector_text({selector!r}) "
-            "non implementato in CHG-2026-05-01-002 (vedi goto)."
-        )
-        raise NotImplementedError(msg)
+        if self._page is None:
+            return None
+        elem = self._page.query_selector(selector)
+        if elem is None:
+            return None
+        return elem.inner_text()
 
     def query_selector_xpath_text(self, xpath: str) -> str | None:
-        msg = (
-            f"_PlaywrightBrowserPage.query_selector_xpath_text({xpath!r}) "
-            "non implementato in CHG-2026-05-01-002 (vedi goto)."
-        )
-        raise NotImplementedError(msg)
+        if self._page is None:
+            return None
+        # Playwright accetta XPath via prefisso `xpath=`.
+        elem = self._page.query_selector(f"xpath={xpath}")
+        if elem is None:
+            return None
+        return elem.inner_text()
+
+    def close(self) -> None:
+        """Rilascia risorse Playwright in ordine inverso di creazione.
+
+        Idempotente: chiamabile piu' volte senza effetto. Caller deve
+        invocare `close()` (manualmente o via context manager) per
+        evitare process Chromium zombie.
+        """
+        if self._context is not None:
+            with contextlib.suppress(Exception):
+                self._context.close()
+            self._context = None
+        if self._browser is not None:
+            with contextlib.suppress(Exception):
+                self._browser.close()
+            self._browser = None
+        if self._playwright is not None:
+            with contextlib.suppress(Exception):
+                self._playwright.stop()
+            self._playwright = None
+        self._page = None
+
+    def __enter__(self) -> Self:
+        self._ensure_started()
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
