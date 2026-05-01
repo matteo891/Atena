@@ -3,7 +3,7 @@ id: CHG-2026-05-01-007
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target)
 status: Draft
-commit: TBD
+commit: 45fac4b
 adr_ref: ADR-0017, ADR-0021, ADR-0014, ADR-0019
 ---
 
@@ -231,4 +231,4 @@ verificata meccanicamente).
 - Successore atteso (Fase 3): integratore live che chiama
   `SamsungExtractor.match(supplier=..., amazon=...,
   asin=product_data.asin)` post `lookup_product`.
-- Commit: TBD.
+- Commit: `45fac4b`.
