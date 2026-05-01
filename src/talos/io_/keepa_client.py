@@ -22,12 +22,12 @@ Decisioni di design (D1 ratificata Leader 2026-04-30 sera, "default"):
 
 from __future__ import annotations
 
-import logging
 import math
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Protocol
 
+import structlog
 from pyrate_limiter import Duration, Limiter, Rate
 from tenacity import (
     Retrying,
@@ -39,7 +39,7 @@ from tenacity import (
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 DEFAULT_RETRY_MAX_ATTEMPTS = 5
 DEFAULT_RETRY_WAIT_MIN_S = 1.0
@@ -327,7 +327,9 @@ class KeepaClient:
         """
         _logger.debug(
             "keepa.miss",
-            extra={"asin": asin, "error_type": field, "retry_count": 0},
+            asin=asin,
+            error_type=field,
+            retry_count=0,
         )
 
     def _fetch_with_retry(self, asin: str) -> KeepaProduct:
@@ -356,10 +358,8 @@ class KeepaClient:
             # Telemetria CHG-2026-05-01-005: evento canonico ADR-0021.
             _logger.debug(
                 "keepa.rate_limit_hit",
-                extra={
-                    "requests_in_window": self._rate_limit_per_minute,
-                    "limit": self._rate_limit_per_minute,
-                },
+                requests_in_window=self._rate_limit_per_minute,
+                limit=self._rate_limit_per_minute,
             )
             raise KeepaRateLimitExceededError(
                 asin,

@@ -26,13 +26,13 @@ attivato dall'integratore CHG-2026-05-01-005).
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 import pytesseract
+import structlog
 from pytesseract import Output
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 DEFAULT_OCR_CONFIDENCE_THRESHOLD = 70
 DEFAULT_TESSERACT_LANG = "ita+eng"
@@ -280,12 +280,10 @@ class OcrPipeline:
             # Il caller (fallback chain) deve mostrare la riga al CFO.
             _logger.debug(
                 "ocr.below_confidence",
-                extra={
-                    "file": "<image>",
-                    "confidence": confidence,
-                    "threshold": self._confidence_threshold,
-                    "text_extracted": raw.text,
-                },
+                file="<image>",
+                confidence=confidence,
+                threshold=self._confidence_threshold,
+                text_extracted=raw.text,
             )
         return OcrResult(
             text=raw.text,

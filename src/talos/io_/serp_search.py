@@ -28,10 +28,11 @@ CHG-016).
 
 from __future__ import annotations
 
-import logging
 import urllib.parse
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, cast
+
+import structlog
 
 from talos.io_.scraper import parse_eur
 
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from decimal import Decimal
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 DEFAULT_SERP_MAX_RESULTS: int = 5
 AMAZON_IT_SEARCH_URL_TEMPLATE: str = "https://www.amazon.it/s?k={query}"
@@ -179,11 +180,9 @@ def _parse_serp_payload(
     if not isinstance(raw, list):
         _logger.debug(
             "scrape.selector_fail",
-            extra={
-                "asin": "<serp>",
-                "field": "serp_payload",
-                "selectors_tried": ["data-component-type=s-search-result"],
-            },
+            asin="<serp>",
+            field="serp_payload",
+            selectors_tried=["data-component-type=s-search-result"],
         )
         return []
 

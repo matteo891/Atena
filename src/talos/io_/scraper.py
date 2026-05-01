@@ -23,13 +23,13 @@ da ratificare nell'integratore CHG-2026-05-01-005 (richiede
 from __future__ import annotations
 
 import contextlib
-import logging
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, Self
 
+import structlog
 import yaml
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
@@ -45,7 +45,7 @@ if TYPE_CHECKING:
         ViewportSize,
     )
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -441,11 +441,9 @@ class AmazonScraper:
         # emesso anche con missing_ok=True (segnale di drift selettori).
         _logger.debug(
             "scrape.selector_fail",
-            extra={
-                "asin": asin,
-                "selector_name": field,
-                "html_snippet_hash": "<no-html>",
-            },
+            asin=asin,
+            selector_name=field,
+            html_snippet_hash="<no-html>",
         )
         if missing_ok:
             return None
