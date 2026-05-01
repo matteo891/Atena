@@ -181,11 +181,16 @@ def parse_descrizione_prezzo_csv(
     e' stato escluso). Solleva `ValueError` se mancano colonne
     obbligatorie.
 
+    CHG-2026-05-02-011: header normalizzati (strip + lower) per tolleranza
+    Excel italiano / variazioni di case. Le colonne diventano accessibili
+    via nome canonico lower-case.
+
     Colonne opzionali con default:
     - `v_tot`: 0
     - `s_comp`: 0
     - `category_node`: None
     """
+    df = df.rename(columns=lambda c: str(c).strip().lower() if c is not None else c)
     missing = [c for c in REQUIRED_DESCRIZIONE_PREZZO_COLUMNS if c not in df.columns]
     if missing:
         msg = (

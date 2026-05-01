@@ -53,6 +53,28 @@ def test_default_referral_fee_pct_is_decimal_fraction() -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "header_variant",
+    [
+        ("Descrizione", "Prezzo"),  # title case
+        ("DESCRIZIONE", "PREZZO"),  # upper case
+        ("  descrizione  ", "  prezzo  "),  # whitespace
+        ("Descrizione ", " Prezzo"),  # mix
+    ],
+)
+def test_parse_csv_normalizes_header_case_and_whitespace(
+    header_variant: tuple[str, str],
+) -> None:
+    """CHG-2026-05-02-011: header tolerant Excel italiano / variazioni case."""
+    df = pd.DataFrame(
+        [["Galaxy S24", 549]],
+        columns=list(header_variant),
+    )
+    rows, _ = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 1
+    assert rows[0].descrizione == "Galaxy S24"
+
+
 def test_parse_csv_minimal_2_columns() -> None:
     """CSV con sole colonne obbligatorie -> default per opzionali."""
     df = pd.DataFrame(
