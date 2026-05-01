@@ -3,7 +3,7 @@ id: CHG-2026-05-01-018
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — chiusura motore asin_resolver applicativo)
 status: Draft
-commit: TBD
+commit: fd51e40
 adr_ref: ADR-0017, ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -316,4 +316,4 @@ PASS in 7.29s -> resolver end-to-end ratificato.
 - Successore atteso: CHG-2026-05-01-019 (cache
   `description_resolutions` UPSERT con migration alembic +
   repository).
-- Commit: TBD (backfill post-commit).
+- Commit: `fd51e40`.
