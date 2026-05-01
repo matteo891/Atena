@@ -3,7 +3,7 @@ id: CHG-2026-05-01-037
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 6 — blocco B1 sessione dedicata 8/8 — CHIUDE BLOCCO B1)
 status: Draft
-commit: PENDING
+commit: 14a408b
 adr_ref: ADR-0021, ADR-0009, ADR-0014, ADR-0019
 ---
 
@@ -281,4 +281,4 @@ def test_cache_emit_without_bind_omits_tenant_id(log_capture):
   completo.
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: PENDING.
+- Commit: `14a408b`.
