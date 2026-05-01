@@ -10,6 +10,7 @@ from talos.persistence.models.asin_master import AsinMaster
 from talos.persistence.models.audit_log import AuditLog
 from talos.persistence.models.cart_item import CartItem
 from talos.persistence.models.config_override import ConfigOverride
+from talos.persistence.models.description_resolution import DescriptionResolution
 from talos.persistence.models.listino_item import ListinoItem
 from talos.persistence.models.locked_in_item import LockedInItem
 from talos.persistence.models.panchina_item import PanchinaItem
@@ -22,6 +23,7 @@ __all__ = [
     "AuditLog",
     "CartItem",
     "ConfigOverride",
+    "DescriptionResolution",
     "ListinoItem",
     "LockedInItem",
     "PanchinaItem",

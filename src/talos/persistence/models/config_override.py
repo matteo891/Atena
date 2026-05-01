@@ -51,6 +51,7 @@ class ConfigOverride(Base):
             "scope_key",
             "key",
             unique=True,
+            postgresql_nulls_not_distinct=True,
         ),
     )
 
