@@ -3,7 +3,7 @@ id: CHG-2026-05-01-035
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 6 — blocco B1 sessione dedicata 6/8)
 status: Draft
-commit: PENDING
+commit: c26fa1c
 adr_ref: ADR-0021, ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -296,4 +296,4 @@ def test_run_session_binds_request_context(log_capture: LogCapture) -> None:
   `try_persist_session` con `bind_session_context` post-save).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: PENDING.
+- Commit: `c26fa1c`.
