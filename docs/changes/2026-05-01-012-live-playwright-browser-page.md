@@ -3,7 +3,7 @@ id: CHG-2026-05-01-012
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target — Fase 3 in corso)
 status: Draft
-commit: TBD
+commit: e553b5f
 adr_ref: ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -305,4 +305,4 @@ def _dismiss_cookie_overlay(page: Page) -> None:
   live, sbloccato dall'arrivo della sandbox API key Keepa) +
   CHG futuro (golden HTML statici Amazon per `scrape_product`
   end-to-end live).
-- Commit: TBD.
+- Commit: `e553b5f`.
