@@ -510,6 +510,22 @@ def apply_candidate_overrides(
     return out
 
 
+def count_eligible_for_overrides(resolved: list[ResolvedRow]) -> int:
+    """Count righe del listino eligible per override candidato manuale (CHG-023).
+
+    Una riga è eligible se è **ambigua** (`is_ambiguous=True`) AND ha un
+    **ASIN risolto** (`asin` non vuoto) AND ha **più di un candidato**
+    nel resolver (`len(candidates) > 1`). Le righe con 1 solo candidato
+    o cache hit (candidates vuota) non sono interattive.
+
+    Helper puro: condivisa fra `_render_ambiguous_candidate_overrides`
+    (Streamlit-side, render selectbox) e i caller telemetria
+    (`dashboard.py` per `_emit_ui_override_applied.n_eligible`).
+    Single source of truth per la condizione di eligibilità.
+    """
+    return sum(1 for r in resolved if r.is_ambiguous and r.asin and len(r.candidates) > 1)
+
+
 def format_buybox_verified_caption(resolved: list[ResolvedRow]) -> str:
     """Caption UX rate Buy Box verificato live nel flow CFO.
 

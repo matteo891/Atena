@@ -18,6 +18,7 @@ from talos.ui.listino_input import (
     ResolvedRow,
     apply_candidate_overrides,
     build_listino_raw_from_resolved,
+    count_eligible_for_overrides,
     format_buybox_verified_caption,
     format_cache_hit_caption,
     format_confidence_badge,
@@ -289,6 +290,101 @@ def test_format_buybox_verified_caption_includes_unresolved_rows() -> None:
         _resolved_with_buybox(verified_buybox_eur=None, asin=""),
     ]
     assert format_buybox_verified_caption(rows) == "Buy Box verificato: 1/2 righe (50%)."
+
+
+# ---------------------------------------------------------------------------
+# `count_eligible_for_overrides` (CHG-2026-05-01-028)
+# ---------------------------------------------------------------------------
+
+
+def _resolved_eligibility(
+    *,
+    is_ambiguous: bool,
+    asin: str,
+    n_candidates: int,
+) -> ResolvedRow:
+    """Helper minimo: ResolvedRow con condizioni di eligibility variate.
+
+    Conta solo: is_ambiguous, asin (truthy), len(candidates) > 1.
+    Per `n_candidates`, popoliamo `candidates` con tuple di placeholder
+    (i contenuti non vengono ispezionati dall'helper sotto test).
+    """
+    candidates = tuple(
+        ResolutionCandidate(
+            asin=f"B0CSTC2RD{i}",
+            title="placeholder",
+            buybox_eur=Decimal("549.00"),
+            confidence_pct=80.0,
+            fuzzy_title_pct=80.0,
+            delta_price_pct=0.0,
+        )
+        for i in range(n_candidates)
+    )
+    return ResolvedRow(
+        descrizione="placeholder",
+        prezzo_eur=Decimal("549.00"),
+        asin=asin,
+        confidence_pct=65.0,
+        is_ambiguous=is_ambiguous,
+        is_cache_hit=False,
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+        notes=(),
+        candidates=candidates,
+    )
+
+
+def test_count_eligible_empty_returns_zero() -> None:
+    """Lista vuota -> 0."""
+    assert count_eligible_for_overrides([]) == 0
+
+
+def test_count_eligible_no_ambiguous_returns_zero() -> None:
+    """Tutte le righe sicure (is_ambiguous=False) -> 0 anche con N candidates."""
+    rows = [
+        _resolved_eligibility(is_ambiguous=False, asin="B0CSTC2RD0", n_candidates=3)
+        for _ in range(5)
+    ]
+    assert count_eligible_for_overrides(rows) == 0
+
+
+def test_count_eligible_unresolved_excluded() -> None:
+    """Righe ambigue ma senza asin (resolver fail) -> 0 (non ci sono candidati da scegliere)."""
+    rows = [
+        _resolved_eligibility(is_ambiguous=True, asin="", n_candidates=3),
+    ]
+    assert count_eligible_for_overrides(rows) == 0
+
+
+def test_count_eligible_single_candidate_excluded() -> None:
+    """Riga ambigua con 1 solo candidato -> 0 (override su set di 1 = no-op)."""
+    rows = [
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD0", n_candidates=1),
+    ]
+    assert count_eligible_for_overrides(rows) == 0
+
+
+def test_count_eligible_zero_candidates_excluded() -> None:
+    """Cache hit con candidates=() -> 0 (l'override sulla cache non è interattivo)."""
+    rows = [
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD0", n_candidates=0),
+    ]
+    assert count_eligible_for_overrides(rows) == 0
+
+
+def test_count_eligible_mixed() -> None:
+    """3 eligible + 2 ambigui-con-1-cand + 1 sicura + 1 unresolved -> 3."""
+    rows = [
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD0", n_candidates=3),
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD1", n_candidates=2),
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD2", n_candidates=4),
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD3", n_candidates=1),
+        _resolved_eligibility(is_ambiguous=True, asin="B0CSTC2RD4", n_candidates=1),
+        _resolved_eligibility(is_ambiguous=False, asin="B0CSTC2RD5", n_candidates=3),
+        _resolved_eligibility(is_ambiguous=True, asin="", n_candidates=3),
+    ]
+    assert count_eligible_for_overrides(rows) == 3
 
 
 # ---------------------------------------------------------------------------

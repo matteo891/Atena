@@ -879,6 +879,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     from talos.ui.listino_input import (  # noqa: PLC0415
         apply_candidate_overrides,
         build_listino_raw_from_resolved,
+        count_eligible_for_overrides,
         format_buybox_verified_caption,
         format_cache_hit_caption,
         format_confidence_badge,
@@ -978,7 +979,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     overrides = _render_ambiguous_candidate_overrides(resolved)
     resolved_with_overrides = apply_candidate_overrides(resolved, overrides)
     if overrides:
-        n_eligible = sum(1 for r in resolved if r.is_ambiguous and r.asin and len(r.candidates) > 1)
+        n_eligible = count_eligible_for_overrides(resolved)
         _emit_ui_override_applied(n_overrides=len(overrides), n_eligible=n_eligible)
 
     # Tabella preview con confidence + badge esposti (R-01 UX-side).
