@@ -3,7 +3,7 @@
 > **Leggere per primo nel self-briefing (Step 1, dopo Step 0 di verifica hook) — max 60 secondi per il re-entry.**
 > Aggiornare alla fine di ogni sessione con modifiche, nello stesso commit (ADR-0008 Regola 7 + ADR-0010).
 
-> **Ultimo aggiornamento:** 2026-05-01 round 4 — **🎯 BLOCCO ASIN_RESOLVER CHIUSO 5/5 + UI rifondata + Path B end-to-end con descrizione+prezzo come unico input**. HEAD `42dd79c` (CHG-019 backfill). Tag: 7 milestone + **14 checkpoint** (`checkpoint/2026-05-01-14`); milestone `asin-resolver-v1.3.0` candidato post CHG-020. **773 test PASS, 0 SKIPPED** (640 unit/gov/golden + 133 integration; +24 unit listino_input vs CHG-019). Catena CHG 2026-05-01: 001..020. **Catalogo eventi canonici ADR-0021: 10/11 viventi**. **Indice GitNexus stale ~13 commit** (refresh fine sessione). **MVP CFO TARGET RAGGIUNTO**: il CFO carica un listino fornitore "umano" (CSV con descrizione+prezzo) e ottiene classifica VGP completa senza preprocessing manuale.
+> **Ultimo aggiornamento:** 2026-05-01 round 4 chiusura — **🎯 BLOCCO ASIN_RESOLVER 5/5 + MVP CFO TARGET RAGGIUNTO + milestone v1.3.0**. HEAD `caa6d29` (CHG-020 backfill); commit di chiusura sessione segue. Tag: **8 milestone** (`milestone/asin-resolver-v1.3.0`) + **14 checkpoint** (`checkpoint/2026-05-01-14`). **773 test PASS, 0 SKIPPED** (640 unit/gov/golden + 133 integration). Catena CHG 2026-05-01: 001..020 (7 significativi nel round 4). **Catalogo eventi canonici ADR-0021: 10/11 viventi**. **Indice GitNexus fresh** (4665 nodes / 6085 edges / 87 clusters / 16 flows — refreshed fine round 4 dopo CHG-014..020 che hanno aggiunto ~520 nodes / ~690 edges / 14 clusters). **Quota Keepa consumata sessione: ~9 token**. **MVP CFO TARGET RAGGIUNTO**: il CFO carica un listino fornitore "umano" (CSV `descrizione+prezzo`) e ottiene classifica VGP completa senza preprocessing manuale. Memory `project_session_handoff_2026-05-01-round4.md` puntatore di re-entry post-/clear.
 > **Sessione corrente:** TALOS round 2 (modalità "macina" riautorizzata Leader 2026-05-01) — Leader ha ratificato **Path B** ("obiettivo prodotto funzionante") come MVP target. Sequenza in 3 fasi: **Fase 1 (mock-testabile, no setup) ✓ CHIUSA**, Fase 2 (installazioni di sistema in sospeso), Fase 3 (live adapters + 5 decisioni Leader pre-flight). **5 CHG di Fase 1 (006..010)**: tutto il valore architetturale producibile senza Tesseract/Chromium/Keepa key è in produzione. Zero nuove deps, zero nuovi eventi canonici. Sentinelle e2e mock-only ancorano il flusso per Fase 3.
 
 ---
@@ -430,6 +430,33 @@ Tutte le 26 lacune sono chiuse. Per la lista completa vedi sezione 9 di `PROJECT
   - `project_io_extract_design_decisions.md` (D1-D5 default ratificate, aggiornata con stato "applicato" post-CHG-005)
   - `project_session_handoff_2026-05-01.md` (handoff completo, leggere DOPO PM e sera 2026-04-30)
   - `project_mvp_progress_estimate.md` (refresh con Path A/Path B distinti)
+
+### 🔄 Handoff sessione 2026-05-01 round 4 (post `caa6d29` — **MVP CFO TARGET RAGGIUNTO** + blocco asin_resolver 5/5)
+
+> **Per il prossimo Claude (post-`/clear`). RIPRENDI DA QUI.** La sessione round 4 ha macinato **7 CHG significativi (014..020)** in modalità "macina" ratificata Leader, post arrivo Keepa private API key. Blocco `asin_resolver` chiuso 5/5: il flusso "(descrizione, prezzo) → ASIN → classifica VGP" è end-to-end live. Memory dettagliata: `project_session_handoff_2026-05-01-round4.md` — leggi DOPO PM/sera/round 1/round 3 in ordine cronologico.
+
+- **HEAD `caa6d29`**, branch `main`. **773 PASS, 0 SKIPPED** (640 + 133). Quality gate verde.
+- **Tag round 4**: `checkpoint/2026-05-01-14` su `162afed` + 🚀 **`milestone/asin-resolver-v1.3.0`** su `caa6d29` (8° milestone, restore point blocco asin_resolver completo).
+- **Catena CHG round 4**:
+  - **CHG-014** `0127f61`: `TalosSettings.env_file=".env"` — sblocca caricamento Keepa key
+  - **CHG-015** `bb5a9cd`: `_LiveKeepaAdapter` live — decisioni A2/A/α'' (BUY_BOX_SHIPPING assente sul piano, hierarchy NEW; pickAndPackFee ≠ L11b → α'' KeepaMiss sempre per preservare formula L11b Frozen)
+  - **CHG-016** `b86baea`: `extract/asin_resolver.py` skeleton — tipi + Protocol + helper puri
+  - **CHG-017** `467c713`: `io_/serp_search.py` SERP Amazon.it live — selettori `[data-component-type=s-search-result]` ratificati live
+  - **CHG-018** `fd51e40`: `_LiveAsinResolver` composer — SERP top-N + lookup_product Keepa-only + rapidfuzz + compute_confidence. Test live e2e Galaxy S24 256GB Onyx PASS in 7.29s
+  - **CHG-019** `f3b67e4`: `description_resolutions` cache (4° tabella post Allegato A) — α=A NO RLS / β=A UNIQUE tenant+hash / γ=A NO audit. Bonus: drift `idx_config_unique` ORM↔DB risolto
+  - **CHG-020** `2886728`: UI rifondata — `st.radio` mode (δ=A convivenza) + `_render_descrizione_prezzo_flow` + helper puri `listino_input.py` testabili senza Streamlit
+- **9 decisioni Leader ratificate round 4** (NON re-aprire senza istruzione esplicita): vedi memory `project_session_handoff_2026-05-01-round4.md` per dettaglio completo.
+- **Quota Keepa consumata sessione**: ~9 token totali (4 test live keepa + 1 test live e2e + 2 diagnostic + ~2 verifiche).
+- **Setup di sistema**: ✅ Tesseract / ✅ Chromium + libs / ✅ Keepa key in `.env` / ✅ Postgres `talos-pg-test` UP / ✅ Indice GitNexus refresh fine sessione.
+- **MVP CFO TARGET RAGGIUNTO**: il CFO carica un listino fornitore "umano" (CSV `descrizione`+`prezzo`) → preview risoluzione con `confidence_pct` esposto per riga → conferma → classifica VGP completa con Cart/Panchina/Budget T+1. **Senza preprocessing manuale.**
+- **Pattern operativi consolidati round 4**: mock-testable + 1 test live mirato post-adapter (lezione CHG-013); decisioni A/B/C con default proposto + ricalibratura empirica (es. fee_fba 3'→α''); R-01 multi-livello (tecnico + UX); helper puri in modulo separato + render Streamlit dedicato; lazy import per non penalizzare boot; `st.session_state` per stato multi-render; bonus correttivi durante CHG (drift `idx_config_unique`).
+- **6 bug fix nascosti round 4** (per allerta — dettagli in memory): test_settings rotti da `.env` reale → fixture chdir; `BUY_BOX_SHIPPING` assente piano → A2 hierarchy; `pickAndPackFee` ≠ L11b → α'' policy; alembic spurio re-create → fix migration + ORM allineato; CHAR(10) overflow su asin test 11-char → 10-char; governance `keepa.miss` mancante in docstring → menzione esplicita.
+- **Re-entry routine**:
+  1. Self-Briefing standard (CLAUDE.md ADR-0010).
+  2. Verificare container Postgres `talos-pg-test`. Se DOWN: `docker run -d --rm --name talos-pg-test -e POSTGRES_PASSWORD=test -p 55432:5432 --tmpfs /var/lib/postgresql/data postgres:16-alpine && sleep 3 && TALOS_DB_URL='postgresql+psycopg://postgres:test@localhost:55432/postgres' uv run alembic upgrade head`.
+  3. ⚠️ **Modalità "macina" round 4 NON persiste**: prossima sessione = default ADR-0002.
+  4. ⚠️ **Keepa key esposta nel transcript di questa sessione** (presente in `.env` locale gitignored). Best practice: rotala quando puoi (non urgente).
+- **Aperti / scope futuro**: TEST-DEBT-003 smoke browser umano (~80% chiuso); POLICY-001 Velocity policy `bsr_chain`; override candidato manuale UI; `verified_buybox_eur` distinto da `cost_eur`; refactor multi-page Streamlit; telemetria `cache.hit/miss`/`asin_resolver.*`; cache TTL `description_resolutions`.
 
 ### 🔄 Handoff sessione 2026-05-01 round 3 (post `3b62bfd` — Fase 3 Path B 2/3 + smoke live)
 
