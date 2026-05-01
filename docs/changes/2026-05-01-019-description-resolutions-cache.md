@@ -3,7 +3,7 @@ id: CHG-2026-05-01-019
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — cache descrizione->ASIN persistente, decisioni α=A/β=A/γ=A ratificate)
 status: Draft
-commit: TBD
+commit: f3b67e4
 adr_ref: ADR-0015, ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -268,4 +268,4 @@ return int(db.execute(upsert_stmt).scalar_one())
   upload listino "umano" descrizione+prezzo + integrazione cache
   resolver + highlight `confidence_pct` + expander legacy CSV
   con ASIN).
-- Commit: TBD (backfill post-commit).
+- Commit: `f3b67e4`.
