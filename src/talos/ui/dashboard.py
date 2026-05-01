@@ -100,6 +100,33 @@ def _emit_ui_resolve_confirmed(
     )
 
 
+def _emit_ui_override_applied(*, n_overrides: int, n_eligible: int) -> None:
+    """Emette evento canonico `ui.override_applied` (catalogo ADR-0021).
+
+    Helper puro: testabile via caplog senza dipendenza da Streamlit.
+    Tracking adoption rate dell'override CFO sul flow descrizione+prezzo
+    (A3 hardening CHG-023): `n_overrides / n_eligible` = % righe ambigue
+    su cui il CFO ha cambiato il top-1 automatico del resolver.
+    """
+    _logger.debug(
+        "ui.override_applied",
+        extra={"n_overrides": n_overrides, "n_eligible": n_eligible},
+    )
+
+
+def _emit_ui_resolve_failed(*, reason: str, n_rows: int) -> None:
+    """Emette evento canonico `ui.resolve_failed` (catalogo ADR-0021).
+
+    Helper puro: testabile via caplog senza dipendenza da Streamlit.
+    Tracking fail mode pre-resolve. `reason` è enum-string aperto:
+    `"keepa_key_missing"` (oggi unico path), `"exception"` (futuro).
+    """
+    _logger.debug(
+        "ui.resolve_failed",
+        extra={"reason": reason, "n_rows": n_rows},
+    )
+
+
 def get_session_factory_or_none() -> sessionmaker[Session] | None:
     """Prova a creare un session factory ORM dal config (`TALOS_DB_URL`).
 
@@ -903,6 +930,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     if st.button("Risolvi descrizioni", key="resolve_descriptions_btn"):
         api_key = TalosSettings().keepa_api_key
         if api_key is None:
+            _emit_ui_resolve_failed(reason="keepa_key_missing", n_rows=len(rows))
             st.error(
                 "TALOS_KEEPA_API_KEY non impostata. Imposta la chiave Keepa per "
                 "abilitare la risoluzione live (vedi `.env.example`).",
@@ -947,6 +975,9 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     # invece di accettare il top-1 selected automatico.
     overrides = _render_ambiguous_candidate_overrides(resolved)
     resolved_with_overrides = apply_candidate_overrides(resolved, overrides)
+    if overrides:
+        n_eligible = sum(1 for r in resolved if r.is_ambiguous and r.asin and len(r.candidates) > 1)
+        _emit_ui_override_applied(n_overrides=len(overrides), n_eligible=n_eligible)
 
     # Tabella preview con confidence + badge esposti (R-01 UX-side).
     # `buy_box_verificato` espone il prezzo Amazon NEW recuperato live

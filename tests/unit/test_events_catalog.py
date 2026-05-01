@@ -23,6 +23,9 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         # Errata CHG-2026-05-01-021 — UI flow descrizione+prezzo (ADR-0016)
         "ui.resolve_started",
         "ui.resolve_confirmed",
+        # Errata CHG-2026-05-01-024 — copertura UI hardening A3 + fail mode
+        "ui.override_applied",
+        "ui.resolve_failed",
     },
 )
 

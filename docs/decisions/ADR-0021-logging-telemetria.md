@@ -196,3 +196,28 @@ stata aggiunta ad ADR-0021 ma non a `src/talos/observability/events.py`
 (`CANONICAL_EVENTS` rimasto a 10 voci). Drift sanato in CHG-021: il dict
 ora contiene tutte le 13 voci. Modifica additiva, non altera la
 semantica degli eventi esistenti — non richiede supersessione.
+
+**2026-05-01 (CHG-2026-05-01-024) — additivo catalogo eventi UI (round 5+).**
+Aggiunti due eventi canonici per chiudere la copertura del flow
+descrizione+prezzo (CHG-020 + hardening A1+A2+A3 CHG-021/022/023):
+
+| Evento | Modulo | Campi obbligatori |
+|---|---|---|
+| `ui.override_applied` | `ui/dashboard.py` | `n_overrides`, `n_eligible` |
+| `ui.resolve_failed` | `ui/dashboard.py` | `reason`, `n_rows` |
+
+Razionale: `ui.override_applied` traccia l'**adoption rate** della
+feature override candidato manuale (A3 CHG-023): `n_overrides / n_eligible`
+misura la % di righe ambigue su cui il CFO sostituisce il top-1
+automatico del resolver. KPI prodotto per validare se l'A3 è
+effettivamente usato nell'uso reale o se il top-1 è già "abbastanza
+buono". `ui.resolve_failed` traccia i fail-mode pre-resolve (oggi solo
+`reason="keepa_key_missing"`, in futuro `"exception"` se il resolver
+crash) — chiude il gap di osservabilità tra `ui.resolve_started` e
+`ui.resolve_confirmed` (un fail manca da entrambi).
+
+`reason` è enum-string aperta: il primo valore in produzione è
+`"keepa_key_missing"`. Nuovi valori si aggiungono additivamente senza
+rompere il contratto. Catalogo ora **15 voci totali**. Modifica
+additiva, non altera la semantica degli eventi esistenti — non
+richiede supersessione (regola ADR-0001 non si applica).
