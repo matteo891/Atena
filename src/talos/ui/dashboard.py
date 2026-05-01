@@ -238,6 +238,13 @@ def try_persist_session(
         velocity_target=session_input.velocity_target_days,
         budget_eur=session_input.budget,
     )
+    # CHG-2026-05-02-010: telemetry session.persisted per audit aggregato.
+    _logger.debug(
+        "session.persisted",
+        session_id=sid,
+        n_cart_items=len(result.cart.items),
+        n_panchina_items=len(result.panchina),
+    )
     return True, sid, None
 
 

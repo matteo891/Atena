@@ -31,6 +31,8 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         "cache.miss",
         # Errata CHG-2026-05-02-005 — velocity estimator MVP (ADR-0017+0018)
         "v_tot.estimated_from_bsr",
+        # Errata CHG-2026-05-02-010 — persistenza sessione (ADR-0015+0016)
+        "session.persisted",
     },
 )
 

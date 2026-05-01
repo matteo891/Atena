@@ -65,6 +65,10 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # Emesso quando V_tot viene stimato dal BSR (CSV non specifica v_tot
     # esplicito). Audit aggregabile: distribuzione fonte v_tot per sessione.
     "v_tot.estimated_from_bsr": ("asin", "bsr", "v_tot_estimated"),
+    # Persistenza sessione (ADR-0015 + 0016) — errata CHG-2026-05-02-010
+    # Emesso post-save in `try_persist_session` per audit aggregato:
+    # quante sessioni persistite, distribuzione cart size, etc.
+    "session.persisted": ("session_id", "n_cart_items", "n_panchina_items"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -86,3 +90,4 @@ EVENT_UI_RESOLVE_FAILED: Final[str] = "ui.resolve_failed"
 EVENT_CACHE_HIT: Final[str] = "cache.hit"
 EVENT_CACHE_MISS: Final[str] = "cache.miss"
 EVENT_V_TOT_ESTIMATED_FROM_BSR: Final[str] = "v_tot.estimated_from_bsr"
+EVENT_SESSION_PERSISTED: Final[str] = "session.persisted"
