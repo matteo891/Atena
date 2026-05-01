@@ -3,7 +3,7 @@ id: CHG-2026-05-01-031
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 6 — blocco B1 sessione dedicata 2/8)
 status: Draft
-commit: PENDING
+commit: 743f7d6
 adr_ref: ADR-0021, ADR-0014, ADR-0019
 ---
 
@@ -249,4 +249,4 @@ def test_skipped_budget_emits_canonical_event(log_capture: LogCapture) -> None:
 - Successore atteso: **CHG-B1.1.c** (bridge structlog su `io_/`).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: PENDING (atteso permesso esplicito Leader).
+- Commit: `743f7d6`.
