@@ -29,6 +29,8 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         # Errata CHG-2026-05-01-025 — cache description_resolutions (ADR-0015)
         "cache.hit",
         "cache.miss",
+        # Errata CHG-2026-05-02-005 — velocity estimator MVP (ADR-0017+0018)
+        "v_tot.estimated_from_bsr",
     },
 )
 

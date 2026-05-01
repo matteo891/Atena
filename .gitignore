@@ -35,3 +35,8 @@ dist/
 .coverage.*
 htmlcov/
 coverage.xml
+
+# CSV demo / scratch listini per validazione manuale CFO (mai committare:
+# sono fixture locali). Pattern matching su test_*.csv / scratch_*.csv.
+test_*.csv
+scratch_*.csv

@@ -49,7 +49,7 @@ from talos.extract.asin_resolver import (
 from talos.extract.asin_resolver import (
     is_ambiguous as _is_ambiguous_threshold,
 )
-from talos.extract.velocity_estimator import resolve_v_tot
+from talos.extract.velocity_estimator import V_TOT_SOURCE_BSR_ESTIMATE, resolve_v_tot
 from talos.persistence.asin_resolver_repository import (
     compute_description_hash,
     find_resolution_by_hash,
@@ -512,6 +512,16 @@ def build_listino_raw_from_resolved(
             csv_v_tot=r.v_tot,
             bsr_root=r.bsr_root,
         )
+        # CHG-2026-05-02-005: telemetria evento canonico ADR-0021 (errata).
+        # Emit solo quando la stima viene effettivamente da BSR (audit
+        # aggregato CFO: quanti ASIN hanno v_tot stimato vs override CSV).
+        if v_tot_source == V_TOT_SOURCE_BSR_ESTIMATE:
+            _logger.debug(
+                "v_tot.estimated_from_bsr",
+                asin=r.asin,
+                bsr=r.bsr_root,
+                v_tot_estimated=v_tot_resolved,
+            )
         record: dict[str, object] = {
             "asin": r.asin,
             "buy_box_eur": buy_box,

@@ -61,6 +61,10 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # event-specific.
     "cache.hit": ("table",),
     "cache.miss": ("table",),
+    # Velocity estimator (ADR-0017 + 0018) — errata CHG-2026-05-02-005
+    # Emesso quando V_tot viene stimato dal BSR (CSV non specifica v_tot
+    # esplicito). Audit aggregabile: distribuzione fonte v_tot per sessione.
+    "v_tot.estimated_from_bsr": ("asin", "bsr", "v_tot_estimated"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -81,3 +85,4 @@ EVENT_UI_OVERRIDE_APPLIED: Final[str] = "ui.override_applied"
 EVENT_UI_RESOLVE_FAILED: Final[str] = "ui.resolve_failed"
 EVENT_CACHE_HIT: Final[str] = "cache.hit"
 EVENT_CACHE_MISS: Final[str] = "cache.miss"
+EVENT_V_TOT_ESTIMATED_FROM_BSR: Final[str] = "v_tot.estimated_from_bsr"

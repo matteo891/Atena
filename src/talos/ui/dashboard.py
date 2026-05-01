@@ -1011,13 +1011,23 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
         "Carica un CSV con colonne `descrizione` e `prezzo`. Il sistema risolve "
         "ogni descrizione in un ASIN candidato verificato con Keepa.",
     )
+    # CHG-2026-05-02-005: chiarisce semantica `prezzo` (bug semantico
+    # rilevato live: CFO può confondere prezzo Amazon con costo fornitore).
+    st.warning(
+        "**Importante**: il campo `prezzo` è il **costo fornitore** (quanto "
+        "paghi al fornitore per acquistare l'ASIN), NON il prezzo di vendita "
+        "Amazon. Il prezzo Amazon (Buy Box) viene verificato live via Keepa.",
+        icon="⚠️",
+    )
 
     uploaded = st.file_uploader(
         "Carica Listino (CSV descrizione+prezzo)",
         type=["csv"],
         help=(
-            "Colonne minime: `descrizione`, `prezzo`. "
-            "Opzionali: `v_tot`, `s_comp`, `category_node`."
+            "Colonne minime: `descrizione`, `prezzo` (costo fornitore EUR). "
+            "Opzionali: `v_tot` (vendite mensili stimate), `s_comp` (competitor), "
+            "`category_node`. Se `v_tot` non è specificato, viene stimato dal "
+            "BSR Amazon (formula MVP placeholder, vedi `v_tot_source` in audit)."
         ),
         key="descrizione_prezzo_uploader",
     )
@@ -1298,6 +1308,25 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
         return
 
     _render_metrics(saturation=result.cart.saturation, budget_t1=result.budget_t1)
+
+    # CHG-2026-05-02-005: caption audit V_tot source distribution.
+    # Trasparenza per il CFO: capisce se i numeri di vendite mensili
+    # vengono dal suo CSV (override esplicito) o da stima MVP da BSR.
+    if "v_tot_source" in result.enriched_df.columns:
+        v_tot_counts = result.enriched_df["v_tot_source"].value_counts().to_dict()
+        n_csv = int(v_tot_counts.get("csv", 0))
+        n_bsr = int(v_tot_counts.get("bsr_estimate_mvp", 0))
+        n_zero = int(v_tot_counts.get("default_zero", 0))
+        n_total = n_csv + n_bsr + n_zero
+        if n_total > 0:
+            parts = []
+            if n_csv:
+                parts.append(f"{n_csv} da CSV")
+            if n_bsr:
+                parts.append(f"{n_bsr} stimati da BSR (MVP placeholder)")
+            if n_zero:
+                parts.append(f"{n_zero} default zero (no BSR)")
+            st.caption(f"V_tot sources ({n_total} ASIN): " + ", ".join(parts) + ".")
 
     cart_items_view = [
         {

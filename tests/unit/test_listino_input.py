@@ -832,6 +832,24 @@ def test_build_listino_v_tot_default_zero_when_no_csv_no_bsr() -> None:
     assert df.iloc[0]["v_tot_source"] == "default_zero"
 
 
+def test_build_listino_emits_v_tot_estimated_from_bsr_event(log_capture: object) -> None:
+    """CHG-2026-05-02-005: emit `v_tot.estimated_from_bsr` solo per source=bsr_estimate."""
+    from talos.observability.events import EVENT_V_TOT_ESTIMATED_FROM_BSR  # noqa: PLC0415
+
+    rows = [
+        _resolved("B0AAA", 100.0, v_tot=0, bsr_root=10000),  # estimate
+        _resolved("B0BBB", 100.0, v_tot=42, bsr_root=5000),  # csv override (no emit)
+        _resolved("B0CCC", 100.0, v_tot=0, bsr_root=None),  # default zero (no emit)
+    ]
+    build_listino_raw_from_resolved(rows)
+
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_V_TOT_ESTIMATED_FROM_BSR]  # type: ignore[attr-defined]
+    assert len(entries) == 1, f"expected 1 emit, got {len(entries)}"
+    assert entries[0]["asin"] == "B0AAA"
+    assert entries[0]["bsr"] == 10000
+    assert entries[0]["v_tot_estimated"] == pytest.approx(20.0)
+
+
 def test_build_listino_mixed_verified_and_fallback() -> None:
     """Listino misto (alcuni con buybox verificato, alcuni no): comportamento per-riga."""
     rows = [
