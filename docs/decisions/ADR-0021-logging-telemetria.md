@@ -221,3 +221,37 @@ crash) — chiude il gap di osservabilità tra `ui.resolve_started` e
 rompere il contratto. Catalogo ora **15 voci totali**. Modifica
 additiva, non altera la semantica degli eventi esistenti — non
 richiede supersessione (regola ADR-0001 non si applica).
+
+**2026-05-01 (CHG-2026-05-01-025) — additivo catalogo eventi cache.**
+Aggiunti due eventi canonici per la cache `description_resolutions`
+(CHG-019, ADR-0015):
+
+| Evento | Modulo | Campi obbligatori |
+|---|---|---|
+| `cache.hit` | `ui/listino_input.py` (caller di `find_resolution_by_hash`) | `table`, `tenant_id` |
+| `cache.miss` | `ui/listino_input.py` (caller di `find_resolution_by_hash`) | `table`, `tenant_id` |
+
+Razionale: il flow descrizione+prezzo (CHG-020) consulta la cache per
+ogni riga del listino. CHG-019 ha persistito il pattern (`UNIQUE
+(tenant_id, description_hash)`), ma l'**efficacia** della cache —
+ovvero il rapporto `n_hits / (n_hits + n_misses)` — è oggi invisibile
+in produzione. Senza `cache.hit` / `cache.miss`:
+
+- non si sa quanto la cache risparmia in quota Keepa/SERP;
+- non si sa se i CFO ricorrenti hanno listini stabili (alta hit rate
+  attesa) o volatili (miss dominanti, spreco quota);
+- non si può decidere se introdurre cache TTL (out-of-scope CHG-022)
+  basato su dati osservati.
+
+Campo `table` è enum-string aperta: oggi unico valore
+`"description_resolutions"`; future cache (es. `bsr.cache`,
+`category.cache`) si aggiungono additivamente. Coerente con il pattern
+`reason` di `ui.resolve_failed` (CHG-024).
+
+Sito di emit: il **caller** `resolve_listino_with_cache` in
+`ui/listino_input.py`, NON il repository. Razionale: il repository
+resta puro persistence (no `logging` import). Il caller ha più
+contesto (`tenant_id` deciso a livello applicativo) e pattern coerente
+con `_emit_ui_*` di `dashboard.py`. Catalogo ora **17 voci totali**.
+Modifica additiva, non altera la semantica degli eventi esistenti —
+non richiede supersessione.

@@ -12,7 +12,7 @@ di un nuovo modulo applicativo. Rimuoverlo richiede supersessione di ADR-0021.
 
 from typing import Final
 
-# ── Catalogo eventi canonici (15 voci) ──────────────────────────────────────
+# ── Catalogo eventi canonici (17 voci) ──────────────────────────────────────
 # Mapping: event_name → tuple di campi obbligatori da passare nel kwargs
 # del logger. La tupla è il contratto che il chiamante deve onorare; il
 # test di governance verificherà solo la presenza dell'evento, mentre il
@@ -45,6 +45,9 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # UI flow descrizione+prezzo — errata CHG-2026-05-01-024
     "ui.override_applied": ("n_overrides", "n_eligible"),
     "ui.resolve_failed": ("reason", "n_rows"),
+    # Cache `description_resolutions` (ADR-0015) — errata CHG-2026-05-01-025
+    "cache.hit": ("table", "tenant_id"),
+    "cache.miss": ("table", "tenant_id"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -63,3 +66,5 @@ EVENT_UI_RESOLVE_STARTED: Final[str] = "ui.resolve_started"
 EVENT_UI_RESOLVE_CONFIRMED: Final[str] = "ui.resolve_confirmed"
 EVENT_UI_OVERRIDE_APPLIED: Final[str] = "ui.override_applied"
 EVENT_UI_RESOLVE_FAILED: Final[str] = "ui.resolve_failed"
+EVENT_CACHE_HIT: Final[str] = "cache.hit"
+EVENT_CACHE_MISS: Final[str] = "cache.miss"

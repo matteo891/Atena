@@ -35,6 +35,7 @@ UI via `ResolutionResult.notes` (CHG-018 R-01 UX-side).
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -62,6 +63,33 @@ if TYPE_CHECKING:
         ResolutionCandidate,
         ResolutionResult,
     )
+
+_logger = logging.getLogger(__name__)
+
+# Identifica la cache per gli eventi canonici `cache.hit` / `cache.miss`
+# (catalogo ADR-0021, errata CHG-2026-05-01-025).
+_CACHE_TABLE_DESCRIPTION_RESOLUTIONS: str = "description_resolutions"
+
+
+def _emit_cache_hit(*, table: str, tenant_id: int) -> None:
+    """Emette evento canonico `cache.hit` (catalogo ADR-0021).
+
+    Helper puro: testabile via caplog. Tracking efficacia cache
+    `description_resolutions`: `n_hits / (n_hits + n_misses)` =
+    cache hit rate per tenant.
+    """
+    _logger.debug("cache.hit", extra={"table": table, "tenant_id": tenant_id})
+
+
+def _emit_cache_miss(*, table: str, tenant_id: int) -> None:
+    """Emette evento canonico `cache.miss` (catalogo ADR-0021).
+
+    Helper puro: testabile via caplog. Cache miss → resolve live
+    + `upsert_resolution` (consumo quota Keepa/SERP). Tracking costo
+    operativo del flow descrizione+prezzo.
+    """
+    _logger.debug("cache.miss", extra={"table": table, "tenant_id": tenant_id})
+
 
 # Colonne obbligatorie del CSV "umano" descrizione+prezzo.
 REQUIRED_DESCRIZIONE_PREZZO_COLUMNS: tuple[str, ...] = ("descrizione", "prezzo")
@@ -249,6 +277,15 @@ def resolve_listino_with_cache(
                 if cached is not None:
                     cached_asin = cached.asin.strip()
                     cached_confidence = float(cached.confidence_pct)
+                    _emit_cache_hit(
+                        table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS,
+                        tenant_id=tenant_id,
+                    )
+                else:
+                    _emit_cache_miss(
+                        table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS,
+                        tenant_id=tenant_id,
+                    )
 
         if cached_asin is not None and cached_confidence is not None:
             out.append(
