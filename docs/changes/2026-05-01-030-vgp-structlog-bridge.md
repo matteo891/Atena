@@ -3,7 +3,7 @@ id: CHG-2026-05-01-030
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" estesa round 6 — blocco B1 sessione dedicata 1/8)
 status: Draft
-commit: PENDING
+commit: 5c2e92b
 adr_ref: ADR-0021, ADR-0014, ADR-0019
 ---
 
@@ -293,4 +293,4 @@ def test_veto_roi_failed_event_emitted(log_capture: LogCapture) -> None:
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato; `project_session_handoff_2026-05-01-round5plus.md`
   identificava B1 come blocco "sessione dedicata".
-- Commit: PENDING (atteso permesso esplicito Leader).
+- Commit: `5c2e92b`.
