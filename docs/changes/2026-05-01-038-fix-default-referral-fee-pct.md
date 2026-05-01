@@ -3,7 +3,7 @@ id: CHG-2026-05-01-038
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 7 — bug fix MVP CFO Path B' bloccante)
 status: Draft
-commit: TBD
+commit: e4290cf
 adr_ref: ADR-0014, ADR-0019, ADR-0017, ADR-0018
 ---
 
@@ -199,4 +199,4 @@ def test_default_referral_fee_pct_is_decimal_fraction() -> None:
   `min_value=0.0, max_value=1.0`.
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: TBD (backfill hash post-commit).
+- Commit: `e4290cf`.
