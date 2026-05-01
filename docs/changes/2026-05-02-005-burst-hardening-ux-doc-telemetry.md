@@ -4,7 +4,7 @@ date: 2026-05-02
 author: Claude (modalità "ultra macinata burst medium" round 7 ratificata Leader)
 status: Draft
 adr_ref: ADR-0016, ADR-0021, ADR-0017, ADR-0018, ADR-0009, ADR-0019
-commit: TBD
+commit: d34cfd1
 ---
 
 ## What
