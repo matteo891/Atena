@@ -3,7 +3,7 @@ id: CHG-2026-05-01-010
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target — chiusura Fase 1)
 status: Draft
-commit: TBD
+commit: e425d14
 adr_ref: ADR-0017, ADR-0015, ADR-0014, ADR-0019
 ---
 
@@ -295,4 +295,4 @@ def acquire_and_persist(
   playwright install chromium` + sandbox `TALOS_KEEPA_API_KEY`)
   → poi Fase 3 (live adapters + golden HTML/PDF/img + 5
   decisioni Leader pre-flight).
-- Commit: TBD.
+- Commit: `e425d14`.
