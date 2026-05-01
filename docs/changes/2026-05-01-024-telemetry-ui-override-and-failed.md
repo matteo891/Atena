@@ -3,7 +3,7 @@ id: CHG-2026-05-01-024
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" estesa round 5+ — manutenzione + telemetria additiva flow descrizione+prezzo)
 status: Draft
-commit: pending
+commit: 065711b
 adr_ref: ADR-0021, ADR-0016, ADR-0014, ADR-0019, ADR-0007
 ---
 
@@ -305,4 +305,4 @@ def test_resolve_failed_open_reason_enum(caplog):
   Possibili rotte (decisione Leader): (B1) `structlog.bind` context
   tracing, (B2) refactor UI multi-page ADR-0016, (β) `upsert_session`
   decisione semantica, (POLICY-001) Velocity bsr_chain.
-- Commit: pending.
+- Commit: `065711b`.
