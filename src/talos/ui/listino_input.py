@@ -66,6 +66,7 @@ if TYPE_CHECKING:
         ResolutionCandidate,
         ResolutionResult,
     )
+    from talos.io_.fallback_chain import ProductData
 
 _logger = structlog.get_logger(__name__)
 
@@ -246,19 +247,43 @@ def _is_finite(value: object) -> bool:
         return True
 
 
+def _fetch_buybox_live_or_none(
+    lookup_callable: Callable[[str], ProductData] | None,
+    asin: str,
+) -> tuple[Decimal | None, tuple[str, ...]]:
+    """Recupera `buybox_eur` live tramite `lookup_callable` (Keepa).
+
+    CHG-2026-05-01-039: usato sia su cache hit che come helper isolato
+    per garantire che `verified_buybox_eur` sia sempre fresh anche quando
+    l'ASIN viene da cache (la mappatura desc→ASIN è invariante, il buy box
+    no). Errori (KeepaMissError/RateLimit/Transient/etc.) → `(None, notes)`
+    (R-01 UX-side: row esposta in tabella con nota esplicita).
+    """
+    if lookup_callable is None:
+        return None, ()
+    try:
+        product = lookup_callable(asin)
+    except Exception as exc:  # noqa: BLE001 — Keepa* / Selector* / network: tutti -> note
+        return None, (f"buybox lookup live failed: {type(exc).__name__}",)
+    return product.buybox_eur, ()
+
+
 def resolve_listino_with_cache(
     rows: list[DescrizionePrezzoRow],
     *,
     factory: sessionmaker[Session] | None,
     resolver_provider: Callable[[], AsinResolverProtocol],
     tenant_id: int = 1,
+    lookup_callable: Callable[[str], ProductData] | None = None,
 ) -> list[ResolvedRow]:
     """Risolve ogni riga consultando prima la cache `description_resolutions`.
 
     Pattern:
     1. Hash della descrizione normalizzata (`compute_description_hash`).
-    2. `find_resolution_by_hash` -> hit ⇒ usa cached asin/confidence
-       (no chiamata SERP/Keepa, no quota consumata).
+    2. `find_resolution_by_hash` -> hit ⇒ riusa cached asin/confidence
+       (no chiamata SERP, no scraping). Se `lookup_callable` fornito,
+       chiama Keepa live per il Buy Box (CHG-2026-05-01-039: cache hit
+       NON annulla la verifica prezzo, che è il dato volatile).
     3. Miss ⇒ `resolver_provider()` lazy-init + `resolve_description`
        + `upsert_resolution` per cache write.
     4. Errori del resolver per riga -> `notes` annotato + ResolvedRow
@@ -266,6 +291,11 @@ def resolve_listino_with_cache(
 
     `factory=None` (DB non disponibile) -> bypass cache, sempre resolve
     (no upsert). Pattern coerente con `get_session_factory_or_none`.
+
+    `lookup_callable=None` -> retro-compat: cache hit ritorna
+    `verified_buybox_eur=None` (comportamento pre-CHG-039, fallback a
+    prezzo_eur in `build_listino_raw_from_resolved`). Test mock-only
+    e CLI tools possono ometterlo.
     """
     out: list[ResolvedRow] = []
     resolver_instance: AsinResolverProtocol | None = None
@@ -294,6 +324,10 @@ def resolve_listino_with_cache(
                     _emit_cache_miss(table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS)
 
         if cached_asin is not None and cached_confidence is not None:
+            buybox_live, lookup_notes = _fetch_buybox_live_or_none(
+                lookup_callable,
+                cached_asin,
+            )
             out.append(
                 ResolvedRow(
                     descrizione=row.descrizione,
@@ -305,11 +339,13 @@ def resolve_listino_with_cache(
                     v_tot=row.v_tot,
                     s_comp=row.s_comp,
                     category_node=row.category_node,
-                    notes=(),
-                    # Cache `description_resolutions` salva solo asin+confidence,
-                    # non il Buy Box (varia col tempo). Cache hit -> None ->
-                    # `build_listino_raw_from_resolved` fa fallback a prezzo_eur.
-                    verified_buybox_eur=None,
+                    notes=lookup_notes,
+                    # CHG-2026-05-01-039: buybox live anche su cache hit.
+                    # La cache mappa solo desc→ASIN (invariante); il buy box
+                    # è volatile e va sempre verificato. lookup_callable=None
+                    # -> retro-compat (verified_buybox_eur=None, fallback in
+                    # build_listino_raw_from_resolved).
+                    verified_buybox_eur=buybox_live,
                 ),
             )
             continue
@@ -418,10 +454,12 @@ def build_listino_raw_from_resolved(
       0.08 = 8%; override CFO via slider futuro).
     - `match_status = SICURO` (no NLP filter applicato).
 
-    Cache hit (`description_resolutions`) -> `verified_buybox_eur=None`
-    -> fallback a `prezzo_eur`: la cache non salva il buybox, che
-    varia col tempo. Per re-acquisire il buybox reale, il CFO
-    deve invalidare la cache (scope futuro: cache TTL).
+    Cache hit (`description_resolutions`) -> CHG-2026-05-01-039:
+    `verified_buybox_eur` ora è valorizzato live anche su cache hit
+    (1 lookup Keepa per ASIN cached, ~1 token). La cache mappa solo
+    desc→ASIN (invariante); il Buy Box è volatile e va sempre verificato.
+    Solo se `lookup_callable=None` (test/CLI senza Keepa) o se Keepa
+    fallisce su quel candidato, il fallback a `prezzo_eur` viene usato.
 
     Righe non risolte (`asin=""`) vengono SKIPPATE: il listino
     finale contiene solo ASIN validi. Le righe ambigue ma con

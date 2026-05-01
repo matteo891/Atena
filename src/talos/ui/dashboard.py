@@ -970,7 +970,8 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
         st.session_state.resolved_rows = None
 
     if st.button("Risolvi descrizioni", key="resolve_descriptions_btn"):
-        api_key = TalosSettings().keepa_api_key
+        settings = TalosSettings()
+        api_key = settings.keepa_api_key
         if api_key is None:
             _emit_ui_resolve_failed(reason="keepa_key_missing", n_rows=len(rows))
             st.error(
@@ -981,7 +982,14 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
 
         _emit_ui_resolve_started(n_rows=len(rows), has_factory=factory is not None)
 
-        keepa_client = KeepaClient(api_key=api_key, rate_limit_per_minute=20)
+        # CHG-2026-05-01-039: rate limit da settings (env
+        # TALOS_KEEPA_RATE_LIMIT_PER_MINUTE) invece di hardcoded 20.
+        # Default 60/min troppo basso per N rows x top-N candidati SERP
+        # + N cache-hit lookup (CHG-039 buybox live); env consente tuning.
+        keepa_client = KeepaClient(
+            api_key=api_key,
+            rate_limit_per_minute=settings.keepa_rate_limit_per_minute,
+        )
         with _PlaywrightBrowserPage() as page:
             serp_adapter = _LiveAmazonSerpAdapter(browser_factory=lambda: page)
             lookup_callable = partial(
@@ -1005,6 +1013,10 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
                     factory=factory,
                     resolver_provider=resolver_provider,
                     tenant_id=DEFAULT_TENANT_ID,
+                    # CHG-2026-05-01-039: passa lookup_callable per fetch
+                    # buybox live anche su cache hit (cache solo desc→ASIN
+                    # invariante; buybox volatile va sempre verificato).
+                    lookup_callable=lookup_callable,
                 )
         st.session_state.resolved_rows = resolved
 

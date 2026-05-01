@@ -835,6 +835,125 @@ def test_resolved_row_default_verified_buybox_is_none() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cache hit + buybox live (CHG-2026-05-01-039)
+# ---------------------------------------------------------------------------
+
+
+class _FakeCachedRow:
+    """Stub minimo di `DescriptionResolution` per mock cache hit."""
+
+    def __init__(self, *, asin: str, confidence_pct: float) -> None:
+        self.asin = asin
+        self.confidence_pct = Decimal(str(confidence_pct))
+
+
+class _FakeProductData:
+    """Stub minimo di `ProductData` (solo `buybox_eur` consumato dall'helper)."""
+
+    def __init__(self, buybox_eur: Decimal | None) -> None:
+        self.buybox_eur = buybox_eur
+
+
+class _FakeFactory:
+    """Sessionmaker fake che ritorna un context manager stub."""
+
+    def __call__(self) -> _FakeFactory:
+        return self
+
+    def __enter__(self) -> object:
+        return object()
+
+    def __exit__(self, *_args: object) -> None:
+        pass
+
+
+def _row(descrizione: str = "Galaxy S24 256GB", prezzo: float = 380.0) -> DescrizionePrezzoRow:
+    return DescrizionePrezzoRow(
+        descrizione=descrizione,
+        prezzo_eur=Decimal(str(prezzo)),
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+    )
+
+
+def test_cache_hit_calls_lookup_callable_for_live_buybox(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CHG-039: cache hit chiama `lookup_callable(asin)` -> verified_buybox_eur valorizzato."""
+    cached = _FakeCachedRow(asin="B0CSTC2RDW", confidence_pct=92.5)
+    monkeypatch.setattr(
+        "talos.ui.listino_input.find_resolution_by_hash",
+        lambda _db, *, tenant_id, description_hash: cached,  # noqa: ARG005
+    )
+
+    lookup_calls: list[str] = []
+
+    def lookup_stub(asin: str) -> _FakeProductData:
+        lookup_calls.append(asin)
+        return _FakeProductData(buybox_eur=Decimal("549.00"))
+
+    resolved = resolve_listino_with_cache(
+        [_row()],
+        factory=_FakeFactory(),
+        resolver_provider=lambda: _MockResolver({}),  # non chiamato (cache hit)
+        lookup_callable=lookup_stub,
+    )
+    assert len(resolved) == 1
+    assert resolved[0].asin == "B0CSTC2RDW"
+    assert resolved[0].is_cache_hit is True
+    assert resolved[0].verified_buybox_eur == Decimal("549.00")
+    assert resolved[0].notes == ()
+    assert lookup_calls == ["B0CSTC2RDW"]
+
+
+def test_cache_hit_lookup_failure_yields_buybox_none_with_note(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CHG-039: lookup_callable solleva -> verified_buybox_eur=None + nota R-01."""
+    cached = _FakeCachedRow(asin="B0CSTC2RDW", confidence_pct=92.5)
+    monkeypatch.setattr(
+        "talos.ui.listino_input.find_resolution_by_hash",
+        lambda _db, *, tenant_id, description_hash: cached,  # noqa: ARG005
+    )
+
+    def lookup_failing(_asin: str) -> _FakeProductData:
+        msg = "rate limit"
+        raise RuntimeError(msg)
+
+    resolved = resolve_listino_with_cache(
+        [_row()],
+        factory=_FakeFactory(),
+        resolver_provider=lambda: _MockResolver({}),
+        lookup_callable=lookup_failing,
+    )
+    assert resolved[0].asin == "B0CSTC2RDW"
+    assert resolved[0].verified_buybox_eur is None
+    assert len(resolved[0].notes) == 1
+    assert "buybox lookup live failed: RuntimeError" in resolved[0].notes[0]
+
+
+def test_cache_hit_without_lookup_callable_retro_compat_buybox_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CHG-039: lookup_callable=None (default) -> verified_buybox_eur=None (retro-compat)."""
+    cached = _FakeCachedRow(asin="B0CSTC2RDW", confidence_pct=92.5)
+    monkeypatch.setattr(
+        "talos.ui.listino_input.find_resolution_by_hash",
+        lambda _db, *, tenant_id, description_hash: cached,  # noqa: ARG005
+    )
+
+    resolved = resolve_listino_with_cache(
+        [_row()],
+        factory=_FakeFactory(),
+        resolver_provider=lambda: _MockResolver({}),
+        # lookup_callable omesso -> default None
+    )
+    assert resolved[0].asin == "B0CSTC2RDW"
+    assert resolved[0].is_cache_hit is True
+    assert resolved[0].verified_buybox_eur is None
+    assert resolved[0].notes == ()
+
+
+# ---------------------------------------------------------------------------
 # `apply_candidate_overrides` (CHG-2026-05-01-023)
 # ---------------------------------------------------------------------------
 
