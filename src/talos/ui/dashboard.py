@@ -784,7 +784,162 @@ def _render_panchina_table(panchina: pd.DataFrame) -> None:
     st.dataframe(panchina[display_cols], use_container_width=True)
 
 
-def main() -> None:
+def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow Streamlit multi-step inerentemente complesso
+    factory: sessionmaker[Session] | None,
+) -> pd.DataFrame | None:
+    """Flow nuovo CHG-2026-05-01-020: listino con descrizione+prezzo (no ASIN).
+
+    Step:
+    1. Upload CSV con colonne `descrizione`, `prezzo` (+ opzionali).
+    2. Parse + warnings su righe invalide.
+    3. Bottone "Risolvi descrizioni" -> resolve con cache `description_resolutions`
+       (CHG-019) + fallback `_LiveAsinResolver` (CHG-018) per cache miss.
+    4. Tabella preview con `confidence_pct` esposto + badge OK/DUB/AMB
+       (R-01 UX-side: tutti i match esposti, ambigui inclusi).
+    5. Bottone "Conferma listino" -> ritorna DataFrame 7-col compatibile
+       con `run_session`.
+
+    Ritorna `None` se l'utente non ha ancora confermato il listino
+    (UI in progress); altrimenti il DataFrame `listino_raw` pronto per
+    `build_session_input`.
+    """
+    # Lazy import per non penalizzare boot quando il flow non e' attivo.
+    from functools import partial  # noqa: PLC0415
+
+    from talos.config.settings import TalosSettings  # noqa: PLC0415
+    from talos.extract.asin_resolver import _LiveAsinResolver  # noqa: PLC0415
+    from talos.io_.fallback_chain import lookup_product  # noqa: PLC0415
+    from talos.io_.keepa_client import KeepaClient  # noqa: PLC0415
+    from talos.io_.scraper import _PlaywrightBrowserPage  # noqa: PLC0415
+    from talos.io_.serp_search import _LiveAmazonSerpAdapter  # noqa: PLC0415
+    from talos.ui.listino_input import (  # noqa: PLC0415
+        build_listino_raw_from_resolved,
+        format_confidence_badge,
+        parse_descrizione_prezzo_csv,
+        resolve_listino_with_cache,
+    )
+
+    st.subheader("Listino con descrizione + prezzo (nuovo)")
+    st.caption(
+        "Carica un CSV con colonne `descrizione` e `prezzo`. Il sistema risolve "
+        "ogni descrizione in un ASIN candidato verificato con Keepa.",
+    )
+
+    uploaded = st.file_uploader(
+        "Carica Listino (CSV descrizione+prezzo)",
+        type=["csv"],
+        help=(
+            "Colonne minime: `descrizione`, `prezzo`. "
+            "Opzionali: `v_tot`, `s_comp`, `category_node`."
+        ),
+        key="descrizione_prezzo_uploader",
+    )
+    if uploaded is None:
+        st.info("Carica un CSV per iniziare.")
+        return None
+
+    try:
+        df_raw = pd.read_csv(uploaded)
+    except (pd.errors.ParserError, ValueError) as exc:  # pragma: no cover - UI-only
+        st.error(f"Errore parsing CSV: {exc}")
+        return None
+
+    try:
+        rows, parse_warnings = parse_descrizione_prezzo_csv(df_raw)
+    except ValueError as exc:
+        st.error(f"CSV non valido: {exc}")
+        return None
+
+    for w in parse_warnings:
+        st.warning(w)
+    if not rows:
+        st.warning("Nessuna riga valida nel CSV.")
+        return None
+
+    st.dataframe(df_raw.head(20), use_container_width=True)
+    st.caption(f"Anteprima ({min(len(df_raw), 20)} righe). Premi 'Risolvi descrizioni'.")
+
+    if "resolved_rows" not in st.session_state:
+        st.session_state.resolved_rows = None
+
+    if st.button("Risolvi descrizioni", key="resolve_descriptions_btn"):
+        api_key = TalosSettings().keepa_api_key
+        if api_key is None:
+            st.error(
+                "TALOS_KEEPA_API_KEY non impostata. Imposta la chiave Keepa per "
+                "abilitare la risoluzione live (vedi `.env.example`).",
+            )
+            return None
+
+        keepa_client = KeepaClient(api_key=api_key, rate_limit_per_minute=20)
+        with _PlaywrightBrowserPage() as page:
+            serp_adapter = _LiveAmazonSerpAdapter(browser_factory=lambda: page)
+            lookup_callable = partial(
+                lookup_product,
+                keepa=keepa_client,
+                scraper=None,
+                page=None,
+                ocr=None,
+            )
+
+            def resolver_provider() -> _LiveAsinResolver:
+                return _LiveAsinResolver(
+                    serp_adapter=serp_adapter,
+                    lookup_callable=lookup_callable,
+                    max_candidates=3,
+                )
+
+            with st.spinner(f"Risoluzione di {len(rows)} descrizioni in corso..."):
+                resolved = resolve_listino_with_cache(
+                    rows,
+                    factory=factory,
+                    resolver_provider=resolver_provider,
+                    tenant_id=DEFAULT_TENANT_ID,
+                )
+        st.session_state.resolved_rows = resolved
+
+    resolved = st.session_state.resolved_rows
+    if resolved is None:
+        return None
+
+    # Tabella preview con confidence + badge esposti (R-01 UX-side)
+    preview_df = pd.DataFrame(
+        [
+            {
+                "descrizione": r.descrizione,
+                "prezzo": float(r.prezzo_eur),
+                "asin": r.asin or "(non risolto)",
+                "confidence": format_confidence_badge(r.confidence_pct),
+                "ambiguo": "Sì" if r.is_ambiguous else "No",
+                "cache_hit": "Sì" if r.is_cache_hit else "No",
+                "note": "; ".join(r.notes) if r.notes else "",
+            }
+            for r in resolved
+        ],
+    )
+    st.markdown("**Anteprima risoluzione:**")
+    st.dataframe(preview_df, use_container_width=True)
+
+    n_resolved = sum(1 for r in resolved if r.asin)
+    n_total = len(resolved)
+    n_ambiguous = sum(1 for r in resolved if r.is_ambiguous and r.asin)
+    st.caption(
+        f"Risolti {n_resolved}/{n_total} (di cui {n_ambiguous} ambigui). "
+        "Le righe ambigue restano nel listino: il CFO valuta caso per caso.",
+    )
+
+    if st.button("Conferma listino e crea sessione", key="confirm_resolved_listino_btn"):
+        listino_df = build_listino_raw_from_resolved(resolved)
+        if listino_df.empty:
+            st.error("Nessun ASIN risolto nel listino. Impossibile procedere.")
+            return None
+        st.session_state.resolved_rows = None  # reset per next batch
+        return listino_df
+
+    return None
+
+
+def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Streamlit multi-step
     """Entrypoint Streamlit. Eseguito da `streamlit run`."""
     st.set_page_config(
         page_title="TALOS — Cruscotto Sessione",
@@ -799,10 +954,14 @@ def main() -> None:
     factory_for_sidebar = get_session_factory_or_none()
     budget, velocity_target, veto_threshold, lot_size = _render_sidebar(factory_for_sidebar)
 
-    uploaded = st.file_uploader(
-        "Carica Listino di Sessione (CSV)",
-        type=["csv"],
-        help=f"Colonne richieste: {', '.join(REQUIRED_INPUT_COLUMNS)}.",
+    # Decisione Leader 2026-05-01 round 4 (delta=A): convivenza dei 2 flow
+    # CSV. Default = nuovo (descrizione+prezzo); legacy disponibile per
+    # CSV gia' strutturati con ASIN noto.
+    mode = st.radio(
+        "Formato listino",
+        options=("Descrizione + prezzo (nuovo)", "ASIN gia' noto (legacy)"),
+        horizontal=True,
+        key="listino_input_mode",
     )
 
     locked_in_raw = st.text_input(
@@ -812,20 +971,32 @@ def main() -> None:
     )
     locked_in = parse_locked_in(locked_in_raw)
 
-    if uploaded is None:
-        st.info("Carica un CSV per iniziare.")
-        return
+    listino: pd.DataFrame | None = None
+    if mode == "Descrizione + prezzo (nuovo)":
+        listino = _render_descrizione_prezzo_flow(factory_for_sidebar)
+        if listino is None:
+            return
+    else:
+        uploaded = st.file_uploader(
+            "Carica Listino di Sessione (CSV)",
+            type=["csv"],
+            help=f"Colonne richieste: {', '.join(REQUIRED_INPUT_COLUMNS)}.",
+            key="listino_legacy_uploader",
+        )
+        if uploaded is None:
+            st.info("Carica un CSV per iniziare.")
+            return
 
-    try:
-        listino = pd.read_csv(uploaded)
-    except (pd.errors.ParserError, ValueError) as exc:  # pragma: no cover - UI-only
-        st.error(f"Errore parsing CSV: {exc}")
-        return
+        try:
+            listino = pd.read_csv(uploaded)
+        except (pd.errors.ParserError, ValueError) as exc:  # pragma: no cover - UI-only
+            st.error(f"Errore parsing CSV: {exc}")
+            return
 
-    if not st.button("Esegui Sessione"):
-        st.dataframe(listino.head(20), use_container_width=True)
-        st.caption(f"Anteprima ({min(len(listino), 20)} righe). Premi 'Esegui Sessione'.")
-        return
+        if not st.button("Esegui Sessione"):
+            st.dataframe(listino.head(20), use_container_width=True)
+            st.caption(f"Anteprima ({min(len(listino), 20)} righe). Premi 'Esegui Sessione'.")
+            return
 
     inp = build_session_input(
         factory_for_sidebar,
