@@ -4,7 +4,7 @@ date: 2026-05-02
 author: Claude (su autorizzazione esplicita Leader, modalità "ultra macinata" round 7 — "snellire test che sono solo eccesso di zelo")
 status: Draft
 adr_ref: ADR-0019, ADR-0014
-commit: TBD
+commit: 4deb537
 ---
 
 ## What
@@ -184,4 +184,4 @@ Criteri di selezione applicati (conservativi: rimuovo solo se
   audit fixture pesanti.
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: TBD (backfill hash post-commit).
+- Commit: `4deb537`.
