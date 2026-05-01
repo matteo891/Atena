@@ -49,6 +49,7 @@ from talos.extract.asin_resolver import (
 from talos.extract.asin_resolver import (
     is_ambiguous as _is_ambiguous_threshold,
 )
+from talos.extract.velocity_estimator import resolve_v_tot
 from talos.persistence.asin_resolver_repository import (
     compute_description_hash,
     find_resolution_by_hash,
@@ -164,6 +165,10 @@ class ResolvedRow:
     notes: tuple[str, ...]
     verified_buybox_eur: Decimal | None = None
     candidates: tuple[ResolutionCandidate, ...] = field(default_factory=tuple)
+    # CHG-2026-05-02-003: BSR root da Keepa per stima v_tot quando CSV
+    # non specifica `v_tot` esplicito. None se cache hit + lookup fail
+    # oppure resolver senza buybox/bsr disponibili.
+    bsr_root: int | None = None
 
 
 def parse_descrizione_prezzo_csv(
@@ -250,22 +255,23 @@ def _is_finite(value: object) -> bool:
 def _fetch_buybox_live_or_none(
     lookup_callable: Callable[[str], ProductData] | None,
     asin: str,
-) -> tuple[Decimal | None, tuple[str, ...]]:
-    """Recupera `buybox_eur` live tramite `lookup_callable` (Keepa).
+) -> tuple[Decimal | None, int | None, tuple[str, ...]]:
+    """Recupera `(buybox_eur, bsr_root)` live tramite `lookup_callable` (Keepa).
 
-    CHG-2026-05-01-039: usato sia su cache hit che come helper isolato
-    per garantire che `verified_buybox_eur` sia sempre fresh anche quando
-    l'ASIN viene da cache (la mappatura desc→ASIN è invariante, il buy box
-    no). Errori (KeepaMissError/RateLimit/Transient/etc.) → `(None, notes)`
+    CHG-2026-05-01-039 (buybox live cache hit) + CHG-2026-05-02-003
+    (bsr_root per stima v_tot). Helper isolato per garantire che
+    `verified_buybox_eur` e `bsr_root` siano fresh anche su cache hit
+    (la mappatura desc→ASIN è invariante, buy box e BSR no). Errori
+    (KeepaMiss / RateLimit / Transient / Selector*) → `(None, None, notes)`
     (R-01 UX-side: row esposta in tabella con nota esplicita).
     """
     if lookup_callable is None:
-        return None, ()
+        return None, None, ()
     try:
         product = lookup_callable(asin)
     except Exception as exc:  # noqa: BLE001 — Keepa* / Selector* / network: tutti -> note
-        return None, (f"buybox lookup live failed: {type(exc).__name__}",)
-    return product.buybox_eur, ()
+        return None, None, (f"buybox lookup live failed: {type(exc).__name__}",)
+    return product.buybox_eur, product.bsr, ()
 
 
 def resolve_listino_with_cache(
@@ -324,7 +330,7 @@ def resolve_listino_with_cache(
                     _emit_cache_miss(table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS)
 
         if cached_asin is not None and cached_confidence is not None:
-            buybox_live, lookup_notes = _fetch_buybox_live_or_none(
+            buybox_live, bsr_live, lookup_notes = _fetch_buybox_live_or_none(
                 lookup_callable,
                 cached_asin,
             )
@@ -346,6 +352,9 @@ def resolve_listino_with_cache(
                     # -> retro-compat (verified_buybox_eur=None, fallback in
                     # build_listino_raw_from_resolved).
                     verified_buybox_eur=buybox_live,
+                    # CHG-2026-05-02-003: BSR per stima v_tot (cache miss
+                    # passa via _resolved_row_from_result).
+                    bsr_root=bsr_live,
                 ),
             )
             continue
@@ -410,6 +419,8 @@ def _resolved_row_from_result(
         notes=result.notes,
         verified_buybox_eur=result.selected.buybox_eur,
         candidates=result.candidates,
+        # CHG-2026-05-02-003: BSR del candidato selected per stima v_tot.
+        bsr_root=result.selected.bsr_root,
     )
 
 
@@ -492,12 +503,22 @@ def build_listino_raw_from_resolved(
             if r.verified_buybox_eur is not None
             else float(r.prezzo_eur)
         )
+        # CHG-2026-05-02-003: hybrid v_tot resolution
+        # CSV override (>0) > BSR estimate MVP > 0 default.
+        # Sblocca MVP CFO Path B': listino con CSV minimal (solo
+        # descrizione+prezzo) ottiene v_tot stimato dal BSR Keepa
+        # invece di 0 (che azzerava qty_final e svuotava il cart).
+        v_tot_resolved, v_tot_source = resolve_v_tot(
+            csv_v_tot=r.v_tot,
+            bsr_root=r.bsr_root,
+        )
         record: dict[str, object] = {
             "asin": r.asin,
             "buy_box_eur": buy_box,
             "cost_eur": float(r.prezzo_eur),
             "referral_fee_pct": referral_fee_pct,
-            "v_tot": r.v_tot,
+            "v_tot": v_tot_resolved,
+            "v_tot_source": v_tot_source,
             "s_comp": r.s_comp,
             "match_status": match_status,
         }
@@ -546,6 +567,9 @@ def apply_candidate_overrides(
                 confidence_pct=match.confidence_pct,
                 is_ambiguous=_is_ambiguous_threshold(match.confidence_pct),
                 verified_buybox_eur=match.buybox_eur,
+                # CHG-2026-05-02-003: propaga BSR del candidato override
+                # per coerenza stima v_tot post-override CFO.
+                bsr_root=match.bsr_root,
                 notes=(
                     *row.notes,
                     f"override manuale CFO: {match.asin} (era {original_asin or '(nessuno)'})",

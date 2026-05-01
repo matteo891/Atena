@@ -73,6 +73,10 @@ class ResolutionCandidate:
 
     `delta_price_pct`: |buybox - prezzo_input| / prezzo_input * 100;
     None se buybox=None (lookup live failed).
+
+    `bsr_root` (CHG-2026-05-02-003): BSR root Amazon dal lookup Keepa.
+    Usato a valle da `velocity_estimator.estimate_v_tot_from_bsr`
+    quando il CSV non specifica `v_tot`.
     """
 
     asin: str
@@ -81,6 +85,7 @@ class ResolutionCandidate:
     fuzzy_title_pct: float
     delta_price_pct: float | None
     confidence_pct: float
+    bsr_root: int | None = None
 
 
 @dataclass(frozen=True)
@@ -260,9 +265,12 @@ class _LiveAsinResolver:
         candidates: list[ResolutionCandidate] = []
         for serp_item in serp_results:
             buybox: Decimal | None = None
+            bsr_root: int | None = None
             try:
                 product = self._lookup(serp_item.asin)
                 buybox = product.buybox_eur
+                # CHG-2026-05-02-003: propaga BSR per estimator v_tot.
+                bsr_root = product.bsr
             except Exception as exc:  # noqa: BLE001 — lookup puo' lanciare KeepaTransient/Rate/Selector*; tutti -> note + buybox=None
                 notes.append(
                     f"candidato {serp_item.asin} lookup failed: {type(exc).__name__}",
@@ -278,6 +286,7 @@ class _LiveAsinResolver:
                     fuzzy_title_pct=fuzzy,
                     delta_price_pct=delta,
                     confidence_pct=confidence,
+                    bsr_root=bsr_root,
                 ),
             )
 

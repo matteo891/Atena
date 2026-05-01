@@ -494,12 +494,14 @@ def test_count_with_verified_buybox_mixed() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _resolved(
+def _resolved(  # noqa: PLR0913 — test fixture helper, args correlati a ResolvedRow shape
     asin: str,
     prezzo: float,
     *,
     category: str | None = None,
     verified_buybox: float | None = None,
+    v_tot: int = 10,
+    bsr_root: int | None = None,
 ) -> ResolvedRow:
     return ResolvedRow(
         descrizione=f"desc {asin}",
@@ -508,11 +510,12 @@ def _resolved(
         confidence_pct=90.0,
         is_ambiguous=False,
         is_cache_hit=False,
-        v_tot=10,
+        v_tot=v_tot,
         s_comp=2,
         category_node=category,
         notes=(),
         verified_buybox_eur=Decimal(str(verified_buybox)) if verified_buybox is not None else None,
+        bsr_root=bsr_root,
     )
 
 
@@ -804,6 +807,31 @@ def test_build_listino_falls_back_to_cost_when_no_verified_buybox() -> None:
     assert df.iloc[0]["buy_box_eur"] == 549.00  # fallback
 
 
+def test_build_listino_v_tot_csv_override_wins() -> None:
+    """CHG-2026-05-02-003: v_tot CSV>0 ignora bsr_root (override esplicito)."""
+    rows = [_resolved("B0AAA", 100.0, v_tot=42, bsr_root=5000)]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["v_tot"] == 42.0
+    assert df.iloc[0]["v_tot_source"] == "csv"
+
+
+def test_build_listino_v_tot_estimated_from_bsr_when_csv_zero() -> None:
+    """CHG-2026-05-02-003: v_tot CSV=0 + bsr disponibile -> stima MVP."""
+    # bsr=10000 -> formula log: 100 - 20*log10(10000) = 100 - 80 = 20
+    rows = [_resolved("B0AAA", 100.0, v_tot=0, bsr_root=10000)]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["v_tot"] == pytest.approx(20.0)
+    assert df.iloc[0]["v_tot_source"] == "bsr_estimate_mvp"
+
+
+def test_build_listino_v_tot_default_zero_when_no_csv_no_bsr() -> None:
+    """CHG-2026-05-02-003: nessun override + nessun BSR -> v_tot=0."""
+    rows = [_resolved("B0AAA", 100.0, v_tot=0, bsr_root=None)]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["v_tot"] == 0.0
+    assert df.iloc[0]["v_tot_source"] == "default_zero"
+
+
 def test_build_listino_mixed_verified_and_fallback() -> None:
     """Listino misto (alcuni con buybox verificato, alcuni no): comportamento per-riga."""
     rows = [
@@ -848,10 +876,11 @@ class _FakeCachedRow:
 
 
 class _FakeProductData:
-    """Stub minimo di `ProductData` (solo `buybox_eur` consumato dall'helper)."""
+    """Stub minimo di `ProductData` (`buybox_eur` + `bsr` consumati dall'helper)."""
 
-    def __init__(self, buybox_eur: Decimal | None) -> None:
+    def __init__(self, buybox_eur: Decimal | None, bsr: int | None = None) -> None:
         self.buybox_eur = buybox_eur
+        self.bsr = bsr
 
 
 class _FakeFactory:

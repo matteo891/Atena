@@ -42,6 +42,13 @@ from talos.extract.samsung import (
     SamsungExtractor,
     load_whitelist,
 )
+from talos.extract.velocity_estimator import (
+    V_TOT_SOURCE_BSR_ESTIMATE,
+    V_TOT_SOURCE_CSV,
+    V_TOT_SOURCE_DEFAULT_ZERO,
+    estimate_v_tot_from_bsr,
+    resolve_v_tot,
+)
 
 __all__ = [
     "CONFIDENCE_WEIGHT_PRICE",
@@ -52,6 +59,9 @@ __all__ = [
     "DEFAULT_CONFIDENCE_SICURO_THRESHOLD",
     "DEFAULT_FIELD_WEIGHTS",
     "DEFAULT_WHITELIST_YAML",
+    "V_TOT_SOURCE_BSR_ESTIMATE",
+    "V_TOT_SOURCE_CSV",
+    "V_TOT_SOURCE_DEFAULT_ZERO",
     "AsinMasterInput",
     "AsinResolverProtocol",
     "MatchResult",
@@ -63,7 +73,9 @@ __all__ = [
     "acquire_and_persist",
     "build_asin_master_input",
     "compute_confidence",
+    "estimate_v_tot_from_bsr",
     "is_ambiguous",
     "load_whitelist",
+    "resolve_v_tot",
     "upsert_asin_master",
 ]
