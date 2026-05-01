@@ -27,15 +27,16 @@ Versione "happy path" senza:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+import structlog
 
 if TYPE_CHECKING:
     import pandas as pd
 
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 # Eventi canonici emessi da questo modulo (catalogo ADR-0021 + governance).
 # Pattern stringa-letterale per consentire al governance test
 # `tests/governance/test_log_events_catalog.py` di rilevarli via grep:
@@ -198,11 +199,9 @@ def allocate_tetris(  # noqa: PLR0913, C901 — 4 col-name override + due passi 
             # Evento canonico (R-01 NO SILENT DROPS, ADR-0021).
             _logger.debug(
                 "tetris.skipped_budget",
-                extra={
-                    "asin": str(row[asin_col]),
-                    "cost": cost_total,
-                    "budget_remaining": cart.remaining,
-                },
+                asin=str(row[asin_col]),
+                cost=cost_total,
+                budget_remaining=cart.remaining,
             )
             continue
         cart.add(

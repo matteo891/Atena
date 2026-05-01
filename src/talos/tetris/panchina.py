@@ -18,8 +18,9 @@ output cruscotto = (Cart, Panchina, Budget_T+1).
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
+
+import structlog
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from talos.tetris.allocator import Cart
 
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 # Evento canonico emesso (ADR-0021):
 # - "panchina.archived": ASIN idoneo (vgp_score>0) non in cart, archiviato per cassa.
 
@@ -68,7 +69,8 @@ def build_panchina(
     for asin, score in zip(out[asin_col], out[score_col], strict=False):
         _logger.debug(
             "panchina.archived",
-            extra={"asin": str(asin), "vgp_score": float(score)},
+            asin=str(asin),
+            vgp_score=float(score),
         )
 
     return out

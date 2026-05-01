@@ -4,34 +4,22 @@ Verifica emissione eventi canonici ADR-0021 via `structlog.testing.LogCapture`:
 - `vgp.veto_roi_failed` per ASIN sotto soglia ROI ma non killed.
 - `vgp.kill_switch_zero` per ASIN con kill_mask=True.
 
-Pattern: la fixture `log_capture` riconfigura structlog con `LogCapture` come
-unico processor + `merge_contextvars` (preserva propagazione contestuale).
+Fixture `log_capture` condivisa in `tests/conftest.py` da CHG-2026-05-01-031.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 import pytest
-import structlog
-from structlog.testing import LogCapture
 
 from talos.vgp import compute_vgp_score
 
+if TYPE_CHECKING:
+    from structlog.testing import LogCapture
+
 pytestmark = pytest.mark.unit
-
-
-@pytest.fixture
-def log_capture() -> LogCapture:
-    """Cattura eventi structlog per assertion (pattern test_logging_config)."""
-    capture = LogCapture()
-    structlog.configure(
-        processors=[
-            structlog.contextvars.merge_contextvars,
-            capture,
-        ],
-        cache_logger_on_first_use=False,
-    )
-    return capture
 
 
 def _df(rows: list[tuple[str, float, float, float, bool, str]]) -> pd.DataFrame:

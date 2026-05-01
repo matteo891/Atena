@@ -1,10 +1,15 @@
-"""Unit test per configure_logging — ADR-0021."""
+"""Unit test per configure_logging — ADR-0021.
+
+Fixture `log_capture` estratta in `tests/conftest.py` da CHG-2026-05-01-031
+(rule of three: ≥3 consumer test telemetria post bridge structlog).
+"""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 import structlog
-from structlog.testing import LogCapture
 
 from talos.observability import (
     bind_session_context,
@@ -12,19 +17,8 @@ from talos.observability import (
     configure_logging,
 )
 
-
-@pytest.fixture
-def log_capture() -> LogCapture:
-    """Cattura eventi structlog per assertion."""
-    capture = LogCapture()
-    structlog.configure(
-        processors=[
-            structlog.contextvars.merge_contextvars,
-            capture,
-        ],
-        cache_logger_on_first_use=False,
-    )
-    return capture
+if TYPE_CHECKING:
+    from structlog.testing import LogCapture
 
 
 @pytest.mark.unit

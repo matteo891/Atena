@@ -1,16 +1,21 @@
-"""Unit test telemetria `build_panchina` (CHG-2026-04-30-049).
+"""Unit test telemetria `build_panchina` (CHG-2026-04-30-049 + CHG-B1.1.b).
 
-Verifica emissione `panchina.archived` per ogni riga in panchina.
+Verifica emissione `panchina.archived` per ogni riga in panchina via
+`structlog.testing.LogCapture`. Fixture `log_capture` condivisa in
+`tests/conftest.py` (CHG-031).
 """
 
 from __future__ import annotations
 
-import logging
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
 
 from talos.tetris import Cart, CartItem, build_panchina
+
+if TYPE_CHECKING:
+    from structlog.testing import LogCapture
 
 pytestmark = pytest.mark.unit
 
@@ -26,7 +31,7 @@ def _cart_with(asins: list[str]) -> Cart:
     return cart
 
 
-def test_panchina_archived_event_per_row(caplog: pytest.LogCaptureFixture) -> None:
+def test_panchina_archived_event_per_row(log_capture: LogCapture) -> None:
     """Ogni riga in panchina genera 1 evento `panchina.archived`."""
     df = _df(
         [
@@ -36,34 +41,31 @@ def test_panchina_archived_event_per_row(caplog: pytest.LogCaptureFixture) -> No
         ],
     )
     cart = _cart_with([])  # cart vuoto -> tutti in panchina
-    with caplog.at_level(logging.DEBUG, logger="talos.tetris.panchina"):
-        out = build_panchina(df, cart)
+    out = build_panchina(df, cart)
 
     assert len(out) == 3
-    archived = [r for r in caplog.records if r.message == "panchina.archived"]
+    archived = [e for e in log_capture.entries if e["event"] == "panchina.archived"]
     assert len(archived) == 3
-    asins = {getattr(r, "asin", None) for r in archived}
+    asins = {e["asin"] for e in archived}
     assert asins == {"A_TOP", "B_MID", "C_LOW"}
 
 
-def test_panchina_archived_event_carries_vgp_score(caplog: pytest.LogCaptureFixture) -> None:
+def test_panchina_archived_event_carries_vgp_score(log_capture: LogCapture) -> None:
     """Ogni record include `vgp_score` (campo richiesto dal catalogo)."""
     df = _df([("X", 100.0, 1, 0.7)])
     cart = _cart_with([])
-    with caplog.at_level(logging.DEBUG, logger="talos.tetris.panchina"):
-        build_panchina(df, cart)
+    build_panchina(df, cart)
 
-    archived = [r for r in caplog.records if r.message == "panchina.archived"]
+    archived = [e for e in log_capture.entries if e["event"] == "panchina.archived"]
     assert len(archived) == 1
-    assert getattr(archived[0], "vgp_score", None) == pytest.approx(0.7)
+    assert archived[0]["vgp_score"] == pytest.approx(0.7)
 
 
-def test_no_panchina_event_when_panchina_empty(caplog: pytest.LogCaptureFixture) -> None:
+def test_no_panchina_event_when_panchina_empty(log_capture: LogCapture) -> None:
     """Nessun evento se panchina e' vuota (tutti in cart o tutti vetati)."""
     df = _df([("A", 100.0, 1, 0.0)])  # vgp=0 -> non in panchina
     cart = _cart_with([])
-    with caplog.at_level(logging.DEBUG, logger="talos.tetris.panchina"):
-        build_panchina(df, cart)
+    build_panchina(df, cart)
 
-    archived = [r for r in caplog.records if r.message == "panchina.archived"]
+    archived = [e for e in log_capture.entries if e["event"] == "panchina.archived"]
     assert archived == []
