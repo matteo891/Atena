@@ -3,7 +3,7 @@ id: CHG-2026-05-01-017
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — apertura blocco SERP scraping live)
 status: Draft
-commit: TBD
+commit: 467c713
 adr_ref: ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -289,4 +289,4 @@ PASS in 2.83s -> selettori SERP confermati validi sul layout 2026.
   composition: SERP -> top-N -> per ogni candidato `lookup_product`
   per buybox -> `compute_confidence(fuzzy_title, delta_price)` ->
   `ResolutionResult`).
-- Commit: TBD (backfill post-commit).
+- Commit: `467c713`.
