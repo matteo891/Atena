@@ -197,6 +197,57 @@ def lookup_product(
     )
 
 
+def lookup_products(
+    asin_list: list[str],
+    *,
+    keepa: KeepaClient,
+    scraper: AmazonScraper | None = None,
+    page: BrowserPageProtocol | None = None,
+    ocr: OcrPipeline | None = None,
+) -> list[ProductData]:
+    """Bulk wrapper su `lookup_product` per una lista di ASIN.
+
+    Itera in ordine sulla `asin_list` e accumula i `ProductData`
+    risultanti. Le eccezioni "tecniche" sollevate da
+    `lookup_product` propagano al primo ASIN che le incontra
+    (R-01 fail-fast):
+
+    - `KeepaRateLimitExceededError`: il batch non puo' proseguire
+      finche' il rate limit non si resetta; il caller decide se
+      attendere e ritentare. Gli ASIN gia' processati restano
+      persistiti dal caller (Unit of Work) o no, a seconda del
+      pattern di commit.
+    - `KeepaTransientError`: errore transitorio dopo retry
+      esauriti.
+    - Qualunque eccezione runtime di `page.goto` (Playwright
+      live errors).
+
+    `KeepaMissError` e `SelectorMissError` (con `missing_ok=True`
+    nel scraper) NON sono mai sollevati: vengono gestiti da
+    `lookup_product` come `field=None` + entry in `notes`.
+
+    `lookup_products([])` ritorna `[]` senza chiamare nessun
+    canale (no-op).
+
+    Args:
+        asin_list: lista ASIN target (anche vuota).
+        keepa: client Keepa configurato.
+        scraper: AmazonScraper opzionale, condiviso fra tutte
+          le chiamate.
+        page: pagina Playwright opzionale, condivisa fra tutte
+          le chiamate (lo scraper la riutilizza per evitare il
+          costo di context Chromium per ogni ASIN).
+        ocr: OcrPipeline opzionale (placeholder, non invocato).
+
+    Returns:
+        list[ProductData]: stessa cardinalita' di `asin_list`,
+        ordine preservato.
+    """
+    return [
+        lookup_product(asin, keepa=keepa, scraper=scraper, page=page, ocr=ocr) for asin in asin_list
+    ]
+
+
 def _try_keepa_field(
     fetcher: Callable[[str], _T],
     asin: str,

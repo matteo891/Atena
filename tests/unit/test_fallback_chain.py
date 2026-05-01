@@ -24,6 +24,7 @@ from talos.io_ import (
     KeepaTransientError,
     ProductData,
     lookup_product,
+    lookup_products,
 )
 
 if TYPE_CHECKING:
@@ -354,3 +355,54 @@ def test_lookup_propagates_asin_to_result() -> None:
     result = lookup_product("CALLER_ASIN", keepa=keepa)
     # `asin` di ProductData usa il parametro al call site (non il KeepaProduct).
     assert result.asin == "CALLER_ASIN"
+
+
+# ---------------------------------------------------------------------------
+# lookup_products bulk wrapper (CHG-2026-05-01-009)
+# ---------------------------------------------------------------------------
+
+
+def test_lookup_products_empty_list_returns_empty() -> None:
+    """No-op su lista vuota (no chiamate ai canali)."""
+    keepa = _make_keepa_raising(KeepaTransientError("would fire if called"))
+    result = lookup_products([], keepa=keepa)
+    assert result == []
+
+
+def test_lookup_products_preserves_order_and_cardinality() -> None:
+    keepa = _make_keepa(_full_keepa_product())
+    asins = ["B0BULK01", "B0BULK02", "B0BULK03"]
+    results = lookup_products(asins, keepa=keepa)
+    assert [r.asin for r in results] == asins
+    assert len(results) == 3
+    for r in results:
+        assert r.buybox_eur == Decimal("199.99")
+        assert r.bsr == 42
+
+
+def test_lookup_products_propagates_rate_limit_at_first_failure() -> None:
+    """Rate limit fail-fast: il batch si interrompe al primo ASIN che lo trigger."""
+    exc = KeepaRateLimitExceededError("X", rate_limit_per_minute=60)
+    keepa = _make_keepa_raising(exc)
+    with pytest.raises(KeepaRateLimitExceededError):
+        lookup_products(["A1", "A2", "A3"], keepa=keepa)
+
+
+def test_lookup_products_threads_scraper_and_page_through(
+    tmp_path: Path,
+) -> None:
+    """Scraper+page condivisi fra le chiamate; goto chiamato per ogni ASIN."""
+    keepa = _make_keepa(_full_keepa_product())
+    scraper = _build_scraper(tmp_path)
+    page = _MockPage(
+        css_map={"#productTitle": "Galaxy", "#corePrice": "€ 100,00"},
+    )
+    asins = ["B0PG01", "B0PG02"]
+    results = lookup_products(asins, keepa=keepa, scraper=scraper, page=page)
+    assert len(results) == 2
+    assert page.goto_calls == [
+        "https://www.amazon.it/dp/B0PG01",
+        "https://www.amazon.it/dp/B0PG02",
+    ]
+    for r in results:
+        assert r.title == "Galaxy"

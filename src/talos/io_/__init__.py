@@ -17,6 +17,7 @@ from talos.io_.fallback_chain import (
     SOURCE_SCRAPER,
     ProductData,
     lookup_product,
+    lookup_products,
 )
 from talos.io_.keepa_client import (
     KeepaApiAdapter,
@@ -78,6 +79,7 @@ __all__ = [
     "binarize_otsu",
     "load_selectors",
     "lookup_product",
+    "lookup_products",
     "otsu_threshold",
     "parse_eur",
 ]
