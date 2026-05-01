@@ -412,22 +412,20 @@ def test_lookup_propagates_bsr_chain_from_scraper(tmp_path: Path) -> None:
     keepa = _make_keepa(_full_keepa_product("B0BSR1"))
     scraper = _build_scraper(tmp_path)
     page = _MockPage(
-        css_map={
-            "#productTitle": "Galaxy",
-            "#corePrice": None,
-            "#bsr-root": "n. 1.234 in Elettronica",
-        },
+        css_map={"#productTitle": "Galaxy", "#corePrice": None},
         css_all_map={
             "ul.zg_hrsr li": [
                 "n. 15 in Cellulari",
                 "n. 3 in Smartphone Samsung",
             ],
+            "#bsr-root": ["n. 1.234 in Elettronica"],
         },
     )
     result = lookup_product("B0BSR1", keepa=keepa, scraper=scraper, page=page)
+    # Sort per rank crescente: specifico -> ampio.
     assert result.bsr_chain == [
-        BsrEntry(category="Cellulari", rank=15),
         BsrEntry(category="Smartphone Samsung", rank=3),
+        BsrEntry(category="Cellulari", rank=15),
         BsrEntry(category="Elettronica", rank=1234),
     ]
     # Keepa ha gia' fornito bsr (root) → non viene sovrascritto da scraper.
@@ -443,13 +441,10 @@ def test_lookup_uses_scraper_bsr_when_keepa_misses(tmp_path: Path) -> None:
     )
     scraper = _build_scraper(tmp_path)
     page = _MockPage(
-        css_map={
-            "#productTitle": "T",
-            "#corePrice": None,
-            "#bsr-root": "n. 1.000 in Elettronica",
-        },
+        css_map={"#productTitle": "T", "#corePrice": None},
         css_all_map={
             "ul.zg_hrsr li": ["n. 7 in Smartphone Samsung"],
+            "#bsr-root": ["n. 1.000 in Elettronica"],
         },
     )
     result = lookup_product("B0NOK", keepa=keepa, scraper=scraper, page=page)

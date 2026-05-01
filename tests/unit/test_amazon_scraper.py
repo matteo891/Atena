@@ -366,26 +366,29 @@ amazon_it:
 
 
 def test_scrape_product_bsr_chain_specific_to_general(tmp_path: Path) -> None:
-    """bsr_chain ordinata dal piu' specifico al piu' ampio (sub prima, root dopo)."""
+    """bsr_chain ordinata dal piu' specifico al piu' ampio (sub prima, root dopo).
+
+    `_resolve_bsr_chain` raccoglie via `_collect_all` su entrambi
+    `bsr_sub` e `bsr_root`; `parse_bsr_text` filtra naturalmente
+    stringhe senza il pattern "n. <num> in <cat>".
+    """
     path = _write_yaml(tmp_path, _BSR_YAML)
     scraper = AmazonScraper(selectors_path=path)
     page = _MockPage(
-        css_map={
-            "#productTitle": "T",
-            "#corePrice": None,
-            "#bsr-root": "n. 1.234 in Elettronica",
-        },
+        css_map={"#productTitle": "T", "#corePrice": None},
         css_all_map={
             "ul.zg_hrsr li": [
                 "n. 15 in Cellulari & Accessori",
                 "n. 3 in Smartphone Samsung",
             ],
+            "#bsr-root": ["n. 1.234 in Elettronica"],
         },
     )
     product = scraper.scrape_product("B0BSR1", page=page)
+    # Sort per rank crescente: specifico (rank piu' basso) -> ampio.
     assert product.bsr_chain == [
-        BsrEntry(category="Cellulari & Accessori", rank=15),
         BsrEntry(category="Smartphone Samsung", rank=3),
+        BsrEntry(category="Cellulari & Accessori", rank=15),
         BsrEntry(category="Elettronica", rank=1234),
     ]
 
@@ -395,11 +398,8 @@ def test_scrape_product_bsr_chain_only_root_when_no_sub(tmp_path: Path) -> None:
     path = _write_yaml(tmp_path, _BSR_YAML)
     scraper = AmazonScraper(selectors_path=path)
     page = _MockPage(
-        css_map={
-            "#productTitle": "T",
-            "#corePrice": None,
-            "#bsr-root": "n. 50 in Libri",
-        },
+        css_map={"#productTitle": "T", "#corePrice": None},
+        css_all_map={"#bsr-root": ["n. 50 in Libri"]},
     )
     product = scraper.scrape_product("B0BSR2", page=page)
     assert product.bsr_chain == [BsrEntry(category="Libri", rank=50)]
@@ -415,15 +415,16 @@ def test_scrape_product_bsr_chain_empty_when_total_miss(tmp_path: Path) -> None:
 
 
 def test_scrape_product_bsr_chain_dedup_and_skip_unparsable(tmp_path: Path) -> None:
-    """Sub-rank duplicati o non parsabili -> deduplicati/scartati senza crash."""
+    """Stringhe duplicate o non parsabili -> deduplicate/scartate senza crash.
+
+    `bsr_root` ora restituisce piu' stringhe (es. tutte le righe della
+    tabella tech specs); `parse_bsr_text` scarta quelle senza il
+    pattern (peso, dimensioni, ecc.). Dedup esatto su (categoria, rank).
+    """
     path = _write_yaml(tmp_path, _BSR_YAML)
     scraper = AmazonScraper(selectors_path=path)
     page = _MockPage(
-        css_map={
-            "#productTitle": "T",
-            "#corePrice": None,
-            "#bsr-root": "n. 1.234 in Elettronica",
-        },
+        css_map={"#productTitle": "T", "#corePrice": None},
         css_all_map={
             "ul.zg_hrsr li": [
                 "n. 15 in Cellulari",
@@ -431,10 +432,15 @@ def test_scrape_product_bsr_chain_dedup_and_skip_unparsable(tmp_path: Path) -> N
                 "n.a.",  # non parsabile
                 "",  # vuoto
             ],
+            "#bsr-root": [
+                "Peso: 200g",  # rumore tabella tech specs
+                "Dimensioni: 15 x 7 cm",  # rumore
+                "n. 1.234 in Elettronica",  # il vero rank
+            ],
         },
     )
     product = scraper.scrape_product("B0BSR4", page=page)
-    # Cellulari (deduplicato), poi root.
+    # Cellulari (deduplicato), poi root (rumore filtrato da parse_bsr_text).
     assert product.bsr_chain == [
         BsrEntry(category="Cellulari", rank=15),
         BsrEntry(category="Elettronica", rank=1234),

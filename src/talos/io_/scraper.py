@@ -64,15 +64,18 @@ class BsrEntry:
     Generalizzata a qualsiasi gerarchia Amazon: una pagina prodotto
     espone tipicamente 2-3 livelli di rank (es. "Elettronica" root +
     "Cellulari" mid + "Smartphone Samsung" deep). `BsrEntry` cattura
-    una sola coppia (categoria, rank); l'ordine nella `bsr_chain`
-    convenziona dal **piu' specifico al piu' ampio** (deep -> root)
-    affinche' `bsr_chain[0]` sia il livello a maggior valore
+    una sola coppia (categoria, rank).
+
+    Ordine convenzione `bsr_chain` (sort `key=rank` ascending):
+    rank piu' basso = sotto-categoria piu' specifica (perche' la
+    nicchia e' subset della root, quindi il prodotto e' meglio
+    piazzato li'). `bsr_chain[0]` e' il livello a maggior valore
     discriminante per la formula Velocity F4.A.
 
-    `category` e' la stringa Amazon verbatim (es. "Cellulari &
-    Accessori", "Smartphone Samsung Galaxy S24"). Il caller che vuole
-    matchare con il `category_node` interno deve normalizzarla a
-    monte; il dataclass non re-classifica.
+    `category` e' la stringa Amazon verbatim (es. "Cellulari e
+    Smartphone", "Smartphone Samsung Galaxy S24"). Il caller che
+    vuole matchare con il `category_node` interno deve normalizzarla
+    a monte; il dataclass non re-classifica.
     """
 
     category: str
@@ -348,26 +351,39 @@ class AmazonScraper:
         """Estrae la `bsr_chain` multi-livello (CHG-2026-05-01-013).
 
         Ordine output: dal piu' specifico al piu' ampio (sub
-        prima, root in fondo). Stringhe non parsabili vengono
-        scartate silenziosamente (R-01: la telemetria
-        `scrape.selector_fail` resta emessa da `_resolve_field`
-        sui selettori che falliscono completamente).
+        prima, root in fondo). Sia `bsr_sub` che `bsr_root`
+        vengono raccolti con `_collect_all` (lista di tutti i
+        match CSS); `parse_bsr_text` filtra naturalmente le
+        stringhe che NON contengono il pattern "n. <num> in
+        <cat>" (es. altre righe della tabella tech specs come
+        peso/dimensioni). Dedup esatto su (categoria, rank).
         """
-        sub_texts: list[str] = []
-        if "bsr_sub" in self._selectors:
-            sub_texts = self._collect_all(page, "bsr_sub")
-        root_text: str | None = None
-        if "bsr_root" in self._selectors:
-            root_text = self._resolve_field(asin, "bsr_root", page, missing_ok=True)
+        del asin  # logging delegato a `_resolve_field` chiamato da altri campi
         chain: list[BsrEntry] = []
-        for raw in sub_texts:
-            entry = parse_bsr_text(raw)
-            if entry is not None:
+        seen: set[tuple[str, int]] = set()
+
+        for field_name in ("bsr_sub", "bsr_root"):
+            if field_name not in self._selectors:
+                continue
+            for raw in self._collect_all(page, field_name):
+                entry = parse_bsr_text(raw)
+                if entry is None:
+                    continue
+                key = (entry.category, entry.rank)
+                if key in seen:
+                    continue
+                seen.add(key)
                 chain.append(entry)
-        if root_text is not None:
-            entry = parse_bsr_text(root_text)
-            if entry is not None and not _entry_in(entry, chain):
-                chain.append(entry)
+
+        # Ordinamento "specifico → ampio" via rank crescente: per
+        # definizione, una sotto-categoria e' subset della root,
+        # quindi `rank_sub <= rank_root` (il prodotto e' meglio
+        # piazzato nella nicchia che nella categoria larga).
+        # Validato live 2026-05-01 su B0CSTC2RDW (Samsung S24):
+        # Amazon.it ritorna root prima nel DOM ("Elettronica" #6182)
+        # poi sub ("Cellulari e Smartphone" #162); il sort restituisce
+        # sub→root come da convenzione `bsr_chain[0]` = piu' specifico.
+        chain.sort(key=lambda e: e.rank)
         return chain
 
     def _collect_all(
@@ -438,11 +454,6 @@ class AmazonScraper:
 
 DEFAULT_PLAYWRIGHT_TIMEOUT_MS = 60_000  # 60s (decisione Leader B, CHG-012)
 COOKIE_CONSENT_SELECTOR_AMAZON = "#sp-cc-accept"
-
-
-def _entry_in(entry: BsrEntry, chain: list[BsrEntry]) -> bool:
-    """Verifica se `entry` e' gia' presente in `chain` (match su category+rank)."""
-    return any(e.category == entry.category and e.rank == entry.rank for e in chain)
 
 
 class _PlaywrightBrowserPage:
