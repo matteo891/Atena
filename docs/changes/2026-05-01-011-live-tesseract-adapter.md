@@ -3,7 +3,7 @@ id: CHG-2026-05-01-011
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target — apertura Fase 3)
 status: Draft
-commit: TBD
+commit: 001b066
 adr_ref: ADR-0017, ADR-0014, ADR-0019, ADR-0021
 ---
 
@@ -235,4 +235,4 @@ status = (
   install chromium` ✓ completato 2026-05-01).
 - Memory: `project_io_extract_design_decisions.md` (D3
   ratificata).
-- Commit: TBD.
+- Commit: `001b066`.
