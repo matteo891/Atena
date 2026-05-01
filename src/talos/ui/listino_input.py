@@ -35,11 +35,16 @@ UI via `ResolutionResult.notes` (CHG-018 R-01 UX-side).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from talos.extract.asin_resolver import DEFAULT_AMBIGUOUS_THRESHOLD_PCT
+from talos.extract.asin_resolver import (
+    DEFAULT_AMBIGUOUS_THRESHOLD_PCT,
+)
+from talos.extract.asin_resolver import (
+    is_ambiguous as _is_ambiguous_threshold,
+)
 from talos.persistence.asin_resolver_repository import (
     compute_description_hash,
     find_resolution_by_hash,
@@ -52,7 +57,11 @@ if TYPE_CHECKING:
     import pandas as pd
     from sqlalchemy.orm import Session, sessionmaker
 
-    from talos.extract.asin_resolver import AsinResolverProtocol, ResolutionResult
+    from talos.extract.asin_resolver import (
+        AsinResolverProtocol,
+        ResolutionCandidate,
+        ResolutionResult,
+    )
 
 # Colonne obbligatorie del CSV "umano" descrizione+prezzo.
 REQUIRED_DESCRIZIONE_PREZZO_COLUMNS: tuple[str, ...] = ("descrizione", "prezzo")
@@ -95,6 +104,11 @@ class ResolvedRow:
       non il buybox; serve un re-resolve per averlo). In questi casi il
       `build_listino_raw_from_resolved` fa fallback a `prezzo_eur` come
       `buy_box_eur` (semantica conservativa ereditata da CHG-020).
+
+    `candidates` (CHG-023): tutti i candidati top-N esaminati dal resolver
+    (cache miss only — cache hit ha tuple vuota). Permette al CFO di
+    override il candidato selezionato per righe ambigue (UX A3 R-01
+    rafforzato: tutti i match esposti con possibilità di scelta umana).
     """
 
     descrizione: str
@@ -108,6 +122,7 @@ class ResolvedRow:
     category_node: str | None
     notes: tuple[str, ...]
     verified_buybox_eur: Decimal | None = None
+    candidates: tuple[ResolutionCandidate, ...] = field(default_factory=tuple)
 
 
 def parse_descrizione_prezzo_csv(
@@ -301,6 +316,7 @@ def _resolved_row_from_result(
             category_node=row.category_node,
             notes=result.notes,
             verified_buybox_eur=None,
+            candidates=result.candidates,
         )
     return ResolvedRow(
         descrizione=row.descrizione,
@@ -314,6 +330,7 @@ def _resolved_row_from_result(
         category_node=row.category_node,
         notes=result.notes,
         verified_buybox_eur=result.selected.buybox_eur,
+        candidates=result.candidates,
     )
 
 
@@ -406,6 +423,54 @@ def build_listino_raw_from_resolved(
             record["category_node"] = r.category_node or ""
         records.append(record)
     return pd.DataFrame(records)
+
+
+def apply_candidate_overrides(
+    resolved: list[ResolvedRow],
+    overrides: dict[int, str],
+) -> list[ResolvedRow]:
+    """Applica override manuali del CFO su righe ambigue (CHG-023).
+
+    `overrides` mappa `idx_riga -> asin_scelto_dal_CFO`. Per ogni
+    `(idx, chosen_asin)` valido (idx in range, chosen_asin presente in
+    `resolved[idx].candidates`), sostituisce `asin/confidence_pct/
+    is_ambiguous/verified_buybox_eur` della riga con quelli del candidato
+    scelto. Aggiunge nota R-01 audit trail
+    `"override manuale CFO: {chosen} (era {original})"`.
+
+    Override invalidi (idx out-of-range, asin non in candidates,
+    chosen == current asin) sono no-op silenziosi: l'override ridondante
+    non è un errore del CFO. Pattern coerente con `replay_session`
+    `locked_in_override` (CHG-056).
+
+    R-01 NO SILENT DROPS: nessuna riga rimossa; nota di audit esplicita
+    per ogni override applicato.
+    """
+    out: list[ResolvedRow] = []
+    for idx, row in enumerate(resolved):
+        chosen_asin = overrides.get(idx)
+        if chosen_asin is None or chosen_asin == row.asin:
+            out.append(row)
+            continue
+        match = next((c for c in row.candidates if c.asin == chosen_asin), None)
+        if match is None:
+            out.append(row)
+            continue
+        original_asin = row.asin
+        out.append(
+            replace(
+                row,
+                asin=match.asin,
+                confidence_pct=match.confidence_pct,
+                is_ambiguous=_is_ambiguous_threshold(match.confidence_pct),
+                verified_buybox_eur=match.buybox_eur,
+                notes=(
+                    *row.notes,
+                    f"override manuale CFO: {match.asin} (era {original_asin or '(nessuno)'})",
+                ),
+            ),
+        )
+    return out
 
 
 def format_confidence_badge(confidence_pct: float) -> str:

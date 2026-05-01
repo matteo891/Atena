@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
     from talos.orchestrator import SessionResult
+    from talos.ui.listino_input import ResolvedRow
 
 
 # Default budget UI (10k EUR) - modificabile dall'utente.
@@ -849,6 +850,7 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     from talos.io_.scraper import _PlaywrightBrowserPage  # noqa: PLC0415
     from talos.io_.serp_search import _LiveAmazonSerpAdapter  # noqa: PLC0415
     from talos.ui.listino_input import (  # noqa: PLC0415
+        apply_candidate_overrides,
         build_listino_raw_from_resolved,
         format_confidence_badge,
         parse_descrizione_prezzo_csv,
@@ -940,6 +942,12 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     if resolved is None:
         return None
 
+    # Override candidati per righe ambigue (CHG-023, A3).
+    # Espande R-01 UX-side: il CFO può scegliere fra i top-N candidati
+    # invece di accettare il top-1 selected automatico.
+    overrides = _render_ambiguous_candidate_overrides(resolved)
+    resolved_with_overrides = apply_candidate_overrides(resolved, overrides)
+
     # Tabella preview con confidence + badge esposti (R-01 UX-side).
     # `buy_box_verificato` espone il prezzo Amazon NEW recuperato live
     # (CHG-022). "—" se non verificato (cache hit / lookup fail).
@@ -957,22 +965,25 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
                 "cache_hit": "Sì" if r.is_cache_hit else "No",
                 "note": "; ".join(r.notes) if r.notes else "",
             }
-            for r in resolved
+            for r in resolved_with_overrides
         ],
     )
     st.markdown("**Anteprima risoluzione:**")
     st.dataframe(preview_df, use_container_width=True)
 
-    n_resolved = sum(1 for r in resolved if r.asin)
-    n_total = len(resolved)
-    n_ambiguous = sum(1 for r in resolved if r.is_ambiguous and r.asin)
-    st.caption(
-        f"Risolti {n_resolved}/{n_total} (di cui {n_ambiguous} ambigui). "
-        "Le righe ambigue restano nel listino: il CFO valuta caso per caso.",
+    n_resolved = sum(1 for r in resolved_with_overrides if r.asin)
+    n_total = len(resolved_with_overrides)
+    n_ambiguous = sum(1 for r in resolved_with_overrides if r.is_ambiguous and r.asin)
+    n_overrides = len(overrides)
+    caption = (
+        f"Risolti {n_resolved}/{n_total} (di cui {n_ambiguous} ambigui)."
+        + (f" Override CFO applicati: {n_overrides}." if n_overrides else "")
+        + " Le righe ambigue restano nel listino: il CFO valuta caso per caso."
     )
+    st.caption(caption)
 
     if st.button("Conferma listino e crea sessione", key="confirm_resolved_listino_btn"):
-        listino_df = build_listino_raw_from_resolved(resolved)
+        listino_df = build_listino_raw_from_resolved(resolved_with_overrides)
         if listino_df.empty:
             st.error("Nessun ASIN risolto nel listino. Impossibile procedere.")
             return None
@@ -985,6 +996,58 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
         return listino_df
 
     return None
+
+
+def _render_ambiguous_candidate_overrides(
+    resolved: list[ResolvedRow],
+) -> dict[int, str]:
+    """Render selectbox top-N per ogni riga ambigua + ritorna override map.
+
+    Helper Streamlit-side. Ritorna `{idx_riga: chosen_asin}` con SOLO
+    le righe che il CFO ha effettivamente cambiato dal default
+    (selectbox a default = no override). Cache hit (candidates vuota)
+    e righe con un solo candidato non sono interattive.
+
+    UX:
+    - Expander chiuso di default (CFO accetta i top-1 a meno che non
+      voglia esplicitamente intervenire).
+    - Per ogni riga ambigua con N>1 candidati: caption descrizione +
+      `st.selectbox` con format compatto (asin + truncated title +
+      confidence%).
+    """
+    eligible_rows: list[tuple[int, ResolvedRow]] = [
+        (idx, r)
+        for idx, r in enumerate(resolved)
+        if r.is_ambiguous and r.asin and len(r.candidates) > 1
+    ]
+    if not eligible_rows:
+        return {}
+
+    overrides: dict[int, str] = {}
+    with st.expander(
+        f"Override candidati ambigui ({len(eligible_rows)} righe sopra soglia AMB)",
+        expanded=False,
+    ):
+        st.caption(
+            "Per ogni riga ambigua il sistema mostra i top-N candidati. "
+            "Il default è il top-1 a confidence (selezione automatica). "
+            "Cambia se conosci una scelta migliore.",
+        )
+        for idx, row in eligible_rows:
+            current_idx = next(
+                (i for i, c in enumerate(row.candidates) if c.asin == row.asin),
+                0,
+            )
+            chosen = st.selectbox(
+                f"`{row.descrizione[:60]}` (€{float(row.prezzo_eur):.2f})",
+                options=list(row.candidates),
+                index=current_idx,
+                format_func=lambda c: f"{c.asin} | {c.title[:50]} | conf {c.confidence_pct:.1f}%",
+                key=f"override_select_{idx}",
+            )
+            if chosen.asin != row.asin:
+                overrides[idx] = chosen.asin
+    return overrides
 
 
 def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Streamlit multi-step

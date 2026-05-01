@@ -16,6 +16,7 @@ from talos.ui.listino_input import (
     DEFAULT_REFERRAL_FEE_PCT,
     DescrizionePrezzoRow,
     ResolvedRow,
+    apply_candidate_overrides,
     build_listino_raw_from_resolved,
     format_confidence_badge,
     parse_descrizione_prezzo_csv,
@@ -491,3 +492,142 @@ def test_resolved_row_default_verified_buybox_is_none() -> None:
         notes=(),
     )
     assert row.verified_buybox_eur is None
+    assert row.candidates == ()
+
+
+# ---------------------------------------------------------------------------
+# `apply_candidate_overrides` (CHG-2026-05-01-023)
+# ---------------------------------------------------------------------------
+
+
+def _candidate(
+    asin: str,
+    *,
+    confidence: float = 80.0,
+    buybox: float | None = 100.0,
+    title: str = "Mock Title",
+) -> ResolutionCandidate:
+    return ResolutionCandidate(
+        asin=asin,
+        title=title,
+        buybox_eur=Decimal(str(buybox)) if buybox is not None else None,
+        fuzzy_title_pct=85.0,
+        delta_price_pct=5.0 if buybox is not None else None,
+        confidence_pct=confidence,
+    )
+
+
+def _ambiguous_resolved(asin: str = "B0DEFAULT01") -> ResolvedRow:
+    """ResolvedRow ambigua con 3 candidati (CHG-023 fixture base)."""
+    candidates = (
+        _candidate(asin, confidence=60.0, buybox=100.0),
+        _candidate("B0CAND00002", confidence=58.0, buybox=110.0),
+        _candidate("B0CAND00003", confidence=55.0, buybox=95.0),
+    )
+    return ResolvedRow(
+        descrizione="Galaxy ambiguous",
+        prezzo_eur=Decimal("99.00"),
+        asin=asin,
+        confidence_pct=60.0,
+        is_ambiguous=True,
+        is_cache_hit=False,
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+        notes=(),
+        verified_buybox_eur=Decimal("100.00"),
+        candidates=candidates,
+    )
+
+
+def test_apply_overrides_no_op_when_empty() -> None:
+    """Override map vuoto -> resolved invariato."""
+    rows = [_ambiguous_resolved()]
+    result = apply_candidate_overrides(rows, {})
+    assert result == rows
+
+
+def test_apply_overrides_swaps_asin_and_buybox_and_confidence() -> None:
+    """Override valido -> asin/buybox/confidence presi dal candidato scelto."""
+    rows = [_ambiguous_resolved("B0DEFAULT01")]
+    result = apply_candidate_overrides(rows, {0: "B0CAND00002"})
+    assert result[0].asin == "B0CAND00002"
+    assert result[0].confidence_pct == 58.0
+    assert result[0].verified_buybox_eur == Decimal("110.00")
+
+
+def test_apply_overrides_propagates_ambiguous_threshold() -> None:
+    """`is_ambiguous` ricalcolato sul confidence del candidato scelto (boundary 70)."""
+    high_conf_candidates = (
+        _candidate("B0DEFAULT01", confidence=60.0, buybox=100.0),
+        ResolutionCandidate(
+            asin="B0HIGHCONF1",
+            title="Confident",
+            buybox_eur=Decimal(100),
+            fuzzy_title_pct=95.0,
+            delta_price_pct=2.0,
+            confidence_pct=92.0,
+        ),
+    )
+    rows = [
+        ResolvedRow(
+            descrizione="x",
+            prezzo_eur=Decimal(100),
+            asin="B0DEFAULT01",
+            confidence_pct=60.0,
+            is_ambiguous=True,
+            is_cache_hit=False,
+            v_tot=0,
+            s_comp=0,
+            category_node=None,
+            notes=(),
+            verified_buybox_eur=Decimal(100),
+            candidates=high_conf_candidates,
+        ),
+    ]
+    result = apply_candidate_overrides(rows, {0: "B0HIGHCONF1"})
+    assert result[0].is_ambiguous is False  # 92 >= 70
+    assert result[0].confidence_pct == 92.0
+
+
+def test_apply_overrides_appends_audit_note() -> None:
+    """R-01: ogni override aggiunge nota audit con la scelta originale."""
+    rows = [_ambiguous_resolved("B0DEFAULT01")]
+    result = apply_candidate_overrides(rows, {0: "B0CAND00002"})
+    assert any("override manuale CFO" in n for n in result[0].notes)
+    assert any("B0CAND00002" in n and "B0DEFAULT01" in n for n in result[0].notes)
+
+
+def test_apply_overrides_invalid_asin_is_no_op() -> None:
+    """Override con asin non in candidates -> riga invariata (no-op silenzioso)."""
+    rows = [_ambiguous_resolved("B0DEFAULT01")]
+    result = apply_candidate_overrides(rows, {0: "B0NOTACAND0"})
+    assert result[0].asin == "B0DEFAULT01"
+    assert result[0].notes == ()
+
+
+def test_apply_overrides_redundant_no_op() -> None:
+    """Override == asin corrente -> no-op (no nota audit duplicata)."""
+    rows = [_ambiguous_resolved("B0DEFAULT01")]
+    result = apply_candidate_overrides(rows, {0: "B0DEFAULT01"})
+    assert result[0].notes == ()
+
+
+def test_apply_overrides_only_specified_indexes_changed() -> None:
+    """Override per idx specifico non tocca altre righe."""
+    rows = [
+        _ambiguous_resolved("B0AAA000001"),
+        _ambiguous_resolved("B0BBB000002"),
+        _ambiguous_resolved("B0CCC000003"),
+    ]
+    result = apply_candidate_overrides(rows, {1: "B0CAND00002"})
+    assert result[0].asin == "B0AAA000001"  # invariato
+    assert result[1].asin == "B0CAND00002"  # cambiato
+    assert result[2].asin == "B0CCC000003"  # invariato
+
+
+def test_apply_overrides_idx_out_of_range_no_crash() -> None:
+    """idx fuori range nell'override map -> ignorato, no crash."""
+    rows = [_ambiguous_resolved()]
+    result = apply_candidate_overrides(rows, {99: "B0CAND00002"})
+    assert result == rows
