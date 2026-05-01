@@ -4,7 +4,7 @@ Richiede Chromium installato via `uv run playwright install chromium`
 (~150 MB cache in `~/.cache/ms-playwright/`). Skip module-level se
 la cache non e' presente: pytest passa, CI senza Chromium non si rompe.
 
-Pattern: usa `data:text/html,...` URL inline (Playwright li supporta
+Pattern: usa `data:text/html;charset=utf-8,...` URL inline (Playwright li supporta
 nativamente) per evitare dipendenze da Amazon.it reale (lento,
 non-deterministico, ToS-issue) o da httpserver locale.
 
@@ -79,7 +79,7 @@ pytestmark = [
 def test_live_playwright_goto_inline_html_and_query_css() -> None:
     """Carica HTML inline via data URL e legge un selettore CSS."""
     html = "<html><body><h1 id='title'>Hello Talos</h1></body></html>"
-    url = f"data:text/html,{html}"
+    url = f"data:text/html;charset=utf-8,{html}"
     with _PlaywrightBrowserPage() as page:
         page.goto(url)
         text = page.query_selector_text("#title")
@@ -89,7 +89,7 @@ def test_live_playwright_goto_inline_html_and_query_css() -> None:
 def test_live_playwright_query_xpath() -> None:
     """XPath supportato via prefisso `xpath=`."""
     html = "<html><body><div class='price'>€ 199,99</div></body></html>"
-    url = f"data:text/html,{html}"
+    url = f"data:text/html;charset=utf-8,{html}"
     with _PlaywrightBrowserPage() as page:
         page.goto(url)
         text = page.query_selector_xpath_text("//div[@class='price']")
@@ -99,7 +99,7 @@ def test_live_playwright_query_xpath() -> None:
 def test_live_playwright_returns_none_on_missing_selector() -> None:
     """Selettore assente -> None (R-01: il caller decide il fallback)."""
     html = "<html><body><h1>Empty</h1></body></html>"
-    url = f"data:text/html,{html}"
+    url = f"data:text/html;charset=utf-8,{html}"
     with _PlaywrightBrowserPage() as page:
         page.goto(url)
         assert page.query_selector_text("#missing-id") is None
@@ -109,7 +109,7 @@ def test_live_playwright_returns_none_on_missing_selector() -> None:
 def test_live_playwright_close_is_idempotent() -> None:
     """`close()` chiamato due volte non solleva (idempotenza)."""
     page = _PlaywrightBrowserPage()
-    page.goto("data:text/html,<p>x</p>")
+    page.goto("data:text/html;charset=utf-8,<p>x</p>")
     page.close()
     page.close()  # secondo close: no raise
 
@@ -147,7 +147,7 @@ def test_live_playwright_amazon_scraper_end_to_end_with_data_url() -> None:
     # golden HTML statico Amazon.
     scraper = AmazonScraper()
     with _PlaywrightBrowserPage() as page:
-        page.goto(f"data:text/html,{html}")
+        page.goto(f"data:text/html;charset=utf-8,{html}")
         title = page.query_selector_text("#productTitle")
         price_text = page.query_selector_text(
             "#corePrice_feature_div .a-price .a-offscreen",
