@@ -3,7 +3,7 @@ id: CHG-2026-05-02-001
 date: 2026-05-02
 author: Claude (su autorizzazione Leader, modalità "macina" round 7 — UX percentuali Path B' MVP CFO)
 status: Draft
-commit: TBD
+commit: 30649ef
 adr_ref: ADR-0016, ADR-0014, ADR-0019, ADR-0018
 ---
 
@@ -276,4 +276,4 @@ def test_pct_column_config_excludes_confidence_pct():
   text "prezzo = costo fornitore" (bug semantico CSV pre-CHG-039).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: TBD (backfill hash post-commit).
+- Commit: `30649ef`.
