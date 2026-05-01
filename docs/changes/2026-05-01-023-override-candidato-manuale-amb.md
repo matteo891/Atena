@@ -3,7 +3,7 @@ id: CHG-2026-05-01-023
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 5 — A3 hardening flow descrizione+prezzo: override candidato manuale per righe ambigue)
 status: Draft
-commit: <pending>
+commit: d699111
 adr_ref: ADR-0017, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -290,4 +290,4 @@ resolved_with_overrides = apply_candidate_overrides(resolved, overrides)
   Possibili rotte (decisione Leader): (z) `structlog.bind`
   context tracing, (q) refactor UI multi-page ADR-0016, (β)
   `upsert_session` decisione semantica, (s) golden Samsung 1000 ASIN.
-- Commit: `<pending>`.
+- Commit: `d699111`.
