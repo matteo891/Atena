@@ -3,7 +3,7 @@ id: CHG-2026-05-01-034
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 6 — blocco B1 sessione dedicata 5/8 — chiude fase B1.1)
 status: Draft
-commit: PENDING
+commit: 1fe1439
 adr_ref: ADR-0021, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -220,4 +220,4 @@ def test_resolve_started_emits_canonical_event(log_capture: LogCapture) -> None:
   orchestrator).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: PENDING.
+- Commit: `1fe1439`.
