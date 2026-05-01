@@ -14,6 +14,7 @@ Vedi memory `project_io_extract_design_decisions.md` per il
 pacchetto D1-D5 ratificato dal Leader.
 """
 
+from talos.extract.acquisition import acquire_and_persist
 from talos.extract.asin_master_writer import (
     AsinMasterInput,
     build_asin_master_input,
@@ -43,6 +44,7 @@ __all__ = [
     "MatchStatus",
     "SamsungEntities",
     "SamsungExtractor",
+    "acquire_and_persist",
     "build_asin_master_input",
     "load_whitelist",
     "upsert_asin_master",
