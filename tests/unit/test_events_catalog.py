@@ -18,12 +18,17 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         "scrape.selector_fail",
         "ocr.below_confidence",
         "db.audit_log_write",
+        # Errata CHG-2026-04-30-058 (drift sanato in CHG-2026-05-01-021)
+        "session.replayed",
+        # Errata CHG-2026-05-01-021 — UI flow descrizione+prezzo (ADR-0016)
+        "ui.resolve_started",
+        "ui.resolve_confirmed",
     },
 )
 
 
 @pytest.mark.unit
-def test_catalog_has_ten_canonical_events() -> None:
+def test_catalog_matches_expected_events() -> None:
     assert set(CANONICAL_EVENTS.keys()) == _EXPECTED_EVENTS
 
 

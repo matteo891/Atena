@@ -17,6 +17,7 @@ Refactor multi-page ADR-0016 compliant (`pages/`, `components/`,
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -61,6 +62,41 @@ DEFAULT_BUDGET_EUR: float = 10_000.0
 DEFAULT_TENANT_ID: int = 1
 # Chiave config override per soglia ROI (CHG-050).
 CONFIG_KEY_VETO_ROI: str = "veto_roi_pct"
+
+_logger = logging.getLogger(__name__)
+
+
+def _emit_ui_resolve_started(*, n_rows: int, has_factory: bool) -> None:
+    """Emette evento canonico `ui.resolve_started` (catalogo ADR-0021).
+
+    Helper puro: testabile via caplog senza dipendenza da Streamlit.
+    Tracking quote SERP/Keepa pre-resolve nel flow descrizione+prezzo.
+    """
+    _logger.debug(
+        "ui.resolve_started",
+        extra={"n_rows": n_rows, "has_factory": has_factory},
+    )
+
+
+def _emit_ui_resolve_confirmed(
+    *,
+    n_total: int,
+    n_resolved: int,
+    n_ambiguous: int,
+) -> None:
+    """Emette evento canonico `ui.resolve_confirmed` (catalogo ADR-0021).
+
+    Helper puro: testabile via caplog senza dipendenza da Streamlit.
+    Tracking conversion rate listino umano → run_session.
+    """
+    _logger.debug(
+        "ui.resolve_confirmed",
+        extra={
+            "n_total": n_total,
+            "n_resolved": n_resolved,
+            "n_ambiguous": n_ambiguous,
+        },
+    )
 
 
 def get_session_factory_or_none() -> sessionmaker[Session] | None:
@@ -871,6 +907,8 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
             )
             return None
 
+        _emit_ui_resolve_started(n_rows=len(rows), has_factory=factory is not None)
+
         keepa_client = KeepaClient(api_key=api_key, rate_limit_per_minute=20)
         with _PlaywrightBrowserPage() as page:
             serp_adapter = _LiveAmazonSerpAdapter(browser_factory=lambda: page)
@@ -933,6 +971,11 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
         if listino_df.empty:
             st.error("Nessun ASIN risolto nel listino. Impossibile procedere.")
             return None
+        _emit_ui_resolve_confirmed(
+            n_total=n_total,
+            n_resolved=n_resolved,
+            n_ambiguous=n_ambiguous,
+        )
         st.session_state.resolved_rows = None  # reset per next batch
         return listino_df
 

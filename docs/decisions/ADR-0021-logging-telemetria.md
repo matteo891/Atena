@@ -175,3 +175,24 @@ di `replay_session` (CHG-2026-04-30-056). Campi obbligatori:
 deve restare tracciabile per audit ("quanti scenari ha esplorato il
 CFO?"). Modifica additiva, non altera la semantica degli eventi
 esistenti — non richiede supersessione (regola ADR-0001 non si applica).
+
+**2026-05-01 (CHG-2026-05-01-021) — additivo catalogo eventi UI + bonus correttivo.**
+Aggiunti due eventi canonici per il flow descrizione+prezzo (CHG-020):
+
+| Evento | Modulo | Campi obbligatori |
+|---|---|---|
+| `ui.resolve_started` | `ui/dashboard.py` | `n_rows`, `has_factory` |
+| `ui.resolve_confirmed` | `ui/dashboard.py` | `n_total`, `n_resolved`, `n_ambiguous` |
+
+Razionale: il flow `(descrizione, prezzo) → ASIN` consuma quota
+SERP/Keepa al primo click ("Risolvi descrizioni"); senza `ui.resolve_started`
+il costo e' invisibile in produzione. `ui.resolve_confirmed` traccia il
+conversion rate (quanti listini umani caricati arrivano effettivamente
+a `run_session`) — KPI prodotto per misurare se il MVP CFO regge
+nell'uso reale. Catalogo ora **13 voci totali**.
+
+**Bonus correttivo:** la voce `session.replayed` (errata CHG-058) era
+stata aggiunta ad ADR-0021 ma non a `src/talos/observability/events.py`
+(`CANONICAL_EVENTS` rimasto a 10 voci). Drift sanato in CHG-021: il dict
+ora contiene tutte le 13 voci. Modifica additiva, non altera la
+semantica degli eventi esistenti — non richiede supersessione.

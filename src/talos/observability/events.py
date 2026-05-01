@@ -12,7 +12,7 @@ di un nuovo modulo applicativo. Rimuoverlo richiede supersessione di ADR-0021.
 
 from typing import Final
 
-# ── Catalogo eventi canonici (10 voci) ──────────────────────────────────────
+# ── Catalogo eventi canonici (13 voci) ──────────────────────────────────────
 # Mapping: event_name → tuple di campi obbligatori da passare nel kwargs
 # del logger. La tupla è il contratto che il chiamante deve onorare; il
 # test di governance verificherà solo la presenza dell'evento, mentre il
@@ -37,6 +37,11 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     "ocr.below_confidence": ("file", "confidence", "threshold", "text_extracted"),
     # Persistenza (ADR-0015) — replica del trigger DB audit_log
     "db.audit_log_write": ("actor", "table", "op", "row_id"),
+    # Orchestrator (ADR-0018) — replay what-if (errata CHG-2026-04-30-058)
+    "session.replayed": ("asin_count", "locked_in_count", "budget", "budget_t1"),
+    # UI flow descrizione+prezzo (ADR-0016) — errata CHG-2026-05-01-021
+    "ui.resolve_started": ("n_rows", "has_factory"),
+    "ui.resolve_confirmed": ("n_total", "n_resolved", "n_ambiguous"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -50,3 +55,6 @@ EVENT_KEEPA_RATE_LIMIT_HIT: Final[str] = "keepa.rate_limit_hit"
 EVENT_SCRAPE_SELECTOR_FAIL: Final[str] = "scrape.selector_fail"
 EVENT_OCR_BELOW_CONFIDENCE: Final[str] = "ocr.below_confidence"
 EVENT_DB_AUDIT_LOG_WRITE: Final[str] = "db.audit_log_write"
+EVENT_SESSION_REPLAYED: Final[str] = "session.replayed"
+EVENT_UI_RESOLVE_STARTED: Final[str] = "ui.resolve_started"
+EVENT_UI_RESOLVE_CONFIRMED: Final[str] = "ui.resolve_confirmed"
