@@ -88,6 +88,50 @@ def test_get_session_factory_returns_none_without_db_url(monkeypatch: pytest.Mon
     assert factory is None
 
 
+# ---------------------------------------------------------------------------
+# `_pct_column_config` (CHG-2026-05-01-040)
+# ---------------------------------------------------------------------------
+
+
+def test_pct_column_config_maps_known_percentage_columns() -> None:
+    """Helper ritorna entry per ogni colonna in `_PERCENTAGE_COLUMNS`."""
+    from talos.ui.dashboard import _pct_column_config  # noqa: PLC0415
+
+    cols = ["asin", "roi", "vgp_score", "cost_eur", "referral_fee_pct"]
+    cfg = _pct_column_config(cols)
+    assert set(cfg.keys()) == {"roi", "vgp_score", "referral_fee_pct"}
+
+
+def test_pct_column_config_empty_when_no_percentage_columns() -> None:
+    """DataFrame senza colonne percentuali -> dict vuoto (no-op safe)."""
+    from talos.ui.dashboard import _pct_column_config  # noqa: PLC0415
+
+    cfg = _pct_column_config(["asin", "buy_box_eur", "cost_eur", "qty"])
+    assert cfg == {}
+
+
+def test_pct_column_config_includes_norm_intermediates() -> None:
+    """Colonne intermedie *_norm e vgp_score_raw vanno in display percentuale."""
+    from talos.ui.dashboard import _pct_column_config  # noqa: PLC0415
+
+    cols = ["roi_norm", "velocity_norm", "cash_profit_norm", "vgp_score_raw"]
+    cfg = _pct_column_config(cols)
+    assert set(cfg.keys()) == {
+        "roi_norm",
+        "velocity_norm",
+        "cash_profit_norm",
+        "vgp_score_raw",
+    }
+
+
+def test_pct_column_config_excludes_confidence_pct() -> None:
+    """`confidence_pct` è già 0-100 (compute_confidence) -> NON formattare come %."""
+    from talos.ui.dashboard import _pct_column_config  # noqa: PLC0415
+
+    cfg = _pct_column_config(["confidence_pct", "asin"])
+    assert "confidence_pct" not in cfg
+
+
 def test_persistence_helpers_re_exported() -> None:
     """`talos.ui` re-esporta `get_session_factory_or_none`, `try_persist_session`."""
     from talos import ui  # noqa: PLC0415

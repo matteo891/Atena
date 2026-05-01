@@ -17,7 +17,7 @@ Refactor multi-page ADR-0016 compliant (`pages/`, `components/`,
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 import streamlit as st
@@ -71,6 +71,44 @@ DEFAULT_TENANT_ID: int = 1
 CONFIG_KEY_VETO_ROI: str = "veto_roi_pct"
 
 _logger = structlog.get_logger(__name__)
+
+
+# CHG-2026-05-01-040: colonne semanticamente "frazione decimale" che la UI
+# rende come percentuale (1 decimale) tramite Streamlit `column_config`. La
+# pipeline interna mantiene frazione (zero blast radius su formule/test/DB).
+# `confidence_pct` NON è qui: è già 0-100 (compute_confidence) ed è renderizzato
+# come badge stringa via format_confidence_badge.
+_PERCENTAGE_COLUMNS: frozenset[str] = frozenset(
+    {
+        "roi",
+        "vgp_score",
+        "vgp_score_raw",
+        "roi_norm",
+        "velocity_norm",
+        "cash_profit_norm",
+        "referral_fee_pct",
+        "referral_fee_resolved",
+        "fee_pct",  # tabella sidebar referral fee per categoria
+    },
+)
+
+
+def _pct_column_config(
+    columns: pd.Index | list[str] | tuple[str, ...],
+) -> dict[str, Any]:
+    """Build column_config dict mappando colonne percentage a format `0.0%`.
+
+    Streamlit `NumberColumn(format="0.0%")` (d3-format) moltiplica
+    automaticamente x100 e aggiunge il suffisso `%`. CHG-2026-05-01-040.
+    Return type `dict[str, Any]`: streamlit espone factory functions
+    (es. `NumberColumn`) ma non un public type alias per i column config
+    values; `Any` evita dipendenze su moduli interni `streamlit.elements.lib`.
+    """
+    return {
+        col: st.column_config.NumberColumn(format="0.0%")
+        for col in columns
+        if col in _PERCENTAGE_COLUMNS
+    }
 
 
 def _emit_ui_resolve_started(*, n_rows: int, has_factory: bool) -> None:
@@ -226,16 +264,19 @@ def _render_sidebar(
         step=1,
         help="L05: slider 7..30 giorni, default 15. Modifica la quantita' target F4.",
     )
+    # CHG-2026-05-01-040: input in percentuale (8.0 invece di 0.08), conversione
+    # ÷100 prima di passare alla pipeline (che resta in frazione decimale [0, 1]).
     persisted_threshold = fetch_veto_roi_threshold_or_default(factory)
-    veto_threshold = st.sidebar.slider(
-        "Veto ROI Minimo",
-        min_value=0.01,
-        max_value=0.50,
-        value=persisted_threshold,
-        step=0.01,
-        format="%.2f",
-        help="R-08: ASIN con ROI sotto soglia hanno vgp_score=0 (default 8%).",
+    veto_threshold_pct = st.sidebar.slider(
+        "Veto ROI Minimo (%)",
+        min_value=1.0,
+        max_value=50.0,
+        value=persisted_threshold * 100.0,
+        step=0.5,
+        format="%.1f%%",
+        help="R-08: ASIN con ROI sotto soglia hanno vgp_score=0 (default 8.0%).",
     )
+    veto_threshold = veto_threshold_pct / 100.0
     if factory is not None:
         col_save, col_reset = st.sidebar.columns(2)
         if col_save.button("Salva soglia ROI", key="save_threshold_btn"):
@@ -247,7 +288,9 @@ def _render_sidebar(
         if col_reset.button("Reset al default", key="reset_threshold_btn"):
             ok, err = try_delete_veto_roi_threshold(factory)
             if ok:
-                st.sidebar.success(f"Soglia resettata al default {DEFAULT_ROI_VETO_THRESHOLD:.2f}.")
+                st.sidebar.success(
+                    f"Soglia resettata al default {DEFAULT_ROI_VETO_THRESHOLD * 100:.1f}%.",
+                )
             else:  # pragma: no cover - UI-only error path
                 st.sidebar.error(f"Reset fallito: {err}")
 
@@ -275,25 +318,29 @@ def _render_sidebar_referral_fees(factory: sessionmaker[Session]) -> None:
     with st.sidebar.expander("Referral Fee per categoria"):
         existing = fetch_category_referral_fees_or_empty(factory)
         if existing:
+            ref_fees_df = pd.DataFrame(
+                [{"category": c, "fee_pct": v} for c, v in sorted(existing.items())],
+            )
             st.dataframe(
-                pd.DataFrame(
-                    [{"category": c, "fee_pct": v} for c, v in sorted(existing.items())],
-                ),
+                ref_fees_df,
                 use_container_width=True,
+                column_config=_pct_column_config(ref_fees_df.columns),
             )
         else:
             st.caption("Nessun override registrato.")
 
         category = st.text_input("Categoria", key="ref_fee_cat_input").strip()
-        fee = st.number_input(
-            "Fee %",
+        # CHG-2026-05-01-040: input in percentuale (8.0%), conversion ÷100.
+        fee_pct = st.number_input(
+            "Fee (%)",
             min_value=0.0,
-            max_value=1.0,
-            value=0.08,
-            step=0.01,
-            format="%.4f",
+            max_value=100.0,
+            value=8.0,
+            step=0.1,
+            format="%.1f",
             key="ref_fee_value_input",
         )
+        fee = fee_pct / 100.0
         col_save, col_reset = st.columns(2)
         if col_save.button("Salva", key="save_ref_fee_btn"):
             if not category:
@@ -336,7 +383,11 @@ def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
         st.info("Cart vuoto. Nessun ASIN allocato.")
         return
     cart_df = pd.DataFrame(cart_items)
-    st.dataframe(cart_df, use_container_width=True)
+    st.dataframe(
+        cart_df,
+        use_container_width=True,
+        column_config=_pct_column_config(cart_df.columns),
+    )
 
 
 def fetch_recent_sessions_or_empty(
@@ -676,7 +727,12 @@ def _render_history(
         if not rows:
             st.caption("Nessuna sessione precedente trovata.")
             return
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        sessions_df = pd.DataFrame(rows)
+        st.dataframe(
+            sessions_df,
+            use_container_width=True,
+            column_config=_pct_column_config(sessions_df.columns),
+        )
 
         st.divider()
         st.caption("Ricarica una sessione storica (incolla l'id dalla colonna sopra)")
@@ -718,13 +774,23 @@ def _render_loaded_session_detail(
 
     if loaded.cart_rows:
         st.caption("Cart")
-        st.dataframe(pd.DataFrame(loaded.cart_rows), use_container_width=True)
+        cart_df = pd.DataFrame(loaded.cart_rows)
+        st.dataframe(
+            cart_df,
+            use_container_width=True,
+            column_config=_pct_column_config(cart_df.columns),
+        )
     else:
         st.caption("Cart: nessun item allocato.")
 
     if loaded.panchina_rows:
         st.caption("Panchina (idonei scartati per cassa)")
-        st.dataframe(pd.DataFrame(loaded.panchina_rows), use_container_width=True)
+        panchina_df = pd.DataFrame(loaded.panchina_rows)
+        st.dataframe(
+            panchina_df,
+            use_container_width=True,
+            column_config=_pct_column_config(panchina_df.columns),
+        )
     else:
         st.caption("Panchina: vuota.")
 
@@ -792,7 +858,12 @@ def _render_compare_view(loaded: LoadedSession, replayed: SessionResult) -> None
             f"{int(kpis['original']['cart_count'])} / {int(kpis['original']['panchina_count'])}",
         )
         if loaded.cart_rows:
-            st.dataframe(pd.DataFrame(loaded.cart_rows), use_container_width=True)
+            cart_df_orig = pd.DataFrame(loaded.cart_rows)
+            st.dataframe(
+                cart_df_orig,
+                use_container_width=True,
+                column_config=_pct_column_config(cart_df_orig.columns),
+            )
 
     with col_rep:
         st.markdown("**Replay**")
@@ -824,7 +895,12 @@ def _render_compare_view(loaded: LoadedSession, replayed: SessionResult) -> None
                 }
                 for ci in replayed.cart.items
             ]
-            st.dataframe(pd.DataFrame(cart_view), use_container_width=True)
+            cart_df_rep = pd.DataFrame(cart_view)
+            st.dataframe(
+                cart_df_rep,
+                use_container_width=True,
+                column_config=_pct_column_config(cart_df_rep.columns),
+            )
 
 
 def _render_replay_result(replayed: SessionResult) -> None:
@@ -847,12 +923,22 @@ def _render_replay_result(replayed: SessionResult) -> None:
             for ci in replayed.cart.items
         ]
         st.caption("Nuovo Cart")
-        st.dataframe(pd.DataFrame(cart_view), use_container_width=True)
+        cart_df = pd.DataFrame(cart_view)
+        st.dataframe(
+            cart_df,
+            use_container_width=True,
+            column_config=_pct_column_config(cart_df.columns),
+        )
 
     if not replayed.panchina.empty:
         st.caption("Nuova Panchina")
         cols = [c for c in ("asin", "vgp_score", "qty_final", "roi") if c in replayed.panchina]
-        st.dataframe(replayed.panchina[cols], use_container_width=True)
+        panchina_view = replayed.panchina[cols]
+        st.dataframe(
+            panchina_view,
+            use_container_width=True,
+            column_config=_pct_column_config(panchina_view.columns),
+        )
 
 
 def _render_panchina_table(panchina: pd.DataFrame) -> None:
@@ -864,7 +950,12 @@ def _render_panchina_table(panchina: pd.DataFrame) -> None:
     display_cols = [
         c for c in ["asin", "vgp_score", "roi", "cost_eur", "qty_final"] if c in panchina.columns
     ]
-    st.dataframe(panchina[display_cols], use_container_width=True)
+    panchina_view = panchina[display_cols]
+    st.dataframe(
+        panchina_view,
+        use_container_width=True,
+        column_config=_pct_column_config(panchina_view.columns),
+    )
 
 
 def _render_descrizione_prezzo_flow(
@@ -1054,7 +1145,11 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
         ],
     )
     st.markdown("**Anteprima risoluzione:**")
-    st.dataframe(preview_df, use_container_width=True)
+    st.dataframe(
+        preview_df,
+        use_container_width=True,
+        column_config=_pct_column_config(preview_df.columns),
+    )
 
     n_resolved = count_resolved(resolved_with_overrides)
     n_total = len(resolved_with_overrides)
@@ -1232,7 +1327,11 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
     _render_panchina_table(result.panchina)
 
     with st.expander("Listino completo enriched (audit / debug)"):
-        st.dataframe(result.enriched_df, use_container_width=True)
+        st.dataframe(
+            result.enriched_df,
+            use_container_width=True,
+            column_config=_pct_column_config(result.enriched_df.columns),
+        )
 
     # Persistenza opzionale: graceful degrade se DB non disponibile.
     factory = get_session_factory_or_none()
