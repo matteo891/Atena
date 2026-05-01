@@ -3,7 +3,7 @@ id: CHG-2026-05-01-039
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 7 — fix architetturale Path B' MVP CFO)
 status: Draft
-commit: TBD
+commit: 60488bf
 adr_ref: ADR-0017, ADR-0014, ADR-0019, ADR-0016
 ---
 
@@ -300,4 +300,4 @@ def test_cache_hit_calls_lookup_callable_for_live_buybox(monkeypatch):
   fornitore"), B5 (golden 1000), B4 (bulk async).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: TBD (backfill hash post-commit).
+- Commit: `60488bf`.
