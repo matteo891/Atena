@@ -3,7 +3,7 @@ id: CHG-2026-05-02-002
 date: 2026-05-02
 author: Claude (su autorizzazione Leader, modalità "macina" round 7 cont — fix urgente bug introdotto in CHG-2026-05-02-001)
 status: Draft
-commit: TBD
+commit: b3a8260
 adr_ref: ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -231,4 +231,4 @@ def test_percentage_view_does_not_mutate_input():
   `_percentage_view`).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: TBD (backfill hash post-commit).
+- Commit: `b3a8260`.
