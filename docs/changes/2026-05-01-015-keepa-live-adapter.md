@@ -3,7 +3,7 @@ id: CHG-2026-05-01-015
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — sblocco canale 1 Keepa live post arrivo private API key)
 status: Draft
-commit: TBD
+commit: bb5a9cd
 adr_ref: ADR-0017, ADR-0014, ADR-0019, ADR-0021
 ---
 
@@ -349,4 +349,4 @@ def _last_valid_value(arr):
 - Successore atteso: CHG-2026-05-01-016 (sblocco asin_resolver
   description→ASIN, oppure golden integration test live combined
   Keepa+scraper).
-- Commit: TBD (backfill post-commit).
+- Commit: `bb5a9cd`.
