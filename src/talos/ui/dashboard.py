@@ -436,7 +436,7 @@ def _render_metrics(saturation: float, budget_t1: float) -> None:
 
 
 def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
-    """Tabella Cart (ASIN allocati)."""
+    """Tabella Cart (ASIN allocati) + bottone export CSV."""
     st.subheader("Cart — ASIN allocati (R-04 Locked-in + R-06 Tetris)")
     if not cart_items:
         st.info("Cart vuoto. Nessun ASIN allocato.")
@@ -444,6 +444,13 @@ def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
     cart_df = pd.DataFrame(cart_items)
     cart_view, cart_cfg = _percentage_view(cart_df)
     st.dataframe(cart_view, use_container_width=True, column_config=cart_cfg)
+    st.download_button(
+        "⬇ Esporta Cart (CSV)",
+        data=cart_df.to_csv(index=False).encode("utf-8"),
+        file_name="talos_cart.csv",
+        mime="text/csv",
+        key="export_cart_btn",
+    )
 
 
 def fetch_recent_sessions_or_empty(
@@ -976,7 +983,7 @@ def _render_replay_result(replayed: SessionResult) -> None:
 
 
 def _render_panchina_table(panchina: pd.DataFrame) -> None:
-    """Tabella Panchina (R-09: idonei scartati per cassa, ordinati VGP DESC)."""
+    """Tabella Panchina (R-09: idonei scartati per cassa, ordinati VGP DESC) + export CSV."""
     st.subheader("Panchina — Idonei scartati per capienza (R-09)")
     if panchina.empty:
         st.info("Panchina vuota. Tutti gli idonei sono in Cart.")
@@ -984,8 +991,16 @@ def _render_panchina_table(panchina: pd.DataFrame) -> None:
     display_cols = [
         c for c in ["asin", "vgp_score", "roi", "cost_eur", "qty_final"] if c in panchina.columns
     ]
-    panchina_view, panchina_cfg = _percentage_view(panchina[display_cols])
+    panchina_subset = panchina[display_cols]
+    panchina_view, panchina_cfg = _percentage_view(panchina_subset)
     st.dataframe(panchina_view, use_container_width=True, column_config=panchina_cfg)
+    st.download_button(
+        "⬇ Esporta Panchina (CSV)",
+        data=panchina_subset.to_csv(index=False).encode("utf-8"),
+        file_name="talos_panchina.csv",
+        mime="text/csv",
+        key="export_panchina_btn",
+    )
 
 
 def _render_descrizione_prezzo_flow(
