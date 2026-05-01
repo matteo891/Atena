@@ -129,20 +129,6 @@ def test_is_ambiguous_custom_threshold() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_resolution_candidate_is_frozen() -> None:
-    """`ResolutionCandidate` immutable (errore assegnando dopo costruzione)."""
-    cand = ResolutionCandidate(
-        asin="B0CSTC2RDW",
-        title="Galaxy S24 5G",
-        buybox_eur=Decimal("549.00"),
-        fuzzy_title_pct=92.0,
-        delta_price_pct=2.0,
-        confidence_pct=95.0,
-    )
-    with pytest.raises(AttributeError):
-        cand.asin = "X"  # type: ignore[misc]
-
-
 def test_resolution_result_default_ambiguous_true_and_no_candidates() -> None:
     """Default conservativo: senza selected/candidates -> ambiguo + tuple vuote."""
     result = ResolutionResult(

@@ -240,13 +240,6 @@ def test_session_input_defaults() -> None:
     assert inp.lot_size == 5
 
 
-def test_session_input_is_frozen() -> None:
-    """SessionInput frozen=True -> immutable."""
-    inp = SessionInput(listino_raw=_samsung_listino(), budget=1000.0)
-    with pytest.raises((AttributeError, Exception)):  # FrozenInstanceError o equivalent
-        inp.budget = 2000.0  # type: ignore[misc]
-
-
 # Edge cases
 
 

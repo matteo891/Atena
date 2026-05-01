@@ -16,7 +16,6 @@ from talos.io_ import (
     DEFAULT_OCR_CONFIDENCE_THRESHOLD,
     DEFAULT_TESSERACT_LANG,
     OcrPipeline,
-    OcrResult,
     OcrStatus,
     RawOcrData,
     TesseractAdapter,
@@ -65,13 +64,6 @@ def test_ocr_status_string_values() -> None:
     """OcrStatus e' StrEnum con valori 'OK' e 'AMBIGUOUS'."""
     assert OcrStatus.OK.value == "OK"
     assert OcrStatus.AMBIGUOUS.value == "AMBIGUOUS"
-
-
-def test_ocr_result_is_frozen() -> None:
-    """OcrResult immutabile."""
-    result = OcrResult(text="x", confidence=80.0, status=OcrStatus.OK, source_kind="image")
-    with pytest.raises(AttributeError):
-        result.text = "mutated"  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------

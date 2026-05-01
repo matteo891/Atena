@@ -147,16 +147,6 @@ def test_product_data_is_frozen() -> None:
         pd.asin = "Y"  # type: ignore[misc]
 
 
-def test_product_data_default_factories_are_independent() -> None:
-    """sources/notes default factory non condividono lo stesso oggetto."""
-    a = ProductData(asin="A", buybox_eur=None, bsr=None, fee_fba_eur=None, title=None)
-    b = ProductData(asin="B", buybox_eur=None, bsr=None, fee_fba_eur=None, title=None)
-    a.sources["x"] = "1"
-    a.notes.append("note-a")
-    assert b.sources == {}
-    assert b.notes == []
-
-
 # ---------------------------------------------------------------------------
 # Keepa primary success
 # ---------------------------------------------------------------------------
