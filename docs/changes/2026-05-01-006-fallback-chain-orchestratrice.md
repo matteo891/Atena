@@ -3,7 +3,7 @@ id: CHG-2026-05-01-006
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" sessione attivata 2026-05-01 — clausola di sessione, non persiste; Leader ha scelto Path B = MVP "prodotto funzionante")
 status: Draft
-commit: TBD
+commit: 0c9b93a
 adr_ref: ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -352,4 +352,4 @@ def _try_keepa_field(
   Setup di sistema preflight: `apt install tesseract-ocr
   tesseract-ocr-ita tesseract-ocr-eng` + `uv run playwright
   install chromium` + sandbox `TALOS_KEEPA_API_KEY`.
-- Commit: TBD.
+- Commit: `0c9b93a`.
