@@ -1309,24 +1309,12 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
 
     _render_metrics(saturation=result.cart.saturation, budget_t1=result.budget_t1)
 
-    # CHG-2026-05-02-005: caption audit V_tot source distribution.
-    # Trasparenza per il CFO: capisce se i numeri di vendite mensili
-    # vengono dal suo CSV (override esplicito) o da stima MVP da BSR.
-    if "v_tot_source" in result.enriched_df.columns:
-        v_tot_counts = result.enriched_df["v_tot_source"].value_counts().to_dict()
-        n_csv = int(v_tot_counts.get("csv", 0))
-        n_bsr = int(v_tot_counts.get("bsr_estimate_mvp", 0))
-        n_zero = int(v_tot_counts.get("default_zero", 0))
-        n_total = n_csv + n_bsr + n_zero
-        if n_total > 0:
-            parts = []
-            if n_csv:
-                parts.append(f"{n_csv} da CSV")
-            if n_bsr:
-                parts.append(f"{n_bsr} stimati da BSR (MVP placeholder)")
-            if n_zero:
-                parts.append(f"{n_zero} default zero (no BSR)")
-            st.caption(f"V_tot sources ({n_total} ASIN): " + ", ".join(parts) + ".")
+    # CHG-2026-05-02-006: caption audit V_tot source extracted to helper.
+    from talos.ui.listino_input import format_v_tot_source_caption  # noqa: PLC0415
+
+    v_tot_caption = format_v_tot_source_caption(result.enriched_df)
+    if v_tot_caption:
+        st.caption(v_tot_caption)
 
     cart_items_view = [
         {

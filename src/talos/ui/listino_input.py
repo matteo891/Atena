@@ -630,6 +630,35 @@ def count_cache_hit(resolved: list[ResolvedRow]) -> int:
     return sum(1 for r in resolved if r.is_cache_hit)
 
 
+def format_v_tot_source_caption(df: pd.DataFrame) -> str:
+    """Format caption per distribuzione fonte V_tot (CHG-2026-05-02-006).
+
+    Helper puro testabile: aggrega `v_tot_source` da listino_raw output
+    di `build_listino_raw_from_resolved` in caption per CFO. Trasparenza
+    audit: il CFO capisce se i numeri vendite mensili vengono dal suo
+    CSV (override esplicito) o dalla stima MVP placeholder da BSR.
+
+    Lista vuota o colonna mancante -> stringa vuota (caller suppress).
+    """
+    if df.empty or "v_tot_source" not in df.columns:
+        return ""
+    counts = df["v_tot_source"].value_counts().to_dict()
+    n_csv = int(counts.get("csv", 0))
+    n_bsr = int(counts.get("bsr_estimate_mvp", 0))
+    n_zero = int(counts.get("default_zero", 0))
+    n_total = n_csv + n_bsr + n_zero
+    if n_total == 0:
+        return ""
+    parts: list[str] = []
+    if n_csv:
+        parts.append(f"{n_csv} da CSV")
+    if n_bsr:
+        parts.append(f"{n_bsr} stimati da BSR (MVP placeholder)")
+    if n_zero:
+        parts.append(f"{n_zero} default zero (no BSR)")
+    return f"V_tot sources ({n_total} ASIN): " + ", ".join(parts) + "."
+
+
 def count_with_verified_buybox(resolved: list[ResolvedRow]) -> int:
     """Count righe con `verified_buybox_eur is not None` (Buy Box live CHG-022).
 

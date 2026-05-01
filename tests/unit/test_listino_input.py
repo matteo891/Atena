@@ -25,6 +25,7 @@ from talos.ui.listino_input import (
     format_buybox_verified_caption,
     format_cache_hit_caption,
     format_confidence_badge,
+    format_v_tot_source_caption,
     parse_descrizione_prezzo_csv,
     resolve_listino_with_cache,
 )
@@ -830,6 +831,31 @@ def test_build_listino_v_tot_default_zero_when_no_csv_no_bsr() -> None:
     df = build_listino_raw_from_resolved(rows)
     assert df.iloc[0]["v_tot"] == 0.0
     assert df.iloc[0]["v_tot_source"] == "default_zero"
+
+
+@pytest.mark.parametrize(
+    ("rows_specs", "expected"),
+    [
+        ([], ""),  # empty df
+        ([("B0AAA", 0, 10000)], "V_tot sources (1 ASIN): 1 stimati da BSR (MVP placeholder)."),
+        ([("B0AAA", 42, None)], "V_tot sources (1 ASIN): 1 da CSV."),
+        (
+            [("B0AAA", 0, 10000), ("B0BBB", 50, None), ("B0CCC", 0, None)],
+            (
+                "V_tot sources (3 ASIN): 1 da CSV, "
+                "1 stimati da BSR (MVP placeholder), 1 default zero (no BSR)."
+            ),
+        ),
+    ],
+)
+def test_format_v_tot_source_caption(
+    rows_specs: list[tuple[str, int, int | None]],
+    expected: str,
+) -> None:
+    """CHG-2026-05-02-006: caption helper aggrega v_tot_source per CFO audit."""
+    rows = [_resolved(asin, 100.0, v_tot=v_tot, bsr_root=bsr) for asin, v_tot, bsr in rows_specs]
+    df = build_listino_raw_from_resolved(rows)
+    assert format_v_tot_source_caption(df) == expected
 
 
 def test_build_listino_emits_v_tot_estimated_from_bsr_event(log_capture: object) -> None:

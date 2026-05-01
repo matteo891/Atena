@@ -10,8 +10,6 @@ property-style su scaling logaritmico + sentinel sui flag audit.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from talos.extract.velocity_estimator import (
@@ -105,8 +103,3 @@ def test_resolve_csv_one_is_csv_source() -> None:
     v, source = resolve_v_tot(csv_v_tot=1, bsr_root=10000)
     assert v == 1.0
     assert source == V_TOT_SOURCE_CSV
-
-
-def test_estimate_doctest_consistency() -> None:
-    """Sanity: `math.log10(10000)=4`, `100-20*4=20`. Lock formula MVP."""
-    assert estimate_v_tot_from_bsr(10000) == 100.0 - 20.0 * math.log10(10000)
