@@ -3,7 +3,7 @@ id: CHG-2026-05-01-033
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 6 — blocco B1 sessione dedicata 4/8)
 status: Draft
-commit: PENDING
+commit: 0d748f2
 adr_ref: ADR-0021, ADR-0017, ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -259,4 +259,4 @@ def test_extract_kill_switch_event_emitted_on_model_mismatch(
   ultimo cluster, chiude B1.1).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: PENDING.
+- Commit: `0d748f2`.
