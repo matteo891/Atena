@@ -3,7 +3,7 @@ id: CHG-2026-05-01-008
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target)
 status: Draft
-commit: TBD
+commit: 1e57c10
 adr_ref: ADR-0017, ADR-0015, ADR-0014, ADR-0019
 ---
 
@@ -303,4 +303,4 @@ assert row.color_family == "Titanium Black"
 - Successore atteso (Fase 3): integratore live che sostituira' i
   mock della sentinella e2e con `_LiveKeepaAdapter` +
   `_PlaywrightBrowserPage` + `_LiveTesseractAdapter`.
-- Commit: TBD.
+- Commit: `1e57c10`.
