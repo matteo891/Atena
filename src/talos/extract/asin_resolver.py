@@ -28,10 +28,10 @@ negativo, descrizione vuota), AMBIGUOUS marcato visibile altrimenti.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
+import structlog
 from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from talos.io_.fallback_chain import ProductData
     from talos.io_.serp_search import AmazonSerpAdapter
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 
 # Range valido `fuzzy_title_pct` (0-100, output `rapidfuzz` ratio).

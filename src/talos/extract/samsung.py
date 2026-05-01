@@ -26,20 +26,20 @@ riga 223) e loggare l'evento canonico `extract.kill_switch`
 
 from __future__ import annotations
 
-import logging
 import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import structlog
 import yaml
 from rapidfuzz import fuzz, process
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 DEFAULT_WHITELIST_YAML = Path(__file__).parent / "samsung_whitelist.yaml"
 
@@ -320,13 +320,11 @@ class SamsungExtractor:
             # Il caller (orchestrator + vgp.score) forza vgp_score=0.
             _logger.debug(
                 "extract.kill_switch",
-                extra={
-                    "asin": asin if asin is not None else "<n/a>",
-                    "reason": "model_mismatch",
-                    "mismatch_field": "model",
-                    "expected": supplier.model,
-                    "actual": amazon.model,
-                },
+                asin=asin if asin is not None else "<n/a>",
+                reason="model_mismatch",
+                mismatch_field="model",
+                expected=supplier.model,
+                actual=amazon.model,
             )
             return MatchResult(
                 status=MatchStatus.MISMATCH,
