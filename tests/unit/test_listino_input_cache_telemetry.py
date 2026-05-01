@@ -1,14 +1,16 @@
-"""Unit test telemetria cache `description_resolutions` (CHG-2026-05-01-025).
+"""Unit test telemetria cache `description_resolutions` (CHG-2026-05-01-025
++ CHG-B1.1.e).
 
 Verifica che gli helper di emit nel caller `resolve_listino_with_cache`
 (CHG-019 + CHG-020) producano gli eventi canonici `cache.hit` /
 `cache.miss` del catalogo ADR-0021 con i campi obbligatori. Pattern
-coerente con `test_dashboard_telemetry_resolve.py` (CHG-021/024).
+`structlog.testing.LogCapture` post-bridge B1.1.e (CHG-2026-05-01-034).
+Fixture `log_capture` condivisa in `tests/conftest.py` (CHG-031).
 """
 
 from __future__ import annotations
 
-import logging
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,56 +24,51 @@ from talos.ui.listino_input import (
     _emit_cache_miss,
 )
 
+if TYPE_CHECKING:
+    from structlog.testing import LogCapture
+
 pytestmark = pytest.mark.unit
 
 
-def test_cache_hit_emits_canonical_event(caplog: pytest.LogCaptureFixture) -> None:
+def test_cache_hit_emits_canonical_event(log_capture: LogCapture) -> None:
     """`_emit_cache_hit` emette evento con table + tenant_id."""
-    with caplog.at_level(logging.DEBUG, logger="talos.ui.listino_input"):
-        _emit_cache_hit(table="description_resolutions", tenant_id=1)
+    _emit_cache_hit(table="description_resolutions", tenant_id=1)
 
-    records = [r for r in caplog.records if r.message == EVENT_CACHE_HIT]
-    assert len(records) == 1
-    record = records[0]
-    assert hasattr(record, "table")
-    assert hasattr(record, "tenant_id")
-    assert record.table == "description_resolutions"
-    assert record.tenant_id == 1
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_CACHE_HIT]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["table"] == "description_resolutions"
+    assert entry["tenant_id"] == 1
 
 
-def test_cache_hit_open_table_enum(caplog: pytest.LogCaptureFixture) -> None:
+def test_cache_hit_open_table_enum(log_capture: LogCapture) -> None:
     """`table` è enum-string aperta: future cache (es. bsr.cache) additive."""
-    with caplog.at_level(logging.DEBUG, logger="talos.ui.listino_input"):
-        _emit_cache_hit(table="bsr_cache", tenant_id=42)
+    _emit_cache_hit(table="bsr_cache", tenant_id=42)
 
-    records = [r for r in caplog.records if r.message == EVENT_CACHE_HIT]
-    assert len(records) == 1
-    assert records[0].table == "bsr_cache"
-    assert records[0].tenant_id == 42
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_CACHE_HIT]
+    assert len(entries) == 1
+    assert entries[0]["table"] == "bsr_cache"
+    assert entries[0]["tenant_id"] == 42
 
 
-def test_cache_miss_emits_canonical_event(caplog: pytest.LogCaptureFixture) -> None:
+def test_cache_miss_emits_canonical_event(log_capture: LogCapture) -> None:
     """`_emit_cache_miss` emette evento con table + tenant_id."""
-    with caplog.at_level(logging.DEBUG, logger="talos.ui.listino_input"):
-        _emit_cache_miss(table="description_resolutions", tenant_id=1)
+    _emit_cache_miss(table="description_resolutions", tenant_id=1)
 
-    records = [r for r in caplog.records if r.message == EVENT_CACHE_MISS]
-    assert len(records) == 1
-    record = records[0]
-    assert hasattr(record, "table")
-    assert hasattr(record, "tenant_id")
-    assert record.table == "description_resolutions"
-    assert record.tenant_id == 1
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_CACHE_MISS]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["table"] == "description_resolutions"
+    assert entry["tenant_id"] == 1
 
 
-def test_cache_miss_multi_tenant(caplog: pytest.LogCaptureFixture) -> None:
+def test_cache_miss_multi_tenant(log_capture: LogCapture) -> None:
     """Edge case: tenant_id != DEFAULT_TENANT_ID per scenario multi-tenant futuro."""
-    with caplog.at_level(logging.DEBUG, logger="talos.ui.listino_input"):
-        _emit_cache_miss(table="description_resolutions", tenant_id=99)
+    _emit_cache_miss(table="description_resolutions", tenant_id=99)
 
-    records = [r for r in caplog.records if r.message == EVENT_CACHE_MISS]
-    assert len(records) == 1
-    assert records[0].tenant_id == 99
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_CACHE_MISS]
+    assert len(entries) == 1
+    assert entries[0]["tenant_id"] == 99
 
 
 def test_canonical_events_catalog_contains_cache_entries() -> None:

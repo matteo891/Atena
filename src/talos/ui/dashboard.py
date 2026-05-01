@@ -17,11 +17,11 @@ Refactor multi-page ADR-0016 compliant (`pages/`, `components/`,
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 import pandas as pd
 import streamlit as st
+import structlog
 
 from talos.formulas import (
     DEFAULT_LOT_SIZE,
@@ -64,7 +64,7 @@ DEFAULT_TENANT_ID: int = 1
 # Chiave config override per soglia ROI (CHG-050).
 CONFIG_KEY_VETO_ROI: str = "veto_roi_pct"
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
 
 
 def _emit_ui_resolve_started(*, n_rows: int, has_factory: bool) -> None:
@@ -75,7 +75,8 @@ def _emit_ui_resolve_started(*, n_rows: int, has_factory: bool) -> None:
     """
     _logger.debug(
         "ui.resolve_started",
-        extra={"n_rows": n_rows, "has_factory": has_factory},
+        n_rows=n_rows,
+        has_factory=has_factory,
     )
 
 
@@ -92,11 +93,9 @@ def _emit_ui_resolve_confirmed(
     """
     _logger.debug(
         "ui.resolve_confirmed",
-        extra={
-            "n_total": n_total,
-            "n_resolved": n_resolved,
-            "n_ambiguous": n_ambiguous,
-        },
+        n_total=n_total,
+        n_resolved=n_resolved,
+        n_ambiguous=n_ambiguous,
     )
 
 
@@ -110,7 +109,8 @@ def _emit_ui_override_applied(*, n_overrides: int, n_eligible: int) -> None:
     """
     _logger.debug(
         "ui.override_applied",
-        extra={"n_overrides": n_overrides, "n_eligible": n_eligible},
+        n_overrides=n_overrides,
+        n_eligible=n_eligible,
     )
 
 
@@ -123,7 +123,8 @@ def _emit_ui_resolve_failed(*, reason: str, n_rows: int) -> None:
     """
     _logger.debug(
         "ui.resolve_failed",
-        extra={"reason": reason, "n_rows": n_rows},
+        reason=reason,
+        n_rows=n_rows,
     )
 
 
