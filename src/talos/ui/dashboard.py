@@ -96,19 +96,36 @@ _PERCENTAGE_COLUMNS: frozenset[str] = frozenset(
 def _pct_column_config(
     columns: pd.Index | list[str] | tuple[str, ...],
 ) -> dict[str, Any]:
-    """Build column_config dict mappando colonne percentage a format `0.0%`.
+    """Build column_config per colonne percentage (printf-style format).
 
-    Streamlit `NumberColumn(format="0.0%")` (d3-format) moltiplica
-    automaticamente x100 e aggiunge il suffisso `%`. CHG-2026-05-01-040.
-    Return type `dict[str, Any]`: streamlit espone factory functions
-    (es. `NumberColumn`) ma non un public type alias per i column config
-    values; `Any` evita dipendenze su moduli interni `streamlit.elements.lib`.
+    CHG-2026-05-02-002 fix: Streamlit 1.57 `NumberColumn.format` accetta
+    SOLO printf-style (sprintf-js) o preset stringa, NON d3-format. Il
+    valore numerico atteso e' gia' moltiplicato x100 (vedi
+    `_percentage_view`). Format `"%.1f%%"` -> "22.5%".
     """
     return {
-        col: st.column_config.NumberColumn(format="0.0%")
+        col: st.column_config.NumberColumn(format="%.1f%%")
         for col in columns
         if col in _PERCENTAGE_COLUMNS
     }
+
+
+def _percentage_view(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Ritorna (df_display, column_config) per rendering con `st.dataframe`.
+
+    CHG-2026-05-02-002: pre-moltiplica x100 le colonne percentage perche'
+    Streamlit 1.57 `NumberColumn.format` NON supporta d3-format auto-x100.
+    Il df originale resta intatto (copy-on-write); display layer ha
+    valori in [0, 100] + format printf `"%.1f%%"`. Se il df non ha
+    colonne percentage, ritorna l'originale senza copy (no-op).
+    """
+    pct_cols = [c for c in df.columns if c in _PERCENTAGE_COLUMNS]
+    if not pct_cols:
+        return df, {}
+    df_display = df.copy()
+    for col in pct_cols:
+        df_display[col] = df_display[col].astype(float) * 100.0
+    return df_display, _pct_column_config(pct_cols)
 
 
 def _emit_ui_resolve_started(*, n_rows: int, has_factory: bool) -> None:
@@ -321,10 +338,11 @@ def _render_sidebar_referral_fees(factory: sessionmaker[Session]) -> None:
             ref_fees_df = pd.DataFrame(
                 [{"category": c, "fee_pct": v} for c, v in sorted(existing.items())],
             )
+            ref_fees_view, ref_fees_cfg = _percentage_view(ref_fees_df)
             st.dataframe(
-                ref_fees_df,
+                ref_fees_view,
                 use_container_width=True,
-                column_config=_pct_column_config(ref_fees_df.columns),
+                column_config=ref_fees_cfg,
             )
         else:
             st.caption("Nessun override registrato.")
@@ -383,11 +401,8 @@ def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
         st.info("Cart vuoto. Nessun ASIN allocato.")
         return
     cart_df = pd.DataFrame(cart_items)
-    st.dataframe(
-        cart_df,
-        use_container_width=True,
-        column_config=_pct_column_config(cart_df.columns),
-    )
+    cart_view, cart_cfg = _percentage_view(cart_df)
+    st.dataframe(cart_view, use_container_width=True, column_config=cart_cfg)
 
 
 def fetch_recent_sessions_or_empty(
@@ -728,11 +743,8 @@ def _render_history(
             st.caption("Nessuna sessione precedente trovata.")
             return
         sessions_df = pd.DataFrame(rows)
-        st.dataframe(
-            sessions_df,
-            use_container_width=True,
-            column_config=_pct_column_config(sessions_df.columns),
-        )
+        sessions_view, sessions_cfg = _percentage_view(sessions_df)
+        st.dataframe(sessions_view, use_container_width=True, column_config=sessions_cfg)
 
         st.divider()
         st.caption("Ricarica una sessione storica (incolla l'id dalla colonna sopra)")
@@ -775,22 +787,16 @@ def _render_loaded_session_detail(
     if loaded.cart_rows:
         st.caption("Cart")
         cart_df = pd.DataFrame(loaded.cart_rows)
-        st.dataframe(
-            cart_df,
-            use_container_width=True,
-            column_config=_pct_column_config(cart_df.columns),
-        )
+        cart_view, cart_cfg = _percentage_view(cart_df)
+        st.dataframe(cart_view, use_container_width=True, column_config=cart_cfg)
     else:
         st.caption("Cart: nessun item allocato.")
 
     if loaded.panchina_rows:
         st.caption("Panchina (idonei scartati per cassa)")
         panchina_df = pd.DataFrame(loaded.panchina_rows)
-        st.dataframe(
-            panchina_df,
-            use_container_width=True,
-            column_config=_pct_column_config(panchina_df.columns),
-        )
+        panchina_view, panchina_cfg = _percentage_view(panchina_df)
+        st.dataframe(panchina_view, use_container_width=True, column_config=panchina_cfg)
     else:
         st.caption("Panchina: vuota.")
 
@@ -859,11 +865,8 @@ def _render_compare_view(loaded: LoadedSession, replayed: SessionResult) -> None
         )
         if loaded.cart_rows:
             cart_df_orig = pd.DataFrame(loaded.cart_rows)
-            st.dataframe(
-                cart_df_orig,
-                use_container_width=True,
-                column_config=_pct_column_config(cart_df_orig.columns),
-            )
+            orig_view, orig_cfg = _percentage_view(cart_df_orig)
+            st.dataframe(orig_view, use_container_width=True, column_config=orig_cfg)
 
     with col_rep:
         st.markdown("**Replay**")
@@ -896,11 +899,8 @@ def _render_compare_view(loaded: LoadedSession, replayed: SessionResult) -> None
                 for ci in replayed.cart.items
             ]
             cart_df_rep = pd.DataFrame(cart_view)
-            st.dataframe(
-                cart_df_rep,
-                use_container_width=True,
-                column_config=_pct_column_config(cart_df_rep.columns),
-            )
+            rep_view, rep_cfg = _percentage_view(cart_df_rep)
+            st.dataframe(rep_view, use_container_width=True, column_config=rep_cfg)
 
 
 def _render_replay_result(replayed: SessionResult) -> None:
@@ -924,21 +924,14 @@ def _render_replay_result(replayed: SessionResult) -> None:
         ]
         st.caption("Nuovo Cart")
         cart_df = pd.DataFrame(cart_view)
-        st.dataframe(
-            cart_df,
-            use_container_width=True,
-            column_config=_pct_column_config(cart_df.columns),
-        )
+        cart_view_df, cart_cfg = _percentage_view(cart_df)
+        st.dataframe(cart_view_df, use_container_width=True, column_config=cart_cfg)
 
     if not replayed.panchina.empty:
         st.caption("Nuova Panchina")
         cols = [c for c in ("asin", "vgp_score", "qty_final", "roi") if c in replayed.panchina]
-        panchina_view = replayed.panchina[cols]
-        st.dataframe(
-            panchina_view,
-            use_container_width=True,
-            column_config=_pct_column_config(panchina_view.columns),
-        )
+        panchina_view, panchina_cfg = _percentage_view(replayed.panchina[cols])
+        st.dataframe(panchina_view, use_container_width=True, column_config=panchina_cfg)
 
 
 def _render_panchina_table(panchina: pd.DataFrame) -> None:
@@ -950,12 +943,8 @@ def _render_panchina_table(panchina: pd.DataFrame) -> None:
     display_cols = [
         c for c in ["asin", "vgp_score", "roi", "cost_eur", "qty_final"] if c in panchina.columns
     ]
-    panchina_view = panchina[display_cols]
-    st.dataframe(
-        panchina_view,
-        use_container_width=True,
-        column_config=_pct_column_config(panchina_view.columns),
-    )
+    panchina_view, panchina_cfg = _percentage_view(panchina[display_cols])
+    st.dataframe(panchina_view, use_container_width=True, column_config=panchina_cfg)
 
 
 def _render_descrizione_prezzo_flow(
@@ -1145,11 +1134,8 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
         ],
     )
     st.markdown("**Anteprima risoluzione:**")
-    st.dataframe(
-        preview_df,
-        use_container_width=True,
-        column_config=_pct_column_config(preview_df.columns),
-    )
+    preview_view, preview_cfg = _percentage_view(preview_df)
+    st.dataframe(preview_view, use_container_width=True, column_config=preview_cfg)
 
     n_resolved = count_resolved(resolved_with_overrides)
     n_total = len(resolved_with_overrides)
@@ -1327,11 +1313,8 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
     _render_panchina_table(result.panchina)
 
     with st.expander("Listino completo enriched (audit / debug)"):
-        st.dataframe(
-            result.enriched_df,
-            use_container_width=True,
-            column_config=_pct_column_config(result.enriched_df.columns),
-        )
+        enriched_view, enriched_cfg = _percentage_view(result.enriched_df)
+        st.dataframe(enriched_view, use_container_width=True, column_config=enriched_cfg)
 
     # Persistenza opzionale: graceful degrade se DB non disponibile.
     factory = get_session_factory_or_none()
