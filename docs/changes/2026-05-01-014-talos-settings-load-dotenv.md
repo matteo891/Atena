@@ -3,7 +3,7 @@ id: CHG-2026-05-01-014
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — sblocco gestione secrets locali post arrivo Keepa private API key)
 status: Draft
-commit: TBD
+commit: 0127f61
 adr_ref: ADR-0014, ADR-0017, ADR-0019
 ---
 
@@ -240,4 +240,4 @@ def _isolate_settings(
   consegnata + autorizzazione modalità "macina" round 4.
 - Memory: nessuna nuova memory (la key NON va in memoria
   persistente; pattern `.env` documentato in change doc).
-- Commit: TBD (backfill post-commit).
+- Commit: `0127f61`.
