@@ -3,7 +3,7 @@ id: CHG-2026-05-01-020
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 4 — chiusura blocco asin_resolver con UI rifondata, decisione delta=A ratificata)
 status: Draft
-commit: TBD
+commit: 2886728
 adr_ref: ADR-0016, ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -319,4 +319,4 @@ result = run_session(inp)
   restore point. CHG futuro: refactor multi-page ADR-0016 e/o
   override candidato top-N selectbox + smoke browser umano
   TEST-DEBT-003 residuo.
-- Commit: TBD (backfill post-commit).
+- Commit: `2886728`.
