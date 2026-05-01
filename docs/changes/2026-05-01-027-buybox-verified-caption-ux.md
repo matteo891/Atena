@@ -3,7 +3,7 @@ id: CHG-2026-05-01-027
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" estesa round 5+ — quick win UX rate buybox verificato simmetrico a CHG-026)
 status: Draft
-commit: pending
+commit: ace3f97
 adr_ref: ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -239,4 +239,4 @@ def test_format_buybox_verified_caption_mixed() -> None:
   evidenza doppia (rate cache + rate verified), (B1) `structlog.bind`
   context tracing, (B2) refactor UI multi-page ADR-0016, (β)
   `upsert_session` semantica, (POLICY-001) Velocity bsr_chain.
-- Commit: pending.
+- Commit: `ace3f97`.
