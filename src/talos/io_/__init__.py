@@ -45,9 +45,11 @@ from talos.io_.scraper import (
     DEFAULT_USER_AGENT,
     AmazonScraper,
     BrowserPageProtocol,
+    BsrEntry,
     ScrapedProduct,
     SelectorMissError,
     load_selectors,
+    parse_bsr_text,
     parse_eur,
 )
 
@@ -62,6 +64,7 @@ __all__ = [
     "SOURCE_SCRAPER",
     "AmazonScraper",
     "BrowserPageProtocol",
+    "BsrEntry",
     "KeepaApiAdapter",
     "KeepaClient",
     "KeepaMissError",
@@ -81,5 +84,6 @@ __all__ = [
     "lookup_product",
     "lookup_products",
     "otsu_threshold",
+    "parse_bsr_text",
     "parse_eur",
 ]

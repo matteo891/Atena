@@ -38,3 +38,30 @@ amazon_it:
       - "#ASIN[type='hidden']"
     xpath:
       - "//input[@id='ASIN']"
+
+  # BSR root rank (CHG-2026-05-01-013): livello categoria root
+  # (es. "Elettronica"). Amazon.it mostra il rank principale nella
+  # tabella tecnica del prodotto, riga "Posizione classifica
+  # Bestseller". Il testo grezzo include "n. <numero> in
+  # <categoria>" + eventuali sub-rank inline; `parse_bsr_text` parsa
+  # solo il primo match (root).
+  bsr_root:
+    css:
+      - "#productDetails_detailBullets_sections1 tr:has(th:-soup-contains('Bestseller')) td"
+      - "#productDetails_detailBullets_sections1 .pdTab tr:nth-of-type(1) td"
+      - "#detailBulletsWrapper_feature_div .a-list-item:has(span:-soup-contains('Bestseller'))"
+    xpath:
+      - "//tr[contains(., 'Bestseller')]/td"
+      - "//li[contains(., 'classifica Bestseller')]"
+
+  # BSR sub-rank (CHG-2026-05-01-013): livelli sotto-categoria
+  # (es. "Cellulari", "Smartphone Samsung"). Amazon.it raggruppa i
+  # sub-rank in `ul.zg_hrsr` come lista di `<li>`. Il selettore
+  # ritorna 0..N stringhe (lista vuota = nessuna sotto-categoria
+  # esposta dal layout corrente).
+  bsr_sub:
+    css:
+      - "ul.zg_hrsr li"
+      - "ul.a-unordered-list.zg_hrsr li"
+    xpath:
+      - "//ul[contains(@class, 'zg_hrsr')]/li"

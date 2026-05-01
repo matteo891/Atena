@@ -66,7 +66,7 @@ if TYPE_CHECKING:
 
     from talos.io_.keepa_client import KeepaClient
     from talos.io_.ocr import OcrPipeline
-    from talos.io_.scraper import AmazonScraper, BrowserPageProtocol
+    from talos.io_.scraper import AmazonScraper, BrowserPageProtocol, BsrEntry
 
 _T = TypeVar("_T")
 
@@ -85,6 +85,17 @@ class ProductData:
     -> riga AMBIGUA per validazione CFO; `title=None` -> ASIN
     senza titolo (potrebbe comparire vuoto in cruscotto).
 
+    `bsr` (rank scalare): semantica "rank principale". Quando
+    Keepa lo fornisce e' il SALES (categoria root); quando
+    proviene dallo scraper e' il livello PIU' SPECIFICO disponibile
+    in `bsr_chain[0].rank` (decisione CHG-2026-05-01-013: il rank
+    sotto-categoria discrimina meglio per la formula Velocity F4.A).
+
+    `bsr_chain` (CHG-2026-05-01-013): lista di `BsrEntry` (categoria,
+    rank) ordinati dal piu' specifico al piu' ampio. Lista vuota
+    se il canale (Keepa o Scraper) non ha fornito multilivello;
+    vale per Keepa che oggi mappa solo SALES root in `bsr`.
+
     `sources` mappa ogni campo non-None al canale che l'ha
     fornito (audit trail). `notes` contiene messaggi diagnostici
     in formato libero (R-01 trail leggibile).
@@ -95,6 +106,7 @@ class ProductData:
     bsr: int | None
     fee_fba_eur: Decimal | None
     title: str | None
+    bsr_chain: list[BsrEntry] = field(default_factory=list)
     sources: dict[str, str] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
 
@@ -172,9 +184,11 @@ def lookup_product(
     )
 
     title: str | None = None
-    needs_scrape = (
-        scraper is not None and page is not None and (buybox_eur is None or title is None)
-    )
+    bsr_chain: list[BsrEntry] = []
+    # Lo scraper viene invocato anche se Keepa ha fornito tutto:
+    # CHG-2026-05-01-013 sblocca BSR multi-livello (informazione
+    # piu' ricca di Keepa SALES root) + title (Keepa non lo espone).
+    needs_scrape = scraper is not None and page is not None
     if needs_scrape:
         assert scraper is not None  # noqa: S101 — narrow per mypy
         assert page is not None  # noqa: S101 — narrow per mypy
@@ -185,6 +199,15 @@ def lookup_product(
         if buybox_eur is None and scraped.buybox_eur is not None:
             buybox_eur = scraped.buybox_eur
             sources["buybox_eur"] = SOURCE_SCRAPER
+        if scraped.bsr_chain:
+            bsr_chain = list(scraped.bsr_chain)
+            sources["bsr_chain"] = SOURCE_SCRAPER
+            # Se Keepa non ha fornito `bsr`, usiamo il piu' specifico
+            # (`bsr_chain[0]`) — CHG-2026-05-01-013 default: il rank
+            # sotto-categoria discrimina meglio per Velocity.
+            if bsr is None:
+                bsr = bsr_chain[0].rank
+                sources["bsr"] = SOURCE_SCRAPER
 
     return ProductData(
         asin=asin,
@@ -192,6 +215,7 @@ def lookup_product(
         bsr=bsr,
         fee_fba_eur=fee_fba_eur,
         title=title,
+        bsr_chain=bsr_chain,
         sources=sources,
         notes=notes,
     )

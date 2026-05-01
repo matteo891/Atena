@@ -21,9 +21,11 @@ from talos.io_ import (
     DEFAULT_SELECTORS_YAML,
     DEFAULT_USER_AGENT,
     AmazonScraper,
+    BsrEntry,
     ScrapedProduct,
     SelectorMissError,
     load_selectors,
+    parse_bsr_text,
     parse_eur,
 )
 
@@ -36,16 +38,22 @@ pytestmark = pytest.mark.unit
 
 
 class _MockPage:
-    """Mock di BrowserPageProtocol che mappa selector -> stringa."""
+    """Mock di BrowserPageProtocol che mappa selector -> stringa.
+
+    `css_all_map` mappa CSS -> list[str] per `query_selector_all_text`
+    (CHG-2026-05-01-013, BSR multi-livello). Default `[]`.
+    """
 
     def __init__(
         self,
         *,
         css_map: dict[str, str | None] | None = None,
         xpath_map: dict[str, str | None] | None = None,
+        css_all_map: dict[str, list[str]] | None = None,
     ) -> None:
         self.css_map = css_map or {}
         self.xpath_map = xpath_map or {}
+        self.css_all_map = css_all_map or {}
         self.goto_calls: list[str] = []
 
     def goto(self, url: str) -> None:
@@ -56,6 +64,9 @@ class _MockPage:
 
     def query_selector_xpath_text(self, xpath: str) -> str | None:
         return self.xpath_map.get(xpath)
+
+    def query_selector_all_text(self, selector: str) -> list[str]:
+        return self.css_all_map.get(selector, [])
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +311,143 @@ def test_scrape_product_buybox_unparsable_returns_none(tmp_path: Path) -> None:
     product = scraper.scrape_product("X", page=page)
     assert product.buybox_eur is None
     assert product.title == "T"
+
+
+# ---------------------------------------------------------------------------
+# parse_bsr_text (CHG-2026-05-01-013, BSR multi-livello)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("n. 1.234 in Elettronica", BsrEntry(category="Elettronica", rank=1234)),
+        ("n. 15 in Cellulari & Accessori", BsrEntry(category="Cellulari & Accessori", rank=15)),
+        (
+            "n. 3 in Smartphone Samsung (Visualizza Top 100)",
+            BsrEntry(category="Smartphone Samsung", rank=3),
+        ),
+        ("n. 1,234 in Electronics", BsrEntry(category="Electronics", rank=1234)),
+        ("n. 999.999 in Casa e cucina", BsrEntry(category="Casa e cucina", rank=999999)),
+    ],
+)
+def test_parse_bsr_text_valid(raw: str, expected: BsrEntry) -> None:
+    assert parse_bsr_text(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["", "   ", "n.a.", "abc", "Bestseller Rank", "in Elettronica"],
+)
+def test_parse_bsr_text_invalid_returns_none(raw: str) -> None:
+    assert parse_bsr_text(raw) is None
+
+
+# ---------------------------------------------------------------------------
+# bsr_chain extraction in scrape_product
+# ---------------------------------------------------------------------------
+
+
+_BSR_YAML = """
+amazon_it:
+  product_title:
+    css: ["#productTitle"]
+    xpath: []
+  buybox_price:
+    css: ["#corePrice"]
+    xpath: []
+  bsr_root:
+    css: ["#bsr-root"]
+    xpath: []
+  bsr_sub:
+    css: ["ul.zg_hrsr li"]
+    xpath: []
+"""
+
+
+def test_scrape_product_bsr_chain_specific_to_general(tmp_path: Path) -> None:
+    """bsr_chain ordinata dal piu' specifico al piu' ampio (sub prima, root dopo)."""
+    path = _write_yaml(tmp_path, _BSR_YAML)
+    scraper = AmazonScraper(selectors_path=path)
+    page = _MockPage(
+        css_map={
+            "#productTitle": "T",
+            "#corePrice": None,
+            "#bsr-root": "n. 1.234 in Elettronica",
+        },
+        css_all_map={
+            "ul.zg_hrsr li": [
+                "n. 15 in Cellulari & Accessori",
+                "n. 3 in Smartphone Samsung",
+            ],
+        },
+    )
+    product = scraper.scrape_product("B0BSR1", page=page)
+    assert product.bsr_chain == [
+        BsrEntry(category="Cellulari & Accessori", rank=15),
+        BsrEntry(category="Smartphone Samsung", rank=3),
+        BsrEntry(category="Elettronica", rank=1234),
+    ]
+
+
+def test_scrape_product_bsr_chain_only_root_when_no_sub(tmp_path: Path) -> None:
+    """Pagina senza sub-rank -> chain con solo root."""
+    path = _write_yaml(tmp_path, _BSR_YAML)
+    scraper = AmazonScraper(selectors_path=path)
+    page = _MockPage(
+        css_map={
+            "#productTitle": "T",
+            "#corePrice": None,
+            "#bsr-root": "n. 50 in Libri",
+        },
+    )
+    product = scraper.scrape_product("B0BSR2", page=page)
+    assert product.bsr_chain == [BsrEntry(category="Libri", rank=50)]
+
+
+def test_scrape_product_bsr_chain_empty_when_total_miss(tmp_path: Path) -> None:
+    """Selettori bsr_root e bsr_sub miss totale -> chain vuota."""
+    path = _write_yaml(tmp_path, _BSR_YAML)
+    scraper = AmazonScraper(selectors_path=path)
+    page = _MockPage(css_map={"#productTitle": "T", "#corePrice": None})
+    product = scraper.scrape_product("B0BSR3", page=page)
+    assert product.bsr_chain == []
+
+
+def test_scrape_product_bsr_chain_dedup_and_skip_unparsable(tmp_path: Path) -> None:
+    """Sub-rank duplicati o non parsabili -> deduplicati/scartati senza crash."""
+    path = _write_yaml(tmp_path, _BSR_YAML)
+    scraper = AmazonScraper(selectors_path=path)
+    page = _MockPage(
+        css_map={
+            "#productTitle": "T",
+            "#corePrice": None,
+            "#bsr-root": "n. 1.234 in Elettronica",
+        },
+        css_all_map={
+            "ul.zg_hrsr li": [
+                "n. 15 in Cellulari",
+                "n. 15 in Cellulari",  # duplicato esatto
+                "n.a.",  # non parsabile
+                "",  # vuoto
+            ],
+        },
+    )
+    product = scraper.scrape_product("B0BSR4", page=page)
+    # Cellulari (deduplicato), poi root.
+    assert product.bsr_chain == [
+        BsrEntry(category="Cellulari", rank=15),
+        BsrEntry(category="Elettronica", rank=1234),
+    ]
+
+
+def test_scraped_product_bsr_chain_default_empty(tmp_path: Path) -> None:
+    """Backward compat: ScrapedProduct senza bsr_chain esplicito ha lista vuota."""
+    path = _write_yaml(tmp_path, _MINIMAL_YAML)
+    scraper = AmazonScraper(selectors_path=path)
+    page = _MockPage(css_map={"#productTitle": "T", "#price1": None})
+    product = scraper.scrape_product("X", page=page)
+    assert product.bsr_chain == []
 
 
 # ---------------------------------------------------------------------------

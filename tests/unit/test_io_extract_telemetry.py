@@ -59,7 +59,7 @@ class _MissingFieldAdapter:
 
 
 class _MockEmptyPage:
-    """Mock page che ritorna sempre None (drift totale)."""
+    """Mock page che ritorna sempre None / [] (drift totale)."""
 
     def goto(self, url: str) -> None:
         pass
@@ -69,6 +69,9 @@ class _MockEmptyPage:
 
     def query_selector_xpath_text(self, xpath: str) -> str | None:  # noqa: ARG002 — mock
         return None
+
+    def query_selector_all_text(self, selector: str) -> list[str]:  # noqa: ARG002 — mock
+        return []
 
 
 class _StaticTesseractAdapter:

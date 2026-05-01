@@ -79,6 +79,9 @@ class _PerAsinPage:
     def query_selector_xpath_text(self, xpath: str) -> str | None:  # noqa: ARG002
         return None
 
+    def query_selector_all_text(self, selector: str) -> list[str]:  # noqa: ARG002
+        return []
+
 
 # ---------------------------------------------------------------------------
 # Fixtures

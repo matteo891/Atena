@@ -18,6 +18,7 @@ from talos.io_ import (
     SOURCE_KEEPA,
     SOURCE_SCRAPER,
     AmazonScraper,
+    BsrEntry,
     KeepaClient,
     KeepaProduct,
     KeepaRateLimitExceededError,
@@ -70,9 +71,11 @@ class _MockPage:
         *,
         css_map: dict[str, str | None] | None = None,
         xpath_map: dict[str, str | None] | None = None,
+        css_all_map: dict[str, list[str]] | None = None,
     ) -> None:
         self.css_map = css_map or {}
         self.xpath_map = xpath_map or {}
+        self.css_all_map = css_all_map or {}
         self.goto_calls: list[str] = []
 
     def goto(self, url: str) -> None:
@@ -83,6 +86,9 @@ class _MockPage:
 
     def query_selector_xpath_text(self, xpath: str) -> str | None:
         return self.xpath_map.get(xpath)
+
+    def query_selector_all_text(self, selector: str) -> list[str]:
+        return self.css_all_map.get(selector, [])
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +257,14 @@ amazon_it:
     css:
       - "#corePrice"
     xpath: []
+  bsr_root:
+    css:
+      - "#bsr-root"
+    xpath: []
+  bsr_sub:
+    css:
+      - "ul.zg_hrsr li"
+    xpath: []
 """
     path = tmp_path / "selectors.yaml"
     path.write_text(yaml_content, encoding="utf-8")
@@ -386,6 +400,91 @@ def test_lookup_products_propagates_rate_limit_at_first_failure() -> None:
     keepa = _make_keepa_raising(exc)
     with pytest.raises(KeepaRateLimitExceededError):
         lookup_products(["A1", "A2", "A3"], keepa=keepa)
+
+
+# ---------------------------------------------------------------------------
+# BSR chain propagation (CHG-2026-05-01-013)
+# ---------------------------------------------------------------------------
+
+
+def test_lookup_propagates_bsr_chain_from_scraper(tmp_path: Path) -> None:
+    """Scraper popola bsr_chain multi-livello -> ProductData.bsr_chain."""
+    keepa = _make_keepa(_full_keepa_product("B0BSR1"))
+    scraper = _build_scraper(tmp_path)
+    page = _MockPage(
+        css_map={
+            "#productTitle": "Galaxy",
+            "#corePrice": None,
+            "#bsr-root": "n. 1.234 in Elettronica",
+        },
+        css_all_map={
+            "ul.zg_hrsr li": [
+                "n. 15 in Cellulari",
+                "n. 3 in Smartphone Samsung",
+            ],
+        },
+    )
+    result = lookup_product("B0BSR1", keepa=keepa, scraper=scraper, page=page)
+    assert result.bsr_chain == [
+        BsrEntry(category="Cellulari", rank=15),
+        BsrEntry(category="Smartphone Samsung", rank=3),
+        BsrEntry(category="Elettronica", rank=1234),
+    ]
+    # Keepa ha gia' fornito bsr (root) → non viene sovrascritto da scraper.
+    assert result.bsr == 42  # KeepaProduct mock
+    assert result.sources["bsr"] == SOURCE_KEEPA
+    assert result.sources["bsr_chain"] == SOURCE_SCRAPER
+
+
+def test_lookup_uses_scraper_bsr_when_keepa_misses(tmp_path: Path) -> None:
+    """Keepa miss bsr → ProductData.bsr = bsr_chain[0].rank (più specifico)."""
+    keepa = _make_keepa(
+        KeepaProduct(asin="B0NOK", buybox_eur=Decimal(100), bsr=None, fee_fba_eur=None),
+    )
+    scraper = _build_scraper(tmp_path)
+    page = _MockPage(
+        css_map={
+            "#productTitle": "T",
+            "#corePrice": None,
+            "#bsr-root": "n. 1.000 in Elettronica",
+        },
+        css_all_map={
+            "ul.zg_hrsr li": ["n. 7 in Smartphone Samsung"],
+        },
+    )
+    result = lookup_product("B0NOK", keepa=keepa, scraper=scraper, page=page)
+    assert result.bsr == 7  # bsr_chain[0] = Smartphone Samsung (più specifico)
+    assert result.sources["bsr"] == SOURCE_SCRAPER
+    assert result.bsr_chain[0] == BsrEntry(category="Smartphone Samsung", rank=7)
+
+
+def test_lookup_bsr_chain_empty_when_no_scraper() -> None:
+    """Senza scraper, bsr_chain resta lista vuota."""
+    keepa = _make_keepa(_full_keepa_product())
+    result = lookup_product("B0NS", keepa=keepa)
+    assert result.bsr_chain == []
+
+
+def test_lookup_bsr_chain_empty_when_scraper_misses_total(tmp_path: Path) -> None:
+    """Scraper invocato ma BSR selettori miss totale → chain vuota."""
+    keepa = _make_keepa(_full_keepa_product())
+    scraper = _build_scraper(tmp_path)
+    page = _MockPage(css_map={"#productTitle": "T", "#corePrice": None})
+    result = lookup_product("B0NB", keepa=keepa, scraper=scraper, page=page)
+    assert result.bsr_chain == []
+    assert "bsr_chain" not in result.sources
+
+
+def test_product_data_bsr_chain_default_empty() -> None:
+    """ProductData backward compat: bsr_chain default lista vuota."""
+    pd = ProductData(
+        asin="X",
+        buybox_eur=None,
+        bsr=None,
+        fee_fba_eur=None,
+        title=None,
+    )
+    assert pd.bsr_chain == []
 
 
 def test_lookup_products_threads_scraper_and_page_through(

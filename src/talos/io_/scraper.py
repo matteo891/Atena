@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import contextlib
 import logging
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, Self
@@ -57,6 +58,68 @@ AMAZON_IT_PRODUCT_URL = "https://www.amazon.it/dp/{asin}"
 
 
 @dataclass(frozen=True)
+class BsrEntry:
+    """Singola voce della classifica Bestseller Amazon (CHG-2026-05-01-013).
+
+    Generalizzata a qualsiasi gerarchia Amazon: una pagina prodotto
+    espone tipicamente 2-3 livelli di rank (es. "Elettronica" root +
+    "Cellulari" mid + "Smartphone Samsung" deep). `BsrEntry` cattura
+    una sola coppia (categoria, rank); l'ordine nella `bsr_chain`
+    convenziona dal **piu' specifico al piu' ampio** (deep -> root)
+    affinche' `bsr_chain[0]` sia il livello a maggior valore
+    discriminante per la formula Velocity F4.A.
+
+    `category` e' la stringa Amazon verbatim (es. "Cellulari &
+    Accessori", "Smartphone Samsung Galaxy S24"). Il caller che vuole
+    matchare con il `category_node` interno deve normalizzarla a
+    monte; il dataclass non re-classifica.
+    """
+
+    category: str
+    rank: int
+
+
+_BSR_PATTERN = re.compile(
+    r"n\.\s*([\d.,]+)\s+in\s+(.+?)(?:\s*\(.*?\))?\s*$",
+    re.IGNORECASE,
+)
+
+
+def parse_bsr_text(raw: str) -> BsrEntry | None:
+    """Parser di una stringa BSR Amazon.it (CHG-2026-05-01-013).
+
+    Esempi gestiti:
+      - "n. 1.234 in Elettronica" -> BsrEntry("Elettronica", 1234)
+      - "n. 15 in Cellulari & Accessori" -> BsrEntry("Cellulari & Accessori", 15)
+      - "n. 3 in Smartphone Samsung (Visualizza Top 100)" -> BsrEntry("Smartphone Samsung", 3)
+      - "n. 1,234 in Electronics" (anglo) -> BsrEntry("Electronics", 1234)
+      - "" / "n.a." / "abc" -> None (R-01: caller decide il fallback)
+
+    Heuristica:
+      - Match `n. <numero> in <categoria>` (case-insensitive); il
+        separatore migliaia `.` o `,` viene rimosso prima di int().
+      - Eventuale parentetico finale ("(Visualizza Top 100)") viene
+        scartato dalla regex.
+      - Categoria: stringa trim-mata.
+    """
+    cleaned = raw.strip()
+    if not cleaned:
+        return None
+    match = _BSR_PATTERN.search(cleaned)
+    if match is None:
+        return None
+    rank_str = match.group(1).replace(".", "").replace(",", "")
+    try:
+        rank = int(rank_str)
+    except ValueError:
+        return None
+    category = match.group(2).strip()
+    if not category:
+        return None
+    return BsrEntry(category=category, rank=rank)
+
+
+@dataclass(frozen=True)
 class ScrapedProduct:
     """Risposta normalizzata dal scraping di amazon.it.
 
@@ -64,11 +127,18 @@ class ScrapedProduct:
     ha trovato match, oppure il parsing Decimal e' fallito. Il
     caller (fallback chain, CHG futuro) decide la strategia
     (es. AMBIGUO + R-01 log).
+
+    `bsr_chain` (CHG-2026-05-01-013) contiene tutti i livelli BSR
+    estratti, ordinati dal **piu' specifico al piu' ampio** (deep
+    -> root). Lista vuota = nessun BSR estratto (selettori miss
+    totale). `bsr_chain[0]` e' il livello con maggior valore
+    discriminante per la formula Velocity (default).
     """
 
     asin: str
     title: str | None
     buybox_eur: Decimal | None
+    bsr_chain: list[BsrEntry] = field(default_factory=list)
 
 
 class SelectorMissError(Exception):
@@ -106,6 +176,17 @@ class BrowserPageProtocol(Protocol):
 
     def query_selector_xpath_text(self, xpath: str) -> str | None:
         """Ritorna text-content del primo elemento XPath, o None se assente."""
+        ...
+
+    def query_selector_all_text(self, selector: str) -> list[str]:
+        """Ritorna text-content di TUTTI gli elementi CSS che matchano.
+
+        Aggiunto in CHG-2026-05-01-013 per l'estrazione di liste BSR
+        multi-livello (es. `ul.zg_hrsr li`). Se il selettore non
+        matcha, ritorna `[]`. Stringhe vuote ("") sono filtrate dal
+        caller; il Protocol ritorna l'inner_text raw di ogni
+        elemento.
+        """
         ...
 
 
@@ -230,7 +311,17 @@ class AmazonScraper:
              falliscono, tenta gli XPath. Primo match -> vince.
           3. Parsing Decimal su `buybox_price` (gestione virgola
              decimale italiana via `parse_eur`).
-          4. Ritorna `ScrapedProduct` (campi opzionali = None su miss).
+          4. **BSR multi-livello (CHG-2026-05-01-013)**: estrae il
+             rank root via `bsr_root` (testo grezzo "n. 1.234 in
+             Elettronica") + i sub-rank via `bsr_sub` (lista di
+             stringhe "n. 15 in Cellulari", "n. 3 in Smartphone
+             Samsung", ecc.). `parse_bsr_text` parsa ogni stringa.
+             La `bsr_chain` finale e' ordinata dal piu' specifico
+             al piu' ampio: prima i sub (ordine HTML preservato),
+             poi il root in coda. Lista vuota se selettori miss
+             totale.
+          5. Ritorna `ScrapedProduct` (campi opzionali = None su
+             miss; `bsr_chain` lista, possibilmente vuota).
 
         Raises:
             SelectorMissError: solo se invocato in modalita'
@@ -241,11 +332,69 @@ class AmazonScraper:
         page.goto(url)
         title_raw = self._resolve_field(asin, "product_title", page, missing_ok=True)
         buybox_raw = self._resolve_field(asin, "buybox_price", page, missing_ok=True)
+        bsr_chain = self._resolve_bsr_chain(asin, page)
         return ScrapedProduct(
             asin=asin,
             title=title_raw,
             buybox_eur=parse_eur(buybox_raw) if buybox_raw is not None else None,
+            bsr_chain=bsr_chain,
         )
+
+    def _resolve_bsr_chain(
+        self,
+        asin: str,
+        page: BrowserPageProtocol,
+    ) -> list[BsrEntry]:
+        """Estrae la `bsr_chain` multi-livello (CHG-2026-05-01-013).
+
+        Ordine output: dal piu' specifico al piu' ampio (sub
+        prima, root in fondo). Stringhe non parsabili vengono
+        scartate silenziosamente (R-01: la telemetria
+        `scrape.selector_fail` resta emessa da `_resolve_field`
+        sui selettori che falliscono completamente).
+        """
+        sub_texts: list[str] = []
+        if "bsr_sub" in self._selectors:
+            sub_texts = self._collect_all(page, "bsr_sub")
+        root_text: str | None = None
+        if "bsr_root" in self._selectors:
+            root_text = self._resolve_field(asin, "bsr_root", page, missing_ok=True)
+        chain: list[BsrEntry] = []
+        for raw in sub_texts:
+            entry = parse_bsr_text(raw)
+            if entry is not None:
+                chain.append(entry)
+        if root_text is not None:
+            entry = parse_bsr_text(root_text)
+            if entry is not None and not _entry_in(entry, chain):
+                chain.append(entry)
+        return chain
+
+    def _collect_all(
+        self,
+        page: BrowserPageProtocol,
+        field_name: str,
+    ) -> list[str]:
+        """Itera i selettori CSS+XPath del campo, raccoglie TUTTI i match.
+
+        Differenza con `_resolve_field`: quello ritorna il primo
+        non-empty (vincitore), questo aggrega da tutti i selettori
+        CSS via `page.query_selector_all_text` (XPath fallback per
+        ora omesso: i casi d'uso CHG-013 hanno selettori CSS
+        sufficienti). Ordine di prima apparizione preservato,
+        deduplica esatta su stringa trim-mata.
+        """
+        chain = self._selectors[field_name]
+        seen: set[str] = set()
+        out: list[str] = []
+        for css in chain.css:
+            for raw in page.query_selector_all_text(css):
+                stripped = raw.strip()
+                if not stripped or stripped in seen:
+                    continue
+                seen.add(stripped)
+                out.append(stripped)
+        return out
 
     def _resolve_field(
         self,
@@ -289,6 +438,11 @@ class AmazonScraper:
 
 DEFAULT_PLAYWRIGHT_TIMEOUT_MS = 60_000  # 60s (decisione Leader B, CHG-012)
 COOKIE_CONSENT_SELECTOR_AMAZON = "#sp-cc-accept"
+
+
+def _entry_in(entry: BsrEntry, chain: list[BsrEntry]) -> bool:
+    """Verifica se `entry` e' gia' presente in `chain` (match su category+rank)."""
+    return any(e.category == entry.category and e.rank == entry.rank for e in chain)
 
 
 class _PlaywrightBrowserPage:
@@ -397,6 +551,12 @@ class _PlaywrightBrowserPage:
         if elem is None:
             return None
         return elem.inner_text()
+
+    def query_selector_all_text(self, selector: str) -> list[str]:
+        if self._page is None:
+            return []
+        elements = self._page.query_selector_all(selector)
+        return [elem.inner_text() for elem in elements]
 
     def close(self) -> None:
         """Rilascia risorse Playwright in ordine inverso di creazione.
