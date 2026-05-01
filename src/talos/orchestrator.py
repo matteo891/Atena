@@ -54,7 +54,11 @@ from talos.formulas import (
     roi,
     velocity_monthly,
 )
-from talos.observability import bind_request_context, clear_request_context
+from talos.observability import (
+    bind_request_context,
+    clear_request_context,
+    is_request_context_bound,
+)
 from talos.tetris import (
     Cart,
     allocate_tetris,
@@ -269,6 +273,7 @@ def run_session(inp: SessionInput) -> SessionResult:
     :raises InsufficientBudgetError: se un locked-in supera il budget
         residuo (R-04 fail-fast, propagato da `allocate_tetris`).
     """
+    is_outer = not is_request_context_bound()
     bind_request_context(tenant_id=_DEFAULT_TENANT_ID)
     try:
         missing = [c for c in REQUIRED_INPUT_COLUMNS if c not in inp.listino_raw.columns]
@@ -355,7 +360,8 @@ def run_session(inp: SessionInput) -> SessionResult:
             enriched_df=scored_sorted,
         )
     finally:
-        clear_request_context()
+        if is_outer:
+            clear_request_context()
 
 
 def replay_session(
@@ -392,6 +398,7 @@ def replay_session(
     :raises InsufficientBudgetError: se i locked-in non stanno nel
         nuovo budget (R-04 fail-fast, propagato da `allocate_tetris`).
     """
+    is_outer = not is_request_context_bound()
     bind_request_context(tenant_id=_DEFAULT_TENANT_ID)
     try:
         new_budget = budget_override if budget_override is not None else loaded.cart.budget
@@ -438,4 +445,5 @@ def replay_session(
         )
         return replayed
     finally:
-        clear_request_context()
+        if is_outer:
+            clear_request_context()

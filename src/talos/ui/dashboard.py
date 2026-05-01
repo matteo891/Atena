@@ -27,6 +27,12 @@ from talos.formulas import (
     DEFAULT_LOT_SIZE,
     DEFAULT_VELOCITY_TARGET_DAYS,
 )
+from talos.observability import (
+    bind_request_context,
+    bind_session_context,
+    clear_request_context,
+    is_request_context_bound,
+)
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, replay_session, run_session
 from talos.persistence import (
     KEY_REFERRAL_FEE_PCT,
@@ -152,6 +158,11 @@ def try_persist_session(
 ) -> tuple[bool, int | None, str | None]:
     """Persiste il `SessionResult` via `save_session_result` con error handling.
 
+    Post-save (success path): chiama `bind_session_context` per
+    arricchire il context con `session_id` + `listino_hash` reali
+    (CHG-2026-05-01-036, B1.3). Eventuali emit successivi nello stesso
+    rerun Streamlit ereditano i metadati di sessione.
+
     :returns: tupla `(success, session_id, error_message)`. Esattamente uno
         tra `session_id` ed `error_message` e' `None`.
     """
@@ -165,6 +176,13 @@ def try_persist_session(
             )
     except Exception as exc:  # noqa: BLE001 - graceful UI feedback
         return False, None, str(exc)
+    # Post-save: bind session context per arricchire eventi successivi.
+    bind_session_context(
+        session_id=sid,
+        listino_hash=_listino_hash(session_input.listino_raw),
+        velocity_target=session_input.velocity_target_days,
+        budget_eur=session_input.budget,
+    )
     return True, sid, None
 
 
@@ -849,7 +867,7 @@ def _render_panchina_table(panchina: pd.DataFrame) -> None:
     st.dataframe(panchina[display_cols], use_container_width=True)
 
 
-def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow Streamlit multi-step inerentemente complesso
+def _render_descrizione_prezzo_flow(
     factory: sessionmaker[Session] | None,
 ) -> pd.DataFrame | None:
     """Flow nuovo CHG-2026-05-01-020: listino con descrizione+prezzo (no ASIN).
@@ -864,10 +882,29 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     5. Bottone "Conferma listino" -> ritorna DataFrame 7-col compatibile
        con `run_session`.
 
+    Bind request context (CHG-2026-05-01-036, B1.3): all'ingresso del
+    flow `bind_request_context(tenant_id=DEFAULT_TENANT_ID)` arricchisce
+    tutti gli emit UI (`ui.resolve_started/confirmed/override_applied/
+    resolve_failed` + `cache.hit/miss`) e gli eventi downstream
+    (`run_session` con pattern is_outer = orchestrator riusa il bind UI).
+
     Ritorna `None` se l'utente non ha ancora confermato il listino
     (UI in progress); altrimenti il DataFrame `listino_raw` pronto per
     `build_session_input`.
     """
+    is_outer = not is_request_context_bound()
+    bind_request_context(tenant_id=DEFAULT_TENANT_ID)
+    try:
+        return _render_descrizione_prezzo_flow_body(factory)
+    finally:
+        if is_outer:
+            clear_request_context()
+
+
+def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — flow Streamlit multi-step inerentemente complesso
+    factory: sessionmaker[Session] | None,
+) -> pd.DataFrame | None:
+    """Body del flow descrizione+prezzo (CHG-036 ha estratto il wrapper bind context)."""
     # Lazy import per non penalizzare boot quando il flow non e' attivo.
     from functools import partial  # noqa: PLC0415
 

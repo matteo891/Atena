@@ -17,6 +17,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from talos.observability import (
+    bind_request_context,
+    clear_request_context,
+    is_request_context_bound,
+)
 from talos.observability.events import (
     CANONICAL_EVENTS,
     EVENT_UI_OVERRIDE_APPLIED,
@@ -120,6 +125,45 @@ def test_resolve_failed_open_reason_enum(log_capture: LogCapture) -> None:
     assert len(entries) == 1
     assert entries[0]["reason"] == "exception"
     assert entries[0]["n_rows"] == 20
+
+
+def test_ui_emit_inherits_request_context_when_bound(log_capture: LogCapture) -> None:
+    """CHG-B1.3: emit UI ereditano `request_id`+`tenant_id` se bind attivo (nesting OK)."""
+    rid = bind_request_context(tenant_id=1)
+    try:
+        _emit_ui_resolve_started(n_rows=3, has_factory=True)
+    finally:
+        clear_request_context()
+
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_UI_RESOLVE_STARTED]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["n_rows"] == 3
+    # Context bound ereditato via merge_contextvars (ADR-0021).
+    assert entry["request_id"] == rid
+    assert entry["tenant_id"] == 1
+
+
+def test_bind_request_context_idempotent_nesting(log_capture: LogCapture) -> None:
+    """CHG-B1.3: bind annidato riusa request_id esistente (pattern is_outer)."""
+    assert not is_request_context_bound()
+    rid_outer = bind_request_context(tenant_id=1)
+    try:
+        # Caller annidato: bind riusa, NON sovrascrive.
+        rid_inner = bind_request_context(tenant_id=99)  # tenant_id ignorato
+        assert rid_inner == rid_outer
+        assert is_request_context_bound()
+
+        _emit_ui_resolve_started(n_rows=1, has_factory=False)
+    finally:
+        clear_request_context()
+
+    assert not is_request_context_bound()  # clear pulisce tutto
+
+    entries = [e for e in log_capture.entries if e["event"] == EVENT_UI_RESOLVE_STARTED]
+    assert len(entries) == 1
+    # tenant_id originale (1), non sovrascritto da nesting (99).
+    assert entries[0]["tenant_id"] == 1
 
 
 def test_canonical_events_catalog_contains_new_entries() -> None:

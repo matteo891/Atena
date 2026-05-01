@@ -76,23 +76,53 @@ def bind_request_context(
     tenant_id: int,
     request_id: str | None = None,
 ) -> str:
-    """Lega il context request-level (CHG-2026-05-01-035, ADR-0021 B1.2).
+    """Lega il context request-level (CHG-2026-05-01-035 + 036, ADR-0021).
 
     Ogni invocazione di `run_session` / `replay_session` / flow UI deve
     invocare questo helper all'ingresso (try/finally + `clear_request_context`).
     Sblocca la correlazione log end-to-end fra eventi emessi in moduli
     diversi nella stessa unit-of-work.
 
+    **Idempotente nesting-safe (CHG-2026-05-01-036, B1.3)**: se
+    `request_id` è già binded nel context corrente, viene **riusato**
+    invece di sovrascritto. Pattern: il caller più esterno (es. UI
+    Streamlit) binda; i caller annidati (es. orchestrator chiamato
+    dalla UI) condividono lo stesso request_id. Il caller più esterno
+    è anche responsabile del `clear_request_context` finale.
+
     :param tenant_id: tenant attivo (MVP single-tenant: 1).
-    :param request_id: opzionale; se `None`, viene generato UUID4 stringa.
-    :returns: il `request_id` binded (utile al caller per loggare/passare).
+    :param request_id: opzionale; se `None`, viene generato UUID4
+        stringa quando non c'è bind preesistente.
+    :returns: il `request_id` effettivamente binded (esistente o nuovo).
     """
+    existing = structlog.contextvars.get_contextvars()
+    if "request_id" in existing:
+        # Nesting: rispetta il bind esistente, non sovrascrivere.
+        return str(existing["request_id"])
     rid = request_id if request_id is not None else str(uuid.uuid4())
     structlog.contextvars.bind_contextvars(
         request_id=rid,
         tenant_id=tenant_id,
     )
     return rid
+
+
+def is_request_context_bound() -> bool:
+    """True se un `request_id` è già binded nel context corrente.
+
+    Helper introspettivo (CHG-2026-05-01-036, B1.3) per i caller
+    annidati che vogliono fare clear *solo se* sono i bind originator
+    (pattern is_outer). Esempio:
+
+        is_outer = not is_request_context_bound()
+        bind_request_context(tenant_id=1)  # idempotente
+        try:
+            ...  # work
+        finally:
+            if is_outer:
+                clear_request_context()
+    """
+    return "request_id" in structlog.contextvars.get_contextvars()
 
 
 def bind_session_context(

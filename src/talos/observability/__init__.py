@@ -10,6 +10,7 @@ from talos.observability.logging_config import (
     clear_request_context,
     clear_session_context,
     configure_logging,
+    is_request_context_bound,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "clear_request_context",
     "clear_session_context",
     "configure_logging",
+    "is_request_context_bound",
 ]
