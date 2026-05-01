@@ -3,7 +3,7 @@ id: CHG-2026-05-01-029
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" estesa round 5+ — extension family count_* simmetrici)
 status: Draft
-commit: pending
+commit: 2552088
 adr_ref: ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -261,4 +261,4 @@ def test_count_cache_hit_mixed() -> None:
   Possibili rotte (decisione Leader): (B1) `structlog.bind` context
   tracing, (B2) refactor UI multi-page ADR-0016, errata `tenant_id`
   in eventi UI per multi-tenant prep, (β) `upsert_session` semantica.
-- Commit: pending.
+- Commit: `2552088`.
