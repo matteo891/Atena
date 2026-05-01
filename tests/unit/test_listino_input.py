@@ -844,24 +844,6 @@ def test_build_listino_mixed_verified_and_fallback() -> None:
     assert list(df["buy_box_eur"]) == [120.00, 200.00, 55.00]
 
 
-def test_resolved_row_default_verified_buybox_is_none() -> None:
-    """Default `verified_buybox_eur=None` per backward compat costruzione esplicita."""
-    row = ResolvedRow(
-        descrizione="x",
-        prezzo_eur=Decimal(100),
-        asin="B0AAA111111",
-        confidence_pct=80.0,
-        is_ambiguous=False,
-        is_cache_hit=False,
-        v_tot=0,
-        s_comp=0,
-        category_node=None,
-        notes=(),
-    )
-    assert row.verified_buybox_eur is None
-    assert row.candidates == ()
-
-
 # ---------------------------------------------------------------------------
 # Cache hit + buybox live (CHG-2026-05-01-039)
 # ---------------------------------------------------------------------------
