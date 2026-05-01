@@ -20,6 +20,16 @@ from talos.extract.asin_master_writer import (
     build_asin_master_input,
     upsert_asin_master,
 )
+from talos.extract.asin_resolver import (
+    CONFIDENCE_WEIGHT_PRICE,
+    CONFIDENCE_WEIGHT_TITLE,
+    DEFAULT_AMBIGUOUS_THRESHOLD_PCT,
+    AsinResolverProtocol,
+    ResolutionCandidate,
+    ResolutionResult,
+    compute_confidence,
+    is_ambiguous,
+)
 from talos.extract.samsung import (
     DEFAULT_COLOR_FUZZY_THRESHOLD,
     DEFAULT_CONFIDENCE_AMBIGUO_THRESHOLD,
@@ -34,18 +44,26 @@ from talos.extract.samsung import (
 )
 
 __all__ = [
+    "CONFIDENCE_WEIGHT_PRICE",
+    "CONFIDENCE_WEIGHT_TITLE",
+    "DEFAULT_AMBIGUOUS_THRESHOLD_PCT",
     "DEFAULT_COLOR_FUZZY_THRESHOLD",
     "DEFAULT_CONFIDENCE_AMBIGUO_THRESHOLD",
     "DEFAULT_CONFIDENCE_SICURO_THRESHOLD",
     "DEFAULT_FIELD_WEIGHTS",
     "DEFAULT_WHITELIST_YAML",
     "AsinMasterInput",
+    "AsinResolverProtocol",
     "MatchResult",
     "MatchStatus",
+    "ResolutionCandidate",
+    "ResolutionResult",
     "SamsungEntities",
     "SamsungExtractor",
     "acquire_and_persist",
     "build_asin_master_input",
+    "compute_confidence",
+    "is_ambiguous",
     "load_whitelist",
     "upsert_asin_master",
 ]
