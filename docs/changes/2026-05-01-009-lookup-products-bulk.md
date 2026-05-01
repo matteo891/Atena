@@ -3,7 +3,7 @@ id: CHG-2026-05-01-009
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target — chiusura Fase 1)
 status: Draft
-commit: TBD
+commit: 1a9369d
 adr_ref: ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -135,4 +135,4 @@ def lookup_products(
 - Predecessore: CHG-2026-05-01-006 (`lookup_product`).
 - Successore atteso: CHG-2026-05-01-010 (orchestratore
   `acquire_and_persist` che usa `lookup_products` per N ASIN).
-- Commit: TBD.
+- Commit: `1a9369d`.
