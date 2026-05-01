@@ -20,9 +20,11 @@ Flusso:
 
 Decisioni Leader 2026-05-01 round 4 ratificate (delta=A
 convivenza CSV legacy + nuovo flow). I default per `v_tot=0`,
-`s_comp=0`, `match_status=SICURO`, `referral_fee_pct=8.0` sono
+`s_comp=0`, `match_status=SICURO`, `referral_fee_pct=0.08` sono
 proposte per MVP — il CFO puo' override colonne nel CSV se
-ha valori migliori.
+ha valori migliori. Il campo `referral_fee_pct` e' una FRAZIONE
+DECIMALE in [0, 1] (0.08 = 8%), coerente con il contratto di
+`cash_inflow_eur(referral_fee_rate)` (CHG-038 fix unit drift).
 
 R-01 NO SILENT DROPS (ADR-0021): le righe del CSV non parsabili
 o non risolte vengono accumulate in `warnings` (parse) e
@@ -105,7 +107,9 @@ REQUIRED_DESCRIZIONE_PREZZO_COLUMNS: tuple[str, ...] = ("descrizione", "prezzo")
 # Default per le 5 colonne `REQUIRED_INPUT_COLUMNS` non risolvibili dal
 # resolver (ADR-0017 + CHG-039). Override-abili dal CSV: se la colonna
 # esiste, vince sulla default.
-DEFAULT_REFERRAL_FEE_PCT: float = 8.0
+# CHG-2026-05-01-038: corretto da 8.0 a 0.08 (fix unit drift —
+# `cash_inflow_eur` valida `referral_fee_rate` in [0, 1] frazione decimale).
+DEFAULT_REFERRAL_FEE_PCT: float = 0.08
 DEFAULT_V_TOT: int = 0
 DEFAULT_S_COMP: int = 0
 DEFAULT_MATCH_STATUS: str = "SICURO"
@@ -410,7 +414,8 @@ def build_listino_raw_from_resolved(
       costo fornitore (acquisto): ROI/VGP più accurati senza
       richiedere al CFO di compilare due colonne.
     - `cost_eur` = `prezzo_eur` (sempre il prezzo fornitore CFO).
-    - `referral_fee_pct = 8.0` default (override CFO via slider futuro).
+    - `referral_fee_pct = 0.08` default (frazione decimale in [0, 1],
+      0.08 = 8%; override CFO via slider futuro).
     - `match_status = SICURO` (no NLP filter applicato).
 
     Cache hit (`description_resolutions`) -> `verified_buybox_eur=None`

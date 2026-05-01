@@ -33,6 +33,21 @@ pytestmark = pytest.mark.unit
 
 
 # ---------------------------------------------------------------------------
+# Costanti — contract sentinels (CHG-2026-05-01-038)
+# ---------------------------------------------------------------------------
+
+
+def test_default_referral_fee_pct_is_decimal_fraction() -> None:
+    """Lock contract: `DEFAULT_REFERRAL_FEE_PCT` deve essere frazione [0, 1].
+
+    Coerente con `cash_inflow_eur(referral_fee_rate)` che valida lo
+    stesso range. Sentinel per prevenire la regressione fixata in
+    CHG-2026-05-01-038 (era 8.0 = "8 percent" → rotta pipeline su default).
+    """
+    assert 0.0 <= DEFAULT_REFERRAL_FEE_PCT <= 1.0
+
+
+# ---------------------------------------------------------------------------
 # `parse_descrizione_prezzo_csv`
 # ---------------------------------------------------------------------------
 
