@@ -3,7 +3,7 @@ id: CHG-2026-05-01-028
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" estesa round 5+ — refactor DRY helper count_eligible_for_overrides)
 status: Draft
-commit: pending
+commit: 57ab540
 adr_ref: ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -207,4 +207,4 @@ def test_count_eligible_mixed() -> None:
   Possibili rotte: refactor `_render_ambiguous_candidate_overrides`
   con `eligible_for_override_indices` condiviso, (B1) `structlog.bind`
   context tracing, (B2) refactor UI multi-page ADR-0016.
-- Commit: pending.
+- Commit: `57ab540`.
