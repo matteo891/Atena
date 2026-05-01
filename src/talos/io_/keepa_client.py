@@ -23,8 +23,10 @@ Decisioni di design (D1 ratificata Leader 2026-04-30 sera, "default"):
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pyrate_limiter import Duration, Limiter, Rate
 from tenacity import (
@@ -35,8 +37,7 @@ from tenacity import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from decimal import Decimal
+    from collections.abc import Callable, Iterable
 
 _logger = logging.getLogger(__name__)
 
@@ -44,6 +45,21 @@ DEFAULT_RETRY_MAX_ATTEMPTS = 5
 DEFAULT_RETRY_WAIT_MIN_S = 1.0
 DEFAULT_RETRY_WAIT_MAX_S = 60.0
 DEFAULT_RATE_LIMIT_PER_MINUTE = 60
+DEFAULT_KEEPA_DOMAIN = "IT"
+
+# Hierarchy decisione Leader 2026-05-01 round 4 (A2): se il piano subscription
+# non espone `BUY_BOX_SHIPPING`, il prossimo source ragionevole e' `NEW`
+# (prezzo offerta nuova piu' bassa), poi `AMAZON` (Amazon-as-seller). Caller
+# riceve il primo valore valido o `KeepaMissError` se nessuno disponibile.
+_BUYBOX_SOURCE_HIERARCHY = ("BUY_BOX_SHIPPING", "NEW", "AMAZON")
+
+# Decisione Leader 2026-05-01 round 4 (alpha''): l'adapter NON popola mai
+# `fee_fba_eur` da Keepa. Il `pickAndPackFee` di Keepa misura solo la quota
+# logistica atomica (~10x piu' piccola della formula L11b Frozen del Leader,
+# che stima la "Fee FBA totale"). Per preservare la semantica di L11b senza
+# inquinare Cash_Profit/ROI/VGP, l'adapter ritorna sempre `None` su
+# `fee_fba_eur` -> caller riceve `KeepaMissError` -> fallback `fee_fba_manual`
+# (CHG-2026-04-30-022). Documentato in change CHG-2026-05-01-015.
 
 
 @dataclass(frozen=True)
@@ -112,33 +128,102 @@ class KeepaTransientError(Exception):
     """
 
 
+def _last_valid_value(arr: Iterable[Any] | None) -> float | None:
+    """Ultimo valore time-series valido (non `None`/NaN/-1/negativo).
+
+    Keepa CSV / data-arrays sono serie temporali con sentinel `-1` per
+    "out of stock" e possibilmente NaN. Iteriamo a ritroso e ritorniamo
+    il primo numero finito >= 0. R-01 NO SILENT DROPS: assenza di
+    valori validi -> `None` (caller solleva `KeepaMissError`).
+    """
+    if arr is None:
+        return None
+    for v in reversed(list(arr)):
+        if v is None:
+            continue
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            continue
+        if math.isnan(f) or math.isinf(f) or f < 0:
+            continue
+        return f
+    return None
+
+
 class _LiveKeepaAdapter:
     """Adapter live su libreria community `keepa`.
 
-    Skeleton CHG-2026-05-01-001: il mapping CSV indici Keepa
-    (BUY_BOX_SHIPPING idx 18, SALES idx 3) e il parsing del campo
-    fee_fba richiedono sandbox con API key reale, rinviato a CHG
-    dedicato (probabile CHG-2026-05-01-005 fallback chain
-    integratore, o CHG separato `keepa-live-mapping`).
+    Implementato in CHG-2026-05-01-015 con decisioni Leader ratificate:
 
-    Finche' non implementato, `query()` lancia `NotImplementedError`
-    esplicito (R-01 NO SILENT DROPS rispettato: nessun fallback
-    silenzioso). I test devono iniettare un mock via
-    `adapter_factory`.
+    - **buybox source A2 hierarchy**: `data['BUY_BOX_SHIPPING']` ->
+      `data['NEW']` -> `data['AMAZON']`. Il piano subscription corrente
+      non espone `BUY_BOX_SHIPPING`; `NEW` coincide empiricamente col
+      Buy Box reale (validato live su B0CSTC2RDW Galaxy S24: scraper
+      €549.00 == Keepa NEW €549.00).
+    - **bsr source A**: `data['SALES']` (BSR root categoria).
+    - **fee_fba policy alpha''**: SEMPRE `fee_fba_eur=None`. Il
+      `pickAndPackFee` Keepa NON e' equivalente alla formula L11b
+      Frozen del Leader (ordine di grandezza ~10x diverso). Caller
+      riceve `KeepaMissError` -> fallback `fee_fba_manual` CHG-022.
+
+    Lazy init: `keepa.Keepa(api_key)` istanzia al primo `query()` per
+    evitare network al boot del client (test unit non devono pagare
+    overhead). `domain="IT"` per Amazon.it.
+
+    Errori network/transient (`requests.exceptions.RequestException`,
+    timeouts) sono rimappati a `KeepaTransientError` -> retry
+    esponenziale del `KeepaClient`. Errori di shape (response vuoto,
+    asin mismatch) -> `KeepaTransientError` (potrebbero essere flap
+    temporanei API Keepa).
     """
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, *, domain: str = DEFAULT_KEEPA_DOMAIN) -> None:
         self._api_key = api_key
+        self._domain = domain
+        self._api: Any = None  # lazy: keepa.Keepa istanziata al primo query()
+
+    def _ensure_api(self) -> Any:
+        if self._api is None:
+            import keepa  # noqa: PLC0415 — lazy import per non pagare boot in test mock-only
+
+            self._api = keepa.Keepa(self._api_key)
+        return self._api
 
     def query(self, asin: str) -> KeepaProduct:
-        msg = (
-            f"_LiveKeepaAdapter.query({asin!r}) non implementato in "
-            "CHG-2026-05-01-001. Mapping CSV indici Keepa "
-            "(BUY_BOX_SHIPPING idx 18, SALES idx 3) e fee_fba richiedono "
-            "sandbox + API key reale; ratifica in CHG dedicato. "
-            "Test devono iniettare un mock via adapter_factory."
+        api = self._ensure_api()
+        try:
+            products = api.query([asin], domain=self._domain)
+        except Exception as exc:
+            msg = f"Keepa API call failed for {asin}: {type(exc).__name__}: {exc}"
+            raise KeepaTransientError(msg) from exc
+
+        if not products:
+            msg = f"Keepa returned empty product list for {asin}"
+            raise KeepaTransientError(msg)
+        product = products[0]
+        if product.get("asin") != asin:
+            msg = f"Keepa returned ASIN mismatch: requested {asin}, got {product.get('asin')!r}"
+            raise KeepaTransientError(msg)
+
+        data = product.get("data") or {}
+        buybox_eur: Decimal | None = None
+        for source in _BUYBOX_SOURCE_HIERARCHY:
+            value = _last_valid_value(data.get(source))
+            if value is not None:
+                buybox_eur = Decimal(str(value))
+                break
+
+        bsr_value = _last_valid_value(data.get("SALES"))
+        bsr: int | None = int(bsr_value) if bsr_value is not None else None
+
+        # Decisione alpha'': fee_fba_eur sempre None (caller usa fee_fba_manual).
+        return KeepaProduct(
+            asin=asin,
+            buybox_eur=buybox_eur,
+            bsr=bsr,
+            fee_fba_eur=None,
         )
-        raise NotImplementedError(msg)
 
 
 def _default_adapter_factory(api_key: str) -> KeepaApiAdapter:

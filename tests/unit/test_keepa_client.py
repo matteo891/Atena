@@ -20,7 +20,6 @@ from talos.io_ import (
     KeepaRateLimitExceededError,
     KeepaTransientError,
 )
-from talos.io_.keepa_client import _LiveKeepaAdapter
 
 pytestmark = pytest.mark.unit
 
@@ -119,11 +118,10 @@ def test_construct_with_invalid_retry_attempts_raises() -> None:
         KeepaClient(api_key="x", retry_max_attempts=0)
 
 
-def test_default_factory_query_raises_not_implemented() -> None:
-    """`_LiveKeepaAdapter.query` skeleton lancia NotImplementedError (R-01)."""
-    adapter = _LiveKeepaAdapter(api_key="x")
-    with pytest.raises(NotImplementedError, match="non implementato"):
-        adapter.query("B0CN3VDM4G")
+# `_LiveKeepaAdapter.query` non e' piu' skeleton (CHG-2026-05-01-015 ratifica
+# il live mapping con decisioni Leader A2/A/alpha''). La copertura live e' in
+# `tests/integration/test_live_keepa.py` (skip module-level se
+# `TalosSettings().keepa_api_key is None`).
 
 
 # ---------------------------------------------------------------------------
