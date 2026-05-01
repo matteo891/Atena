@@ -37,6 +37,9 @@ from talos.persistence.models.asin_master import AsinMaster
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
+    from talos.extract.samsung import SamsungEntities
+    from talos.io_.fallback_chain import ProductData
+
 
 @dataclass(frozen=True)
 class AsinMasterInput:
@@ -115,3 +118,90 @@ def upsert_asin_master(db: Session, *, data: AsinMasterInput) -> str:
     )
     db.execute(stmt)
     return data.asin
+
+
+def build_asin_master_input(  # noqa: PLR0913 — bridge-by-design: caller fornisce
+    # 5 hint indipendenti (brand, enterprise, samsung_entities, title_fallback,
+    # category_node) sopra il `product_data` posizionale; raggruppare in un
+    # dataclass intermedio creerebbe solo un wrapper inerte.
+    product_data: ProductData,
+    *,
+    brand: str,
+    enterprise: bool = False,
+    samsung_entities: SamsungEntities | None = None,
+    title_fallback: str | None = None,
+    category_node: str | None = None,
+) -> AsinMasterInput:
+    """Costruisce un `AsinMasterInput` componendo `ProductData` + entita' brand.
+
+    Bridge architetturale CHG-2026-05-01-008 fra il lato `io_/` (output
+    di `lookup_product`) e il lato writer (`upsert_asin_master`).
+
+    Mapping:
+        - `asin` <- `product_data.asin`
+        - `title` <- `product_data.title` se non None, altrimenti
+          `title_fallback`. Se entrambi None solleva `ValueError`
+          (R-01 NO SILENT DROPS: `AsinMaster.title` e' NOT NULL,
+          il bridge non inventa stringhe vuote).
+        - `brand`, `enterprise`, `category_node` <- parametri caller
+          (non derivabili da `ProductData` ne' dal `KeepaProduct` /
+          `ScrapedProduct` correnti).
+        - `model`, `rom_gb`, `ram_gb`, `connectivity`,
+          `color_family` <- da `samsung_entities` se fornito (output
+          `SamsungExtractor.parse_title`); altrimenti `None` (la
+          merge `COALESCE` di `upsert_asin_master` D5.b preserva
+          eventuali valori esistenti).
+
+    Note di design:
+        - `samsung_entities.color` -> `AsinMasterInput.color_family`:
+          mapping diretto (es. "Titanium Black"). La distinzione
+          color/color_family e' un dettaglio del modello DB; il
+          test integration in CHG-005 documenta il pattern.
+        - `enterprise` di `samsung_entities` (se fornito)
+          attualmente NON viene letto: prevale il parametro
+          esplicito `enterprise` del bridge. Razionale: il caller
+          (CFO o integratore Fase 3) lo conosce dal listino
+          fornitore, non dal titolo Amazon. Caller che vogliono
+          pre-popolare via NLP devono passarlo esplicitamente.
+        - `category_node` non e' mai derivato qui (richiede
+          mapping Amazon Browse Node al sistema interno; scope
+          futuro).
+
+    Args:
+        product_data: output di `lookup_product` (CHG-006).
+        brand: stringa NOT NULL, fornita dal caller (es. "Samsung").
+        enterprise: bool, default False.
+        samsung_entities: opzionale, output di
+          `SamsungExtractor.parse_title(scraped_title)`.
+        title_fallback: stringa da usare se `product_data.title is
+          None`. Se entrambi None -> `ValueError`.
+        category_node: opzionale, per popolazione futura.
+
+    Returns:
+        AsinMasterInput pronto per essere passato a
+        `upsert_asin_master(db, data=...)`.
+
+    Raises:
+        ValueError: `product_data.title is None` e
+          `title_fallback is None` (vincolo NOT NULL su
+          `AsinMaster.title`).
+    """
+    title = product_data.title if product_data.title is not None else title_fallback
+    if title is None:
+        msg = (
+            f"build_asin_master_input: title is None for asin={product_data.asin!r} "
+            "and no title_fallback provided. AsinMaster.title is NOT NULL."
+        )
+        raise ValueError(msg)
+    return AsinMasterInput(
+        asin=product_data.asin,
+        title=title,
+        brand=brand,
+        enterprise=enterprise,
+        model=samsung_entities.model if samsung_entities is not None else None,
+        rom_gb=samsung_entities.rom_gb if samsung_entities is not None else None,
+        ram_gb=samsung_entities.ram_gb if samsung_entities is not None else None,
+        connectivity=samsung_entities.connectivity if samsung_entities is not None else None,
+        color_family=samsung_entities.color if samsung_entities is not None else None,
+        category_node=category_node,
+    )
