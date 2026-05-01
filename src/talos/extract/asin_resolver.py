@@ -28,11 +28,20 @@ negativo, descrizione vuota), AMBIGUOUS marcato visibile altrimenti.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
+from rapidfuzz import fuzz
+
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from decimal import Decimal
+
+    from talos.io_.fallback_chain import ProductData
+    from talos.io_.serp_search import AmazonSerpAdapter
+
+_logger = logging.getLogger(__name__)
 
 
 # Range valido `fuzzy_title_pct` (0-100, output `rapidfuzz` ratio).
@@ -155,3 +164,130 @@ def is_ambiguous(
 ) -> bool:
     """`True` sotto soglia. Solo flag UI, NON criterio di scarto."""
     return confidence_pct < threshold
+
+
+def _fuzzy_title_ratio(description: str, title: str) -> float:
+    """Score 0-100 via `rapidfuzz.fuzz.token_set_ratio` (CHG-018).
+
+    `token_set_ratio` e' robusto a:
+    - ordine token diverso ("Galaxy S24 256GB" vs "S24 Galaxy 256 GB")
+    - parole extra nel titolo Amazon (descrizione fornitore corta vs
+      titolo lungo con specifiche)
+    - duplicati e whitespace.
+
+    Restituisce direttamente 0-100 compatibile con `compute_confidence`.
+    """
+    return float(fuzz.token_set_ratio(description, title))
+
+
+def _delta_price_pct(buybox_eur: Decimal | None, input_price_eur: Decimal) -> float | None:
+    """Delta prezzo percentuale `|buybox - input| / input * 100`.
+
+    None se `buybox_eur is None` (lookup live failed). `input_price_eur`
+    deve essere > 0 (validato dal caller).
+    """
+    if buybox_eur is None:
+        return None
+    diff = abs(buybox_eur - input_price_eur)
+    return float(diff / input_price_eur * 100)
+
+
+class _LiveAsinResolver:
+    """Composer SERP + lookup live per descrizione->ASIN (CHG-018).
+
+    Implementa `AsinResolverProtocol` (CHG-016) componendo:
+    1. `serp_adapter.search(description)` -> top-N candidati
+    2. `lookup_callable(candidate.asin)` -> `ProductData` per ottenere
+       `buybox_eur` (di norma da Keepa NEW via `lookup_product`)
+    3. Per ogni candidato calcola fuzzy_title (rapidfuzz token_set) e
+       delta_price (verifica prezzo). Compone `confidence_pct`.
+    4. `selected` = candidato con max `confidence_pct`. Tie-break
+       implicito: ordine SERP preserve (top-1 vince a parita').
+
+    `lookup_callable` e' iniettato per disaccoppiamento: in produzione
+    e' `partial(lookup_product, keepa=..., scraper=None, page=None,
+    ocr=None)` Keepa-only (no Chromium overhead per la verifica
+    prezzo dei N candidati). In test e' un mock pure-Python.
+
+    R-01 NO SILENT DROPS:
+    - lookup fallito per un candidato -> buybox=None +
+      `delta_price=None` -> confidence ridotta ma candidato ESPOSTO
+      in `candidates` (UX-side R-01).
+    - SERP vuota -> ResolutionResult(selected=None, candidates=(),
+      is_ambiguous=True, notes=("zero risultati SERP",)).
+    - Validazione input: prezzo<=0, descrizione vuota -> ValueError
+      esplicito al caller (contratto).
+    """
+
+    def __init__(
+        self,
+        serp_adapter: AmazonSerpAdapter,
+        lookup_callable: Callable[[str], ProductData],
+        *,
+        max_candidates: int = 5,
+    ) -> None:
+        if max_candidates <= 0:
+            msg = f"max_candidates deve essere > 0 (ricevuto {max_candidates})"
+            raise ValueError(msg)
+        self._serp = serp_adapter
+        self._lookup = lookup_callable
+        self._max_candidates = max_candidates
+
+    def resolve_description(
+        self,
+        description: str,
+        input_price_eur: Decimal,
+    ) -> ResolutionResult:
+        if not description.strip():
+            msg = "description vuota / whitespace-only"
+            raise ValueError(msg)
+        if input_price_eur <= 0:
+            msg = f"input_price_eur deve essere > 0 (ricevuto {input_price_eur})"
+            raise ValueError(msg)
+
+        serp_results = self._serp.search(description, max_results=self._max_candidates)
+        if not serp_results:
+            return ResolutionResult(
+                description=description,
+                input_price_eur=input_price_eur,
+                selected=None,
+                candidates=(),
+                is_ambiguous=True,
+                notes=("zero risultati SERP",),
+            )
+
+        notes: list[str] = []
+        candidates: list[ResolutionCandidate] = []
+        for serp_item in serp_results:
+            buybox: Decimal | None = None
+            try:
+                product = self._lookup(serp_item.asin)
+                buybox = product.buybox_eur
+            except Exception as exc:  # noqa: BLE001 — lookup puo' lanciare KeepaTransient/Rate/Selector*; tutti -> note + buybox=None
+                notes.append(
+                    f"candidato {serp_item.asin} lookup failed: {type(exc).__name__}",
+                )
+            fuzzy = _fuzzy_title_ratio(description, serp_item.title)
+            delta = _delta_price_pct(buybox, input_price_eur)
+            confidence = compute_confidence(fuzzy, delta)
+            candidates.append(
+                ResolutionCandidate(
+                    asin=serp_item.asin,
+                    title=serp_item.title,
+                    buybox_eur=buybox,
+                    fuzzy_title_pct=fuzzy,
+                    delta_price_pct=delta,
+                    confidence_pct=confidence,
+                ),
+            )
+
+        # Selected = max confidence; tie-break implicito: primo per ordine SERP.
+        selected = max(candidates, key=lambda c: c.confidence_pct)
+        return ResolutionResult(
+            description=description,
+            input_price_eur=input_price_eur,
+            selected=selected,
+            candidates=tuple(candidates),
+            is_ambiguous=is_ambiguous(selected.confidence_pct),
+            notes=tuple(notes),
+        )
