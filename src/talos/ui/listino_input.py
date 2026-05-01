@@ -510,6 +510,30 @@ def apply_candidate_overrides(
     return out
 
 
+def format_cache_hit_caption(resolved: list[ResolvedRow]) -> str:
+    """Caption UX hit rate cache `description_resolutions` per il flow CFO.
+
+    Frontend-only: aggrega `ResolvedRow.is_cache_hit` su tutto il listino
+    risolto. Espone immediatamente al CFO l'efficacia della cache senza
+    aspettare consumo telemetria a valle (CHG-2026-05-01-025).
+
+    Format: ``"Cache: {hits}/{total} hit ({pct:.0f}%)."`` Helper puro
+    testabile mock-only.
+
+    >>> format_cache_hit_caption([])
+    ''
+    >>> # Hit/miss casi coperti da `tests/unit/test_listino_input.py`.
+
+    Lista vuota → stringa vuota (caller suppress dal caption finale).
+    """
+    if not resolved:
+        return ""
+    n_total = len(resolved)
+    n_hits = sum(1 for r in resolved if r.is_cache_hit)
+    pct = n_hits / n_total * 100
+    return f"Cache: {n_hits}/{n_total} hit ({pct:.0f}%)."
+
+
 def format_confidence_badge(confidence_pct: float) -> str:
     """Stringa visiva per UI: simbolo + numero (R-01 UX visibility).
 

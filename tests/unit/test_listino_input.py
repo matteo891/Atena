@@ -18,6 +18,7 @@ from talos.ui.listino_input import (
     ResolvedRow,
     apply_candidate_overrides,
     build_listino_raw_from_resolved,
+    format_cache_hit_caption,
     format_confidence_badge,
     parse_descrizione_prezzo_csv,
     resolve_listino_with_cache,
@@ -148,6 +149,73 @@ def test_format_confidence_badge_out_of_range() -> None:
     """Confidence fuori [0,100] -> stringa fallback `?`."""
     assert format_confidence_badge(150.0).startswith("?")
     assert format_confidence_badge(-5.0).startswith("?")
+
+
+# ---------------------------------------------------------------------------
+# `format_cache_hit_caption` (CHG-2026-05-01-026)
+# ---------------------------------------------------------------------------
+
+
+def _resolved_with_cache_hit(*, is_cache_hit: bool, asin: str = "B0CSTC2RDW") -> ResolvedRow:
+    """Helper minimo: ResolvedRow con flag is_cache_hit per stat aggregata."""
+    return ResolvedRow(
+        descrizione="Galaxy S24",
+        prezzo_eur=Decimal("549.00"),
+        asin=asin,
+        confidence_pct=95.0,
+        is_ambiguous=False,
+        is_cache_hit=is_cache_hit,
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+        notes=(),
+    )
+
+
+def test_format_cache_hit_caption_empty_returns_empty_string() -> None:
+    """Lista vuota -> stringa vuota (caller suppress dal caption finale)."""
+    assert format_cache_hit_caption([]) == ""
+
+
+def test_format_cache_hit_caption_all_hits() -> None:
+    """Tutti hit -> 100%."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=True) for _ in range(5)]
+    assert format_cache_hit_caption(rows) == "Cache: 5/5 hit (100%)."
+
+
+def test_format_cache_hit_caption_all_misses() -> None:
+    """Tutti miss (cache fredda o factory=None) -> 0%."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=False) for _ in range(4)]
+    assert format_cache_hit_caption(rows) == "Cache: 0/4 hit (0%)."
+
+
+def test_format_cache_hit_caption_mixed() -> None:
+    """Mixed 3 hit / 12 totali -> 25%."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=True) for _ in range(3)] + [
+        _resolved_with_cache_hit(is_cache_hit=False) for _ in range(9)
+    ]
+    assert format_cache_hit_caption(rows) == "Cache: 3/12 hit (25%)."
+
+
+def test_format_cache_hit_caption_single_hit() -> None:
+    """Single hit -> 100%."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=True)]
+    assert format_cache_hit_caption(rows) == "Cache: 1/1 hit (100%)."
+
+
+def test_format_cache_hit_caption_single_miss() -> None:
+    """Single miss -> 0%."""
+    rows = [_resolved_with_cache_hit(is_cache_hit=False)]
+    assert format_cache_hit_caption(rows) == "Cache: 0/1 hit (0%)."
+
+
+def test_format_cache_hit_caption_includes_unresolved_rows() -> None:
+    """Righe non risolte (asin='') contate nel total ma con is_cache_hit=False."""
+    rows = [
+        _resolved_with_cache_hit(is_cache_hit=True),
+        _resolved_with_cache_hit(is_cache_hit=False, asin=""),
+    ]
+    assert format_cache_hit_caption(rows) == "Cache: 1/2 hit (50%)."
 
 
 # ---------------------------------------------------------------------------
