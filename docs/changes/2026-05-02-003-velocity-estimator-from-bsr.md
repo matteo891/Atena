@@ -3,7 +3,7 @@ id: CHG-2026-05-02-003
 date: 2026-05-02
 author: Claude (su autorizzazione Leader, modalità "ultra macinata" round 7 — sblocco MVP CFO operativo)
 status: Draft
-commit: TBD
+commit: dfe3777
 adr_ref: ADR-0017, ADR-0018, ADR-0014, ADR-0019
 ---
 
@@ -307,4 +307,4 @@ def test_build_listino_v_tot_estimated_from_bsr_when_csv_zero():
   visualizza `v_tot_source` esplicitamente.
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: TBD (backfill hash post-commit).
+- Commit: `dfe3777`.
