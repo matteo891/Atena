@@ -3,7 +3,7 @@ id: CHG-2026-05-01-022
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 5 — A2 hardening flow descrizione+prezzo: separa Buy Box reale da costo fornitore)
 status: Draft
-commit: <pending>
+commit: 580e1e1
 adr_ref: ADR-0017, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -261,4 +261,4 @@ for r in valid_rows:
   rispettato (preview UI espone tutti i match con buybox visible).
 - Successore atteso: A3 override candidato manuale top-N per
   righe AMB.
-- Commit: `<pending>`.
+- Commit: `580e1e1`.
