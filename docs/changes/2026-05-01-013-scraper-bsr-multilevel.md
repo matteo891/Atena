@@ -3,7 +3,7 @@ id: CHG-2026-05-01-013
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 2 attiva, Path B target — chiusura gap funzionale BSR)
 status: Draft
-commit: TBD
+commit: 8ef6259
 adr_ref: ADR-0017, ADR-0014, ADR-0019
 ---
 
@@ -333,4 +333,4 @@ def _resolve_bsr_chain(self, asin, page):
 - Successore atteso: CHG-2026-05-01-014 (eventuale)
   `_LiveKeepaAdapter` quando arrivera' la sandbox key + decisione
   Velocity policy "quale livello BSR usare".
-- Commit: TBD.
+- Commit: `8ef6259`.
