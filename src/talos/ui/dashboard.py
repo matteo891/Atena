@@ -940,12 +940,17 @@ def _render_descrizione_prezzo_flow(  # noqa: C901, PLR0911, PLR0915 — flow St
     if resolved is None:
         return None
 
-    # Tabella preview con confidence + badge esposti (R-01 UX-side)
+    # Tabella preview con confidence + badge esposti (R-01 UX-side).
+    # `buy_box_verificato` espone il prezzo Amazon NEW recuperato live
+    # (CHG-022). "—" se non verificato (cache hit / lookup fail).
     preview_df = pd.DataFrame(
         [
             {
                 "descrizione": r.descrizione,
-                "prezzo": float(r.prezzo_eur),
+                "prezzo_fornitore": float(r.prezzo_eur),
+                "buy_box_verificato": (
+                    float(r.verified_buybox_eur) if r.verified_buybox_eur is not None else None
+                ),
                 "asin": r.asin or "(non risolto)",
                 "confidence": format_confidence_badge(r.confidence_pct),
                 "ambiguo": "Sì" if r.is_ambiguous else "No",

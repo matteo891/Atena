@@ -154,7 +154,13 @@ def test_format_confidence_badge_out_of_range() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _resolved(asin: str, prezzo: float, *, category: str | None = None) -> ResolvedRow:
+def _resolved(
+    asin: str,
+    prezzo: float,
+    *,
+    category: str | None = None,
+    verified_buybox: float | None = None,
+) -> ResolvedRow:
     return ResolvedRow(
         descrizione=f"desc {asin}",
         prezzo_eur=Decimal(str(prezzo)),
@@ -166,6 +172,7 @@ def _resolved(asin: str, prezzo: float, *, category: str | None = None) -> Resol
         s_comp=2,
         category_node=category,
         notes=(),
+        verified_buybox_eur=Decimal(str(verified_buybox)) if verified_buybox is not None else None,
     )
 
 
@@ -358,3 +365,129 @@ def test_resolve_resolver_lazy_init_only_when_needed() -> None:
     resolved = resolve_listino_with_cache([], factory=None, resolver_provider=provider)
     assert resolved == []
     assert call_count["n"] == 0
+
+
+# ---------------------------------------------------------------------------
+# `verified_buybox_eur` propagation (CHG-2026-05-01-022)
+# ---------------------------------------------------------------------------
+
+
+class _MockResolverWithBuybox:
+    """Mock resolver con buybox custom (per test A2 verified_buybox propagation)."""
+
+    def __init__(self, mapping: dict[str, tuple[str, Decimal | None]]) -> None:
+        # mapping: descrizione -> (asin, buybox_eur or None per lookup-failed)
+        self._mapping = mapping
+
+    def resolve_description(self, description: str, input_price_eur: Decimal) -> ResolutionResult:
+        entry = self._mapping.get(description)
+        if entry is None:
+            return ResolutionResult(
+                description=description,
+                input_price_eur=input_price_eur,
+                selected=None,
+                candidates=(),
+                is_ambiguous=True,
+                notes=("mock no match",),
+            )
+        asin, buybox = entry
+        cand = ResolutionCandidate(
+            asin=asin,
+            title=f"Title {asin}",
+            buybox_eur=buybox,
+            fuzzy_title_pct=95.0,
+            delta_price_pct=0.0 if buybox is not None else None,
+            confidence_pct=97.0 if buybox is not None else 57.0,
+        )
+        return ResolutionResult(
+            description=description,
+            input_price_eur=input_price_eur,
+            selected=cand,
+            candidates=(cand,),
+            is_ambiguous=False,
+            notes=(),
+        )
+
+
+def test_resolved_row_propagates_verified_buybox_from_resolver() -> None:
+    """Resolver buybox -> ResolvedRow.verified_buybox_eur."""
+    resolver = _MockResolverWithBuybox(
+        {"Galaxy S24 256GB": ("B0CSTC2RDW", Decimal("599.50"))},
+    )
+    rows = [
+        DescrizionePrezzoRow(
+            descrizione="Galaxy S24 256GB",
+            prezzo_eur=Decimal("549.00"),  # prezzo fornitore (cost)
+            v_tot=0,
+            s_comp=0,
+            category_node=None,
+        ),
+    ]
+    resolved = resolve_listino_with_cache(rows, factory=None, resolver_provider=lambda: resolver)
+    assert len(resolved) == 1
+    assert resolved[0].verified_buybox_eur == Decimal("599.50")
+    assert resolved[0].prezzo_eur == Decimal("549.00")  # cost preservato
+
+
+def test_resolved_row_buybox_none_when_lookup_failed() -> None:
+    """Resolver con buybox=None (lookup fail) -> ResolvedRow.verified_buybox_eur=None."""
+    resolver = _MockResolverWithBuybox(
+        {"Galaxy S24": ("B0AAA111111", None)},  # lookup fallito
+    )
+    rows = [
+        DescrizionePrezzoRow(
+            descrizione="Galaxy S24",
+            prezzo_eur=Decimal("549.00"),
+            v_tot=0,
+            s_comp=0,
+            category_node=None,
+        ),
+    ]
+    resolved = resolve_listino_with_cache(rows, factory=None, resolver_provider=lambda: resolver)
+    assert resolved[0].asin == "B0AAA111111"
+    assert resolved[0].verified_buybox_eur is None
+
+
+def test_build_listino_uses_verified_buybox_when_present() -> None:
+    """Buy Box live (es. Keepa NEW) -> `buy_box_eur` distinto da `cost_eur`."""
+    rows = [_resolved("B0AAA111111", 549.00, verified_buybox=599.50)]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["cost_eur"] == 549.00  # prezzo fornitore
+    assert df.iloc[0]["buy_box_eur"] == 599.50  # Amazon NEW
+
+
+def test_build_listino_falls_back_to_cost_when_no_verified_buybox() -> None:
+    """Senza buybox verificato -> fallback retro-compat: buy_box=cost (CHG-020)."""
+    rows = [_resolved("B0AAA111111", 549.00, verified_buybox=None)]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["cost_eur"] == 549.00
+    assert df.iloc[0]["buy_box_eur"] == 549.00  # fallback
+
+
+def test_build_listino_mixed_verified_and_fallback() -> None:
+    """Listino misto (alcuni con buybox verificato, alcuni no): comportamento per-riga."""
+    rows = [
+        _resolved("B0AAA000001", 100.00, verified_buybox=120.00),
+        _resolved("B0BBB000002", 200.00, verified_buybox=None),
+        _resolved("B0CCC000003", 50.00, verified_buybox=55.00),
+    ]
+    df = build_listino_raw_from_resolved(rows)
+    assert list(df["cost_eur"]) == [100.00, 200.00, 50.00]
+    assert list(df["buy_box_eur"]) == [120.00, 200.00, 55.00]
+
+
+def test_resolved_row_default_verified_buybox_is_none() -> None:
+    """Default `verified_buybox_eur=None` per backward compat costruzione esplicita."""
+    row = ResolvedRow(
+        descrizione="x",
+        prezzo_eur=Decimal(100),
+        asin="B0AAA111111",
+        confidence_pct=80.0,
+        is_ambiguous=False,
+        is_cache_hit=False,
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+        notes=(),
+    )
+    assert row.verified_buybox_eur is None

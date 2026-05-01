@@ -85,7 +85,17 @@ class DescrizionePrezzoRow:
 
 @dataclass(frozen=True)
 class ResolvedRow:
-    """Risultato risoluzione per riga listino: input + ASIN + confidence + cache hit?"""
+    """Risultato risoluzione per riga listino: input + ASIN + confidence + cache hit?
+
+    `verified_buybox_eur` è il prezzo Buy Box live recuperato da Keepa/Scraper
+    durante il resolve (CHG-018 → propagato in CHG-022). `None` quando:
+    - il resolver non ha risolto la riga (`asin=""`);
+    - il lookup live ha fallito sul candidato selected (`buybox=None`);
+    - cache hit (la cache `description_resolutions` salva solo asin+confidence,
+      non il buybox; serve un re-resolve per averlo). In questi casi il
+      `build_listino_raw_from_resolved` fa fallback a `prezzo_eur` come
+      `buy_box_eur` (semantica conservativa ereditata da CHG-020).
+    """
 
     descrizione: str
     prezzo_eur: Decimal
@@ -97,6 +107,7 @@ class ResolvedRow:
     s_comp: int
     category_node: str | None
     notes: tuple[str, ...]
+    verified_buybox_eur: Decimal | None = None
 
 
 def parse_descrizione_prezzo_csv(
@@ -237,6 +248,10 @@ def resolve_listino_with_cache(
                     s_comp=row.s_comp,
                     category_node=row.category_node,
                     notes=(),
+                    # Cache `description_resolutions` salva solo asin+confidence,
+                    # non il Buy Box (varia col tempo). Cache hit -> None ->
+                    # `build_listino_raw_from_resolved` fa fallback a prezzo_eur.
+                    verified_buybox_eur=None,
                 ),
             )
             continue
@@ -285,6 +300,7 @@ def _resolved_row_from_result(
             s_comp=row.s_comp,
             category_node=row.category_node,
             notes=result.notes,
+            verified_buybox_eur=None,
         )
     return ResolvedRow(
         descrizione=row.descrizione,
@@ -297,6 +313,7 @@ def _resolved_row_from_result(
         s_comp=row.s_comp,
         category_node=row.category_node,
         notes=result.notes,
+        verified_buybox_eur=result.selected.buybox_eur,
     )
 
 
@@ -312,6 +329,7 @@ def _unresolved_row(row: DescrizionePrezzoRow, notes: tuple[str, ...]) -> Resolv
         s_comp=row.s_comp,
         category_node=row.category_node,
         notes=notes,
+        verified_buybox_eur=None,
     )
 
 
@@ -328,17 +346,21 @@ def build_listino_raw_from_resolved(
     `s_comp`, `match_status`. Opzionale `category_node` se almeno
     una riga ha valore.
 
-    Defaults applicati per MVP UI (decisione delta=A round 4):
-    - `buy_box_eur` = `prezzo_eur` del CFO (assumiamo che il prezzo
-      target di acquisto e' il Buy Box di riferimento; pattern
-      conservative per scenario "no Keepa-data ancora")
-    - `referral_fee_pct = 8.0` default (override CFO via slider futuro)
-    - `match_status = SICURO` (no NLP filter applicato)
+    Defaults applicati per MVP UI (decisione delta=A round 4 +
+    estensione CHG-2026-05-01-022):
+    - `buy_box_eur` = `verified_buybox_eur` (Keepa NEW live) se
+      disponibile, altrimenti fallback a `prezzo_eur` del CFO.
+      Estensione CHG-022 separa il prezzo Amazon (vendita) dal
+      costo fornitore (acquisto): ROI/VGP più accurati senza
+      richiedere al CFO di compilare due colonne.
+    - `cost_eur` = `prezzo_eur` (sempre il prezzo fornitore CFO).
+    - `referral_fee_pct = 8.0` default (override CFO via slider futuro).
+    - `match_status = SICURO` (no NLP filter applicato).
 
-    NB: `buy_box_eur=prezzo_eur` e' una semplificazione consapevole
-    per CHG-020 MVP. Scope futuro: estendere `ResolvedRow` con
-    `verified_buybox_eur` (popolato da `lookup_callable` durante
-    resolve) per usare il valore reale Keepa NEW.
+    Cache hit (`description_resolutions`) -> `verified_buybox_eur=None`
+    -> fallback a `prezzo_eur`: la cache non salva il buybox, che
+    varia col tempo. Per re-acquisire il buybox reale, il CFO
+    deve invalidare la cache (scope futuro: cache TTL).
 
     Righe non risolte (`asin=""`) vengono SKIPPATE: il listino
     finale contiene solo ASIN validi. Le righe ambigue ma con
@@ -364,9 +386,16 @@ def build_listino_raw_from_resolved(
 
     records: list[dict[str, object]] = []
     for r in valid_rows:
+        # Buy Box reale (Keepa NEW) se il resolver l'ha verificato live;
+        # altrimenti fallback al prezzo fornitore (semantica CHG-020).
+        buy_box = (
+            float(r.verified_buybox_eur)
+            if r.verified_buybox_eur is not None
+            else float(r.prezzo_eur)
+        )
         record: dict[str, object] = {
             "asin": r.asin,
-            "buy_box_eur": float(r.prezzo_eur),
+            "buy_box_eur": buy_box,
             "cost_eur": float(r.prezzo_eur),
             "referral_fee_pct": referral_fee_pct,
             "v_tot": r.v_tot,
