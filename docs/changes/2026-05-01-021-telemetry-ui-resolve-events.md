@@ -3,7 +3,7 @@ id: CHG-2026-05-01-021
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 5 — hardening flow descrizione+prezzo CHG-020 con telemetria UI)
 status: Draft
-commit: <pending>
+commit: c535065
 adr_ref: ADR-0021, ADR-0016, ADR-0014, ADR-0019
 ---
 
@@ -299,4 +299,4 @@ def test_resolve_started_emits_canonical_event(caplog):
   rispettato (errata snella + 5 test mirati).
 - Successore atteso: A2 `verified_buybox_eur` separato da
   `cost_eur` in `ResolvedRow` (estensione `build_listino_raw_from_resolved`).
-- Commit: `<pending>`.
+- Commit: `c535065`.
