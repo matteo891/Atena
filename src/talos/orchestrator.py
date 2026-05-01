@@ -36,9 +36,10 @@ Versione "happy path" senza:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
+
+import structlog
 
 from talos.formulas import (
     DEFAULT_LOT_SIZE,
@@ -53,6 +54,7 @@ from talos.formulas import (
     roi,
     velocity_monthly,
 )
+from talos.observability import bind_request_context, clear_request_context
 from talos.tetris import (
     Cart,
     allocate_tetris,
@@ -64,7 +66,13 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger(__name__)
+
+# Default tenant per bind context (CHG-2026-05-01-035, B1.2).
+# MVP single-tenant ratificato Leader 2026-05-01 round 6 decisione 5=a.
+# Provider iniettato (TalosSettings.default_tenant_id o SessionInput.tenant_id)
+# arrivera' in fase multi-tenant — scope CHG-B1.4+.
+_DEFAULT_TENANT_ID: Final[int] = 1
 # Eventi canonici emessi da questo modulo (catalogo ADR-0021):
 # - "session.replayed": replay_session ha prodotto un nuovo SessionResult
 #   in memoria (what-if). Campi: asin_count, locked_in_count, budget,
@@ -247,6 +255,11 @@ def _enrich_listino(
 def run_session(inp: SessionInput) -> SessionResult:
     """Pipeline end-to-end di sessione: input listino raw -> output cruscotto.
 
+    Wrappa l'intero corpo in `bind_request_context`/`clear_request_context`
+    (CHG-2026-05-01-035, B1.2): gli eventi canonici emessi da `compute_vgp_score`
+    / `allocate_tetris` / `build_panchina` ereditano `request_id` UUID4 +
+    `tenant_id` per correlazione log end-to-end.
+
     :param inp: `SessionInput` immutabile con `listino_raw` + budget +
         locked_in + parametri opzionali.
     :returns: `SessionResult` con `cart`, `panchina`, `budget_t1`,
@@ -256,88 +269,93 @@ def run_session(inp: SessionInput) -> SessionResult:
     :raises InsufficientBudgetError: se un locked-in supera il budget
         residuo (R-04 fail-fast, propagato da `allocate_tetris`).
     """
-    missing = [c for c in REQUIRED_INPUT_COLUMNS if c not in inp.listino_raw.columns]
-    if missing:
-        msg = (
-            f"run_session: colonne richieste mancanti dal listino: {missing}. "
-            f"Attese: {list(REQUIRED_INPUT_COLUMNS)}."
-        )
-        raise ValueError(msg)
+    bind_request_context(tenant_id=_DEFAULT_TENANT_ID)
+    try:
+        missing = [c for c in REQUIRED_INPUT_COLUMNS if c not in inp.listino_raw.columns]
+        if missing:
+            msg = (
+                f"run_session: colonne richieste mancanti dal listino: {missing}. "
+                f"Attese: {list(REQUIRED_INPUT_COLUMNS)}."
+            )
+            raise ValueError(msg)
 
-    # Edge case: listino vuoto. `apply(axis=1)` su DataFrame vuoto ritorna
-    # DataFrame (non Series), rompendo l'enrichment. Cortocircuito esplicito.
-    if inp.listino_raw.empty:
-        empty_cart = allocate_tetris(
-            _empty_scored_df(),
+        # Edge case: listino vuoto. `apply(axis=1)` su DataFrame vuoto ritorna
+        # DataFrame (non Series), rompendo l'enrichment. Cortocircuito esplicito.
+        if inp.listino_raw.empty:
+            empty_cart = allocate_tetris(
+                _empty_scored_df(),
+                budget=inp.budget,
+                locked_in=inp.locked_in,
+            )
+            return SessionResult(
+                cart=empty_cart,
+                panchina=_empty_scored_df(),
+                budget_t1=compounding_t1(inp.budget, []),
+                enriched_df=_empty_scored_df(),
+            )
+
+        # Step 1: enrichment (F1, F2, ROI, F4.A, F4, F5, velocity_monthly, kill_mask).
+        # Le funzioni scalari raise R-01 su valori invalidi
+        # (es. fee_fba_manual su BuyBox sotto soglia).
+        enriched = _enrich_listino(
+            inp.listino_raw,
+            velocity_target_days=inp.velocity_target_days,
+            lot_size=inp.lot_size,
+            referral_fee_overrides=inp.referral_fee_overrides,
+        )
+
+        # Step 2: VGP score (R-05 + R-08 applicati internamente).
+        scored = compute_vgp_score(
+            enriched,
+            roi_col="roi",
+            velocity_col="velocity_monthly",
+            cash_profit_col="cash_profit_eur",
+            kill_col="kill_mask",
+            veto_roi_threshold=inp.veto_roi_threshold,
+        )
+
+        # Step 3: sort per vgp_score DESC (contratto allocator).
+        scored_sorted = scored.sort_values("vgp_score", ascending=False)
+
+        # Step 4: Tetris allocator (R-04 + R-06).
+        cart = allocate_tetris(
+            scored_sorted,
             budget=inp.budget,
             locked_in=inp.locked_in,
         )
+
+        # Step 5: Panchina (R-09).
+        panchina = build_panchina(scored_sorted, cart)
+
+        # Step 6: Compounding T+1 (F3, R-07 100% reinvestibile).
+        # Cash profit di sessione = somma(cash_profit_per_unit * qty_acquistate)
+        # per gli ASIN nel cart. Locked-in con vgp_score=0 (kill/veto) sono
+        # allocati ma NON contribuiscono se ROI sotto soglia (forzano comunque
+        # il loro cash_profit nel calcolo — R-04 prevale anche sul reinvestimento).
+        cart_profits: list[float] = []
+        for item in cart.items:
+            match = scored_sorted[scored_sorted["asin"] == item.asin]
+            if match.empty:
+                # Branch impossibile per costruzione: `allocate_tetris` valida che
+                # ogni ASIN allocato sia presente in `vgp_df`. Se mai si verificasse,
+                # silently skipping nasconderebbe un bug di mapping interno -> raise.
+                msg = (
+                    f"BUG interno: ASIN '{item.asin}' nel cart ma assente da "
+                    "scored_sorted; mapping VgpResult/Cart corrotto."
+                )
+                raise RuntimeError(msg)
+            cash_profit_per_unit = float(match.iloc[0]["cash_profit_eur"])
+            cart_profits.append(cash_profit_per_unit * item.qty)
+        budget_t1 = compounding_t1(inp.budget, cart_profits)
+
         return SessionResult(
-            cart=empty_cart,
-            panchina=_empty_scored_df(),
-            budget_t1=compounding_t1(inp.budget, []),
-            enriched_df=_empty_scored_df(),
+            cart=cart,
+            panchina=panchina,
+            budget_t1=budget_t1,
+            enriched_df=scored_sorted,
         )
-
-    # Step 1: enrichment (F1, F2, ROI, F4.A, F4, F5, velocity_monthly, kill_mask).
-    # Le funzioni scalari raise R-01 su valori invalidi (es. fee_fba_manual su BuyBox sotto soglia).
-    enriched = _enrich_listino(
-        inp.listino_raw,
-        velocity_target_days=inp.velocity_target_days,
-        lot_size=inp.lot_size,
-        referral_fee_overrides=inp.referral_fee_overrides,
-    )
-
-    # Step 2: VGP score (R-05 + R-08 applicati internamente).
-    scored = compute_vgp_score(
-        enriched,
-        roi_col="roi",
-        velocity_col="velocity_monthly",
-        cash_profit_col="cash_profit_eur",
-        kill_col="kill_mask",
-        veto_roi_threshold=inp.veto_roi_threshold,
-    )
-
-    # Step 3: sort per vgp_score DESC (contratto allocator).
-    scored_sorted = scored.sort_values("vgp_score", ascending=False)
-
-    # Step 4: Tetris allocator (R-04 + R-06).
-    cart = allocate_tetris(
-        scored_sorted,
-        budget=inp.budget,
-        locked_in=inp.locked_in,
-    )
-
-    # Step 5: Panchina (R-09).
-    panchina = build_panchina(scored_sorted, cart)
-
-    # Step 6: Compounding T+1 (F3, R-07 100% reinvestibile).
-    # Cash profit di sessione = somma(cash_profit_per_unit * qty_acquistate)
-    # per gli ASIN nel cart. Locked-in con vgp_score=0 (kill/veto) sono
-    # allocati ma NON contribuiscono se ROI sotto soglia (forzano comunque
-    # il loro cash_profit nel calcolo — R-04 prevale anche sul reinvestimento).
-    cart_profits: list[float] = []
-    for item in cart.items:
-        match = scored_sorted[scored_sorted["asin"] == item.asin]
-        if match.empty:
-            # Branch impossibile per costruzione: `allocate_tetris` valida che
-            # ogni ASIN allocato sia presente in `vgp_df`. Se mai si verificasse,
-            # silently skipping nasconderebbe un bug di mapping interno -> raise.
-            msg = (
-                f"BUG interno: ASIN '{item.asin}' nel cart ma assente da "
-                "scored_sorted; mapping VgpResult/Cart corrotto."
-            )
-            raise RuntimeError(msg)
-        cash_profit_per_unit = float(match.iloc[0]["cash_profit_eur"])
-        cart_profits.append(cash_profit_per_unit * item.qty)
-    budget_t1 = compounding_t1(inp.budget, cart_profits)
-
-    return SessionResult(
-        cart=cart,
-        panchina=panchina,
-        budget_t1=budget_t1,
-        enriched_df=scored_sorted,
-    )
+    finally:
+        clear_request_context()
 
 
 def replay_session(
@@ -374,48 +392,50 @@ def replay_session(
     :raises InsufficientBudgetError: se i locked-in non stanno nel
         nuovo budget (R-04 fail-fast, propagato da `allocate_tetris`).
     """
-    new_budget = budget_override if budget_override is not None else loaded.cart.budget
-    if locked_in_override is None:
-        new_locked_in = [item.asin for item in loaded.cart.items if item.locked]
-    else:
-        new_locked_in = list(locked_in_override)
+    bind_request_context(tenant_id=_DEFAULT_TENANT_ID)
+    try:
+        new_budget = budget_override if budget_override is not None else loaded.cart.budget
+        if locked_in_override is None:
+            new_locked_in = [item.asin for item in loaded.cart.items if item.locked]
+        else:
+            new_locked_in = list(locked_in_override)
 
-    # Ordinamento defensive: l'allocator richiede DESC per vgp_score (Pass 2).
-    sorted_df = loaded.enriched_df.sort_values("vgp_score", ascending=False)
+        # Ordinamento defensive: l'allocator richiede DESC per vgp_score (Pass 2).
+        sorted_df = loaded.enriched_df.sort_values("vgp_score", ascending=False)
 
-    cart = allocate_tetris(sorted_df, budget=new_budget, locked_in=new_locked_in)
-    panchina = build_panchina(sorted_df, cart)
+        cart = allocate_tetris(sorted_df, budget=new_budget, locked_in=new_locked_in)
+        panchina = build_panchina(sorted_df, cart)
 
-    # Compounding T+1 (R-07): cash_profit per ASIN gia' nel df.
-    cart_profits: list[float] = []
-    for item in cart.items:
-        match = sorted_df[sorted_df["asin"] == item.asin]
-        if match.empty:
-            msg = (
-                f"BUG interno (replay): ASIN '{item.asin}' nel cart ma assente da "
-                "enriched_df; mapping VgpResult/Cart corrotto."
-            )
-            raise RuntimeError(msg)
-        cash_profit_per_unit = float(match.iloc[0]["cash_profit_eur"])
-        cart_profits.append(cash_profit_per_unit * item.qty)
-    budget_t1 = compounding_t1(new_budget, cart_profits)
+        # Compounding T+1 (R-07): cash_profit per ASIN gia' nel df.
+        cart_profits: list[float] = []
+        for item in cart.items:
+            match = sorted_df[sorted_df["asin"] == item.asin]
+            if match.empty:
+                msg = (
+                    f"BUG interno (replay): ASIN '{item.asin}' nel cart ma assente da "
+                    "enriched_df; mapping VgpResult/Cart corrotto."
+                )
+                raise RuntimeError(msg)
+            cash_profit_per_unit = float(match.iloc[0]["cash_profit_eur"])
+            cart_profits.append(cash_profit_per_unit * item.qty)
+        budget_t1 = compounding_t1(new_budget, cart_profits)
 
-    replayed = SessionResult(
-        cart=cart,
-        panchina=panchina,
-        budget_t1=budget_t1,
-        enriched_df=sorted_df,
-    )
-    # Telemetria: evento canonico `session.replayed` (catalogo ADR-0021,
-    # errata CHG-058). DEBUG level: in produzione INFO+ filtra; opt-in
-    # via handler dedicato per audit "quanti scenari ha esplorato il CFO".
-    _logger.debug(
-        "session.replayed",
-        extra={
-            "asin_count": len(replayed.enriched_df),
-            "locked_in_count": sum(1 for item in replayed.cart.items if item.locked),
-            "budget": float(new_budget),
-            "budget_t1": float(replayed.budget_t1),
-        },
-    )
-    return replayed
+        replayed = SessionResult(
+            cart=cart,
+            panchina=panchina,
+            budget_t1=budget_t1,
+            enriched_df=sorted_df,
+        )
+        # Telemetria: evento canonico `session.replayed` (catalogo ADR-0021,
+        # errata CHG-058). DEBUG level: in produzione INFO+ filtra; opt-in
+        # via handler dedicato per audit "quanti scenari ha esplorato il CFO".
+        _logger.debug(
+            "session.replayed",
+            asin_count=len(replayed.enriched_df),
+            locked_in_count=sum(1 for item in replayed.cart.items if item.locked),
+            budget=float(new_budget),
+            budget_t1=float(replayed.budget_t1),
+        )
+        return replayed
+    finally:
+        clear_request_context()
