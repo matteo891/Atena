@@ -3,7 +3,7 @@ id: CHG-2026-05-01-032
 date: 2026-05-01
 author: Claude (su autorizzazione Leader, modalità "macina" round 6 — blocco B1 sessione dedicata 3/8)
 status: Draft
-commit: PENDING
+commit: aeadc98
 adr_ref: ADR-0021, ADR-0014, ADR-0019
 ---
 
@@ -252,4 +252,4 @@ def test_keepa_miss_event_emitted(field: str, log_capture: LogCapture) -> None:
   + rinomina `test_io_extract_telemetry.py` → `test_extract_telemetry.py`).
 - Memory: nessuna nuova; `feedback_concisione_documentale.md`
   rispettato.
-- Commit: PENDING.
+- Commit: `aeadc98`.
