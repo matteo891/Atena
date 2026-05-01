@@ -23,7 +23,6 @@ from talos.io_ import (
     binarize_otsu,
     otsu_threshold,
 )
-from talos.io_.ocr import _LiveTesseractAdapter
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -272,12 +271,7 @@ def test_adapter_factory_receives_lang_kwarg() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _LiveTesseractAdapter skeleton
+# _LiveTesseractAdapter — CHG-2026-05-01-011: live ratificato.
+# Test runtime spostati in tests/integration/test_live_tesseract.py
+# (richiedono il binario tesseract installato di sistema).
 # ---------------------------------------------------------------------------
-
-
-def test_live_adapter_raises_not_implemented() -> None:
-    adapter = _LiveTesseractAdapter()
-    img = np.zeros((10, 10), dtype=np.uint8)
-    with pytest.raises(NotImplementedError, match="non implementato"):
-        adapter.image_to_data(img, lang="ita+eng")

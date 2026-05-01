@@ -32,6 +32,8 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
+import pytesseract
+from pytesseract import Output
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -150,19 +152,25 @@ def binarize_otsu(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
 
 
 class _LiveTesseractAdapter:
-    """Adapter live su `pytesseract`. Skeleton CHG-2026-05-01-003.
+    """Adapter live su `pytesseract`.
 
-    Mette a contratto `TesseractAdapter` ma le sue chiamate runtime
-    a `pytesseract.image_to_data` richiedono il binario tesseract-ocr
-    installato di sistema (`apt install tesseract-ocr tesseract-ocr-ita
-    tesseract-ocr-eng`). In CHG-2026-05-01-003 lo skeleton lancia
-    `NotImplementedError` esplicito (R-01 NO SILENT DROPS).
+    Implementato in CHG-2026-05-01-011 (Fase 2 Path B): richiede il
+    binario `tesseract` installato di sistema (`apt install
+    tesseract-ocr tesseract-ocr-ita tesseract-ocr-eng`).
 
-    L'integratore CHG-2026-05-01-005 lo completera' con:
-      - `pytesseract.image_to_data(image, lang=lang, output_type=Output.DICT)`
-      - parsing del dict (`text` list + `conf` list)
-      - filtraggio token confidence == -1 (Tesseract sentinel)
-      - fixture immagine in `tests/golden/images/` per integration
+    Pipeline:
+
+    1. `pytesseract.image_to_data(image, lang=lang, output_type=Output.DICT)`
+       ritorna un dict con (almeno) le chiavi `text: list[str]` e
+       `conf: list[int|str]`.
+    2. Tesseract emette righe non-token (blocchi/paragrafi/righe)
+       con `text=""` e `conf=-1`. Vengono incluse nei
+       `word_confidences` come sentinel `-1`; il pipeline downstream
+       (`OcrPipeline`) filtra per il calcolo della confidence
+       aggregata (CHG-2026-05-01-003).
+    3. Il `text` di output e' la concatenazione (separatore spazio)
+       dei soli token non-vuoti (`text.strip()`), preservando
+       l'ordine top-left -> bottom-right di Tesseract.
     """
 
     def __init__(self, *, lang: str = DEFAULT_TESSERACT_LANG) -> None:
@@ -174,15 +182,12 @@ class _LiveTesseractAdapter:
         *,
         lang: str,
     ) -> RawOcrData:
-        msg = (
-            "_LiveTesseractAdapter.image_to_data non implementato in "
-            f"CHG-2026-05-01-003 (image shape={image.shape}, lang={lang!r}). "
-            "Richiede binario tesseract-ocr di sistema "
-            "(apt install tesseract-ocr-ita-eng) + import pytesseract. "
-            "Ratifica live in CHG-2026-05-01-005 integratore. "
-            "Test devono iniettare un mock via adapter_factory."
-        )
-        raise NotImplementedError(msg)
+        data = pytesseract.image_to_data(image, lang=lang, output_type=Output.DICT)
+        texts: list[str] = list(data["text"])
+        confs_raw = data["conf"]
+        word_confidences = [int(c) for c in confs_raw]
+        text = " ".join(t for t in texts if t.strip())
+        return RawOcrData(text=text, word_confidences=word_confidences)
 
 
 def _default_adapter_factory(*, lang: str) -> TesseractAdapter:
@@ -259,7 +264,17 @@ class OcrPipeline:
         raw = self._adapter.image_to_data(prepared, lang=self._lang)
         valid_conf = [c for c in raw.word_confidences if c >= 0]
         confidence = float(sum(valid_conf)) / len(valid_conf) if valid_conf else 0.0
-        status = OcrStatus.OK if confidence >= self._confidence_threshold else OcrStatus.AMBIGUOUS
+        # R-01 NO SILENT DROPS (CHG-2026-05-01-011): testo vuoto e' AMBIGUOUS
+        # anche se Tesseract aggrega confidence alti sui livelli page/block.
+        # Caso emerso dai test live su immagini rumorose: il binario emette
+        # conf=95 a livello page senza word riconosciute -> il pipeline pre-fix
+        # dichiarava OK con text="" (silent drop).
+        has_text = bool(raw.text.strip())
+        status = (
+            OcrStatus.OK
+            if has_text and confidence >= self._confidence_threshold
+            else OcrStatus.AMBIGUOUS
+        )
         if status is OcrStatus.AMBIGUOUS:
             # Telemetria CHG-2026-05-01-005: evento canonico ADR-0021.
             # Il caller (fallback chain) deve mostrare la riga al CFO.
