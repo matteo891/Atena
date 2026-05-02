@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-031
 date: 2026-05-02
 adr_ref: ADR-0024, ADR-0018, ADR-0021, ADR-0019, ADR-0014
-commit: TBD
+commit: 99cf8ce
 ---
 
 ## What
@@ -67,4 +67,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
 - Successori previsti: CHG-035 (`KeepaClient.fetch_buybox_amazon_share`
   + integrazione `lookup_product`/`enriched_df` upstream).
 - Pattern: Arsenale 180k filtro 4/4 (Amazon Presence).
-- Commit: TBD.
+- Commit: `99cf8ce`.
