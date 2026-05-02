@@ -40,6 +40,9 @@ V_TOT_SOURCE_CSV: Final[str] = "csv"
 V_TOT_SOURCE_BSR_ESTIMATE: Final[str] = "bsr_estimate_mvp"
 """Stima MVP da BSR root tramite formula log-lineare placeholder."""
 
+V_TOT_SOURCE_DROPS_30: Final[str] = "drops_30"
+"""Stima da `salesRankDrops30` Keepa — Dynamic Floor Arsenale 180k (CHG-034)."""
+
 V_TOT_SOURCE_DEFAULT_ZERO: Final[str] = "default_zero"
 """BSR non disponibile e nessun override CSV: V_tot=0 (ASIN escluso a valle)."""
 
@@ -51,6 +54,35 @@ V_TOT_SOURCE_DEFAULT_ZERO: Final[str] = "default_zero"
 _BSR_LOG_INTERCEPT: Final[float] = 100.0
 _BSR_LOG_SLOPE: Final[float] = 20.0
 _MIN_V_TOT: Final[float] = 1.0
+
+
+def estimate_v_tot_from_drops_30(drops: int | None) -> float:
+    """Stima V_tot (vendite mensili) da `salesRankDrops30` Keepa (CHG-034).
+
+    Pattern community: 1 drop del sales rank ≈ 1 vendita confermata.
+    `drops_30` è il numero di drops in 30 giorni → diretto stima vendite
+    mensili senza formula log-lineare arbitraria.
+
+    Dynamic Floor Arsenale 180k completo:
+        v_real_mese = drops_30 / (n_competitors + 1)
+    (la divisione per competitors è già fatta a valle in F4.A `q_m`).
+
+    >>> estimate_v_tot_from_drops_30(50)
+    50.0
+    >>> estimate_v_tot_from_drops_30(0)
+    0.0
+    >>> estimate_v_tot_from_drops_30(None)
+    0.0
+    >>> estimate_v_tot_from_drops_30(-5)
+    0.0
+
+    :param drops: numero di rank drops in 30 giorni (Keepa
+        `product.stats.salesRankDrops30`). `None` o `<=0` -> 0.0.
+    :returns: V_tot stimato in vendite/mese (assumendo 1 drop = 1 vendita).
+    """
+    if drops is None or drops <= 0:
+        return 0.0
+    return float(drops)
 
 
 def estimate_v_tot_from_bsr(bsr: int | None) -> float:
@@ -88,31 +120,41 @@ def resolve_v_tot(
     *,
     csv_v_tot: int,
     bsr_root: int | None,
+    drops_30: int | None = None,
 ) -> tuple[float, str]:
-    """Risolve V_tot finale + source flag (audit).
+    """Risolve V_tot finale + source flag (audit) — gerarchia hybrid v2.
 
-    Logica hybrid (decisione MVP, ratifica Leader):
-    1. Se `csv_v_tot > 0` -> il CFO ha specificato esplicitamente: usa
-       quello (fonte: `csv`). Override del default.
-    2. Altrimenti se `bsr_root` e' valido -> stima MVP da BSR (fonte:
+    CHG-2026-05-02-034 (errata ADR-0018): `drops_30` Keepa promosso a
+    fonte preferita rispetto al placeholder log-lineare BSR (Dynamic
+    Floor Arsenale 180k completo).
+
+    Gerarchia hybrid v2 (Leader default 2026-05-02):
+    1. Se `csv_v_tot > 0` -> override CFO esplicito (fonte: `csv`).
+    2. Altrimenti se `drops_30 > 0` -> Keepa empirico (fonte: `drops_30`).
+    3. Altrimenti se `bsr_root` valido -> stima MVP placeholder (fonte:
        `bsr_estimate_mvp`).
-    3. Altrimenti -> 0.0 (fonte: `default_zero`, ASIN sara' escluso a
-       valle dal Tetris per `qty_final=0`).
+    4. Altrimenti -> 0.0 (fonte: `default_zero`, ASIN escluso da Tetris).
 
-    >>> resolve_v_tot(csv_v_tot=50, bsr_root=10000)
+    >>> resolve_v_tot(csv_v_tot=50, bsr_root=10000, drops_30=100)
     (50.0, 'csv')
-    >>> resolve_v_tot(csv_v_tot=0, bsr_root=10000)
+    >>> resolve_v_tot(csv_v_tot=0, bsr_root=10000, drops_30=100)
+    (100.0, 'drops_30')
+    >>> resolve_v_tot(csv_v_tot=0, bsr_root=10000, drops_30=None)
     (20.0, 'bsr_estimate_mvp')
-    >>> resolve_v_tot(csv_v_tot=0, bsr_root=None)
+    >>> resolve_v_tot(csv_v_tot=0, bsr_root=None, drops_30=None)
     (0.0, 'default_zero')
 
     :param csv_v_tot: valore `v_tot` dal CSV (default 0 se non specificato).
-    :param bsr_root: BSR root da Keepa/scraper, opzionale.
+    :param bsr_root: BSR root da Keepa/scraper, opzionale (placeholder MVP).
+    :param drops_30: salesRankDrops30 Keepa, opzionale (gold-standard).
     :returns: tuple `(v_tot, source)` per il listino_raw + audit.
     """
     if csv_v_tot > 0:
         return float(csv_v_tot), V_TOT_SOURCE_CSV
-    estimated = estimate_v_tot_from_bsr(bsr_root)
-    if estimated > 0:
-        return estimated, V_TOT_SOURCE_BSR_ESTIMATE
+    drops_estimated = estimate_v_tot_from_drops_30(drops_30)
+    if drops_estimated > 0:
+        return drops_estimated, V_TOT_SOURCE_DROPS_30
+    bsr_estimated = estimate_v_tot_from_bsr(bsr_root)
+    if bsr_estimated > 0:
+        return bsr_estimated, V_TOT_SOURCE_BSR_ESTIMATE
     return 0.0, V_TOT_SOURCE_DEFAULT_ZERO

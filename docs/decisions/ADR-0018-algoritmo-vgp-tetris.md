@@ -226,6 +226,34 @@ Se pandas + greedy si rivelano inadeguati:
 
 ## Errata
 
+### 2026-05-02 (CHG-2026-05-02-034) — Velocity estimator: drops_30 promosso a fonte preferita V_tot
+
+**Bug semantico**: `estimate_v_tot_from_bsr(bsr) = max(1, 100 − 20·log10(bsr))`
+(CHG-2026-05-02-003) era una formula log-lineare arbitraria, NON
+calibrata su dati reali. Esempi numerici (BSR 100 → V_tot 300, BSR
+10000 → V_tot 20) erano tutti inventati.
+
+**Decisione Leader 2026-05-02 ratificata** (default Arsenale 180k):
+Keepa espone `salesRankDrops30` (`product.stats.salesRankDrops30`) =
+numero di drops del rank in 30 giorni, **proxy empirico delle vendite
+mensili reali** (community standard: 1 drop ≈ 1 vendita confermata).
+È il **Dynamic Floor Arsenale 180k completo**.
+
+**Gerarchia hybrid v2** in `resolve_v_tot`:
+1. `csv_v_tot > 0` → CFO override (fonte: `csv`).
+2. `drops_30 > 0` → Keepa empirico (fonte: `drops_30`).  ← NUOVO
+3. `bsr_root` valido → placeholder MVP log-lineare (fonte: `bsr_estimate_mvp`).
+4. Altrimenti → 0.0 (fonte: `default_zero`).
+
+**Pull-only**: `drops_30=None` (caso pre-CHG-035 KeepaClient extension)
+→ fallback al placeholder MVP → backwards-compat 100%. Quando
+`KeepaClient.fetch_drops_30` arriverà, il filtro si attiva
+automaticamente.
+
+**Test di conformità**: 8 test nuovi (`estimate_v_tot_from_drops_30`
+boundary + `resolve_v_tot` hybrid v2 priorità). 19 test totali su
+`velocity_estimator.py` (era 11). Backwards-compat 100% verificato.
+
 ### 2026-05-02 (CHG-2026-05-02-020) — F5/R-06 greedy max-fill ratificato Leader
 
 **Bug**: F5 `Qty_Final = Floor(Qty_Target / 5) * 5` era usata dal Pass 2

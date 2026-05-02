@@ -67,6 +67,14 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 ### Changed (CHG-2026-05-02-033)
 - `src/talos/vgp/score.py:compute_vgp_score` — kwarg `enable_ghigliottina: bool = True` (default Active per ADR-0022 AFFIANCA R-08) + `cost_col: str = "cost_eur"`. Mask `ghigliottina_mask` attiva sempre (cost+profit già required). Composizione `blocked = kill | ~veto_passed | amazon_dominant | stress_test_failed | ghigliottina`. Telemetria `vgp.ghigliottina_failed`. **Default-on backwards-compat verificata**: 983 test esistenti invariati (i golden Samsung-mini snapshot restano stabili perché qty/profit-ratio già passano entrambi i gate). [CHG-2026-05-02-033]
 
+### Added (CHG-2026-05-02-034 — Errata ADR-0018 drops_30 V_tot upgrade)
+- `src/talos/extract/velocity_estimator.py` — sentinel `V_TOT_SOURCE_DROPS_30 = "drops_30"`. + `estimate_v_tot_from_drops_30(drops) -> float` (gold-standard community: 1 drop ≈ 1 vendita). + parametro opzionale `drops_30: int | None = None` in `resolve_v_tot`. Gerarchia hybrid v2: CSV → drops_30 → bsr_estimate_mvp (placeholder) → default_zero. Pattern Arsenale 180k Dynamic Floor MVP completo. [CHG-2026-05-02-034]
+- `tests/unit/test_velocity_estimator.py` — 8 test nuovi (estimate boundary 4 cases + resolve hybrid v2 priorità 4 cases). [CHG-2026-05-02-034]
+- `docs/decisions/ADR-0018-algoritmo-vgp-tetris.md` — sezione `## Errata` voce CHG-034 (drops_30 promosso a fonte preferita). [CHG-2026-05-02-034]
+
+### Changed (CHG-2026-05-02-034)
+- `resolve_v_tot` signature estesa con `drops_30: int | None = None` kwarg opzionale. Caller esistenti (no kwarg) → behavior pre-CHG-034 invariato (backwards-compat 100% verificato: 1009 test esistenti pass invariati). [CHG-2026-05-02-034]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
