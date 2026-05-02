@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-032
 date: 2026-05-02
 adr_ref: ADR-0023, ADR-0018, ADR-0021, ADR-0019, ADR-0014
-commit: TBD
+commit: 16ad542
 ---
 
 ## What
@@ -65,4 +65,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
 - Successori: CHG-035 (`KeepaClient.fetch_avg_price_90d` +
   `lookup_product`/`enriched_df` upstream wireup).
 - Pattern: Arsenale 180k filtro 3/4 (90-Day Stress Test).
-- Commit: TBD.
+- Commit: `16ad542`.
