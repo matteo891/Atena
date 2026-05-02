@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-030
 date: 2026-05-02
 adr_ref: ADR-0022, ADR-0023, ADR-0024, ADR-0001, ADR-0009
-commit: TBD
+commit: 481900c
 ---
 
 ## What
@@ -65,4 +65,4 @@ governance):
   Stress Test (impl), CHG-033 Ghigliottina (impl), CHG-034 errata
   ADR-0018 drops_30.
 - Decisione Leader 2026-05-02: "vai con decisioni default".
-- Commit: TBD.
+- Commit: `481900c`.
