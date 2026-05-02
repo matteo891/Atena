@@ -1499,3 +1499,47 @@ def test_fetch_buybox_live_or_none_legacy_product_data_no_crash() -> None:
     assert snap.buy_box_avg90 is None
     assert snap.amazon_buybox_share is None
     assert snap.notes == ()
+
+
+def test_build_listino_raw_with_legacy_resolve_v_tot_no_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hotfix sentinel CHG-038: legacy resolve_v_tot senza drops_30 kwarg
+    → TypeError catturato, fallback alla signature pre-CHG-034.
+
+    Bug Leader live 2026-05-02 post-CHG-037 deploy: Streamlit hot-reload
+    skew (listino_input.py reloaded, velocity_estimator.py no).
+    """
+
+    # Stub legacy: solleva TypeError se chiamato con drops_30 kwarg.
+    def _legacy_resolve_v_tot(
+        *,
+        csv_v_tot: int,
+        bsr_root: int | None,  # noqa: ARG001 — kwarg legacy signature
+    ) -> tuple[float, str]:
+        return float(csv_v_tot), "csv"
+
+    monkeypatch.setattr(
+        "talos.ui.listino_input.resolve_v_tot",
+        _legacy_resolve_v_tot,
+    )
+
+    rows = [
+        ResolvedRow(
+            descrizione="Galaxy S24",
+            prezzo_eur=Decimal(400),
+            asin="B0AAA",
+            confidence_pct=95.0,
+            is_ambiguous=False,
+            is_cache_hit=False,
+            v_tot=10,
+            s_comp=2,
+            category_node=None,
+            notes=(),
+            drops_30=80,  # presente ma sarà ignorato dal legacy stub
+        ),
+    ]
+    df = build_listino_raw_from_resolved(rows)
+    # Fallback graceful: usa csv_v_tot (legacy non vede drops_30).
+    assert df.iloc[0]["v_tot"] == 10.0
+    assert df.iloc[0]["v_tot_source"] == "csv"

@@ -106,6 +106,11 @@ Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si 
 - Bug live Leader 2026-05-02 post-CHG-036: Streamlit `@st.cache_data` serviva `ProductData` pre-CHG-035 → `AttributeError`. Fix tollerante a oggetti legacy. [CHG-2026-05-02-037]
 - `tests/unit/test_listino_input.py` — 1 test sentinel `_LegacyProductDataStub` anti-regressione hotfix. [CHG-2026-05-02-037]
 
+### Fixed (CHG-2026-05-02-038 — Hotfix defensive resolve_v_tot kwarg)
+- `src/talos/ui/listino_input.py:build_listino_raw_from_resolved` wrappa `resolve_v_tot(drops_30=...)` con `try/except TypeError` + fallback signature legacy (senza drops_30). [CHG-2026-05-02-038]
+- Bug live Leader 2026-05-02 post-CHG-037: Streamlit hot-reload skew (listino_input.py reloaded ma velocity_estimator.py no) → `TypeError unexpected kwarg drops_30`. [CHG-2026-05-02-038]
+- `tests/unit/test_listino_input.py` — 1 sentinel `monkeypatch` resolve_v_tot legacy stub anti-regressione hotfix. [CHG-2026-05-02-038]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.

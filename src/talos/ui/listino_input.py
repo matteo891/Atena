@@ -752,11 +752,21 @@ def build_listino_raw_from_resolved(
         # invece di 0 (che azzerava qty_final e svuotava il cart).
         # CHG-2026-05-02-036: drops_30 promosso a fonte preferita (errata
         # ADR-0018, CHG-034). Pull-only: None → fallback BSR placeholder.
-        v_tot_resolved, v_tot_source = resolve_v_tot(
-            csv_v_tot=r.v_tot,
-            bsr_root=r.bsr_root,
-            drops_30=r.drops_30,
-        )
+        # CHG-2026-05-02-038 hotfix: defensive try/except per tolleranza a
+        # `velocity_estimator.resolve_v_tot` legacy (Streamlit hot-reload
+        # module skew: listino_input.py reloaded ma velocity_estimator.py no).
+        try:
+            v_tot_resolved, v_tot_source = resolve_v_tot(
+                csv_v_tot=r.v_tot,
+                bsr_root=r.bsr_root,
+                drops_30=r.drops_30,
+            )
+        except TypeError:
+            # Legacy resolve_v_tot senza kwarg drops_30 (pre-CHG-034).
+            v_tot_resolved, v_tot_source = resolve_v_tot(
+                csv_v_tot=r.v_tot,
+                bsr_root=r.bsr_root,
+            )
         # CHG-2026-05-02-005: telemetria evento canonico ADR-0021 (errata).
         # Emit solo quando la stima viene effettivamente da BSR (audit
         # aggregato CFO: quanti ASIN hanno v_tot stimato vs override CSV).
