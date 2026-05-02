@@ -75,6 +75,19 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 ### Changed (CHG-2026-05-02-034)
 - `resolve_v_tot` signature estesa con `drops_30: int | None = None` kwarg opzionale. Caller esistenti (no kwarg) → behavior pre-CHG-034 invariato (backwards-compat 100% verificato: 1009 test esistenti pass invariati). [CHG-2026-05-02-034]
 
+### Added (CHG-2026-05-02-035 — KeepaClient extension upstream Arsenale)
+- `src/talos/io_/keepa_client.py` — `KeepaProduct` esteso con `drops_30: int | None = None`, `buy_box_avg90: Decimal | None = None`, `amazon_buybox_share: float | None = None`. + costante `_AMAZON_SELLER_ID = "ATVPDKIKX0DER"`. + helpers `_safe_int(value)` / `_safe_index(arr, index)`. `_LiveKeepaAdapter.query()` parsa `stats.salesRankDrops30` / `stats.avg90[1]` (NEW source) / `buyBoxStats[ATVPDKIKX0DER].percentageWon`. + 3 nuovi metodi `KeepaClient.fetch_drops_30(asin)` / `fetch_avg_price_90d(asin)` / `fetch_buybox_amazon_share(asin)` — **NON sollevano** su miss (ritornano None, dati ancillari). [CHG-2026-05-02-035]
+- `src/talos/io_/fallback_chain.py` — `ProductData` esteso simmetricamente con 3 campi default None. `lookup_product` chiama i 3 nuovi `fetch_*` keepa e popola ProductData + audit `sources` per i campi non-None. [CHG-2026-05-02-035]
+- `tests/unit/test_keepa_client.py` — 9 test nuovi (parsing 3 campi nuovi via mock + miss → None + integrazione fetch wrapper + retry skip + KeepaProduct default backwards-compat sentinel). [CHG-2026-05-02-035]
+- `tests/unit/test_fallback_chain.py` — 4 test nuovi (lookup_product propagation 3 campi + sources audit + miss case + ProductData default sentinel + partial population). [CHG-2026-05-02-035]
+
+### Out-of-scope (rimandato a CHG-036+)
+- Propagation `ResolvedRow` + `listino_input.py` (`_fetch_buybox_live_or_none` tuple esteso).
+- Propagation `build_listino_raw_from_resolved` → 3 nuove colonne nel listino_raw.
+- Orchestrator `_enrich_listino` propagation → `enriched_df`.
+- Integration test live con `KEEPA_API_KEY` reale (1-2 token Keepa).
+Senza CHG-036, i 3 filtri Arsenale restano dormienti (nessuna colonna nel dataframe pipeline). CHG-035 chiude la prima metà del wiring (io_ layer pronto).
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.

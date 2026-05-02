@@ -490,3 +490,84 @@ def test_lookup_products_threads_scraper_and_page_through(
     ]
     for r in results:
         assert r.title == "Galaxy"
+
+
+# ---------------------------------------------------------------------------
+# CHG-2026-05-02-035: campi ancillari Arsenale propagati in ProductData
+# ---------------------------------------------------------------------------
+
+
+def test_lookup_propagates_arsenale_fields_when_present() -> None:
+    """`lookup_product` propaga drops_30/avg90/amazon_share da KeepaProduct."""
+    keepa_product = KeepaProduct(
+        asin="B0AAA",
+        buybox_eur=Decimal("199.99"),
+        bsr=1234,
+        fee_fba_eur=Decimal("4.30"),
+        drops_30=85,
+        buy_box_avg90=Decimal("180.50"),
+        amazon_buybox_share=0.15,
+    )
+    keepa = _make_keepa(keepa_product)
+    result = lookup_product("B0AAA", keepa=keepa)
+    assert result.drops_30 == 85
+    assert result.buy_box_avg90 == Decimal("180.50")
+    assert result.amazon_buybox_share == 0.15
+    # `sources` deve registrare l'origine dei 3 campi.
+    assert result.sources["drops_30"] == "keepa"
+    assert result.sources["buy_box_avg90"] == "keepa"
+    assert result.sources["amazon_buybox_share"] == "keepa"
+
+
+def test_lookup_arsenale_fields_none_when_keepa_misses() -> None:
+    """ProductData.drops_30/avg90/amazon_share = None se KeepaProduct = None."""
+    keepa_product = KeepaProduct(
+        asin="B0AAA",
+        buybox_eur=Decimal("199.99"),
+        bsr=1234,
+        fee_fba_eur=Decimal("4.30"),
+        # I 3 campi default None.
+    )
+    keepa = _make_keepa(keepa_product)
+    result = lookup_product("B0AAA", keepa=keepa)
+    assert result.drops_30 is None
+    assert result.buy_box_avg90 is None
+    assert result.amazon_buybox_share is None
+    # Nessuna voce in `sources` per i 3 campi.
+    assert "drops_30" not in result.sources
+    assert "buy_box_avg90" not in result.sources
+    assert "amazon_buybox_share" not in result.sources
+
+
+def test_product_data_default_arsenale_fields_none() -> None:
+    """ProductData direct construct senza i nuovi kwarg → None defaults."""
+    pd_obj = ProductData(
+        asin="B0AAA",
+        buybox_eur=Decimal(100),
+        bsr=10,
+        fee_fba_eur=Decimal(5),
+        title="test",
+    )
+    assert pd_obj.drops_30 is None
+    assert pd_obj.buy_box_avg90 is None
+    assert pd_obj.amazon_buybox_share is None
+
+
+def test_lookup_arsenale_fields_partial_population() -> None:
+    """Caso misto: solo `drops_30` disponibile, altri due None."""
+    keepa_product = KeepaProduct(
+        asin="B0AAA",
+        buybox_eur=Decimal("199.99"),
+        bsr=1234,
+        fee_fba_eur=Decimal("4.30"),
+        drops_30=42,
+        buy_box_avg90=None,
+        amazon_buybox_share=None,
+    )
+    keepa = _make_keepa(keepa_product)
+    result = lookup_product("B0AAA", keepa=keepa)
+    assert result.drops_30 == 42
+    assert result.buy_box_avg90 is None
+    assert result.amazon_buybox_share is None
+    assert result.sources.get("drops_30") == "keepa"
+    assert "buy_box_avg90" not in result.sources

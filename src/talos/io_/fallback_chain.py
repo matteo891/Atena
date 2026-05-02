@@ -109,6 +109,11 @@ class ProductData:
     bsr_chain: list[BsrEntry] = field(default_factory=list)
     sources: dict[str, str] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    # CHG-2026-05-02-035: campi ancillari per filtri Arsenale 180k pull-only.
+    # `None` su miss → filter graceful skip (decisione Leader CHG-030 default).
+    drops_30: int | None = None
+    buy_box_avg90: Decimal | None = None
+    amazon_buybox_share: float | None = None
 
 
 def lookup_product(
@@ -183,6 +188,20 @@ def lookup_product(
         notes,
     )
 
+    # CHG-2026-05-02-035: 3 campi ancillari Arsenale 180k. NON sollevano
+    # su miss (i fetch_* ritornano None direttamente). Audit `sources`
+    # popolato solo se valore non None (significato: "dato disponibile da
+    # Keepa per questo ASIN", utile per debug filtri pull-only).
+    drops_30 = keepa.fetch_drops_30(asin)
+    if drops_30 is not None:
+        sources["drops_30"] = SOURCE_KEEPA
+    buy_box_avg90 = keepa.fetch_avg_price_90d(asin)
+    if buy_box_avg90 is not None:
+        sources["buy_box_avg90"] = SOURCE_KEEPA
+    amazon_buybox_share = keepa.fetch_buybox_amazon_share(asin)
+    if amazon_buybox_share is not None:
+        sources["amazon_buybox_share"] = SOURCE_KEEPA
+
     title: str | None = None
     bsr_chain: list[BsrEntry] = []
     # Lo scraper viene invocato anche se Keepa ha fornito tutto:
@@ -218,6 +237,9 @@ def lookup_product(
         bsr_chain=bsr_chain,
         sources=sources,
         notes=notes,
+        drops_30=drops_30,
+        buy_box_avg90=buy_box_avg90,
+        amazon_buybox_share=amazon_buybox_share,
     )
 
 

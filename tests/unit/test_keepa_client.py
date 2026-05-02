@@ -251,3 +251,100 @@ def test_adapter_factory_receives_api_key() -> None:
 
     KeepaClient(api_key="real-key", adapter_factory=factory)
     assert captured == ["real-key"]
+
+
+# ---------------------------------------------------------------------------
+# CHG-2026-05-02-035: campi ancillari Arsenale (drops_30/avg90/amazon_share)
+# ---------------------------------------------------------------------------
+
+
+def _arsenale_product(
+    *,
+    drops_30: int | None = 100,
+    buy_box_avg90: Decimal | None = Decimal("180.50"),
+    amazon_buybox_share: float | None = 0.10,
+) -> KeepaProduct:
+    """Mock product con campi ancillari popolati."""
+    return KeepaProduct(
+        asin="B0CN3VDM4G",
+        buybox_eur=Decimal("199.99"),
+        bsr=1234,
+        fee_fba_eur=Decimal("4.30"),
+        drops_30=drops_30,
+        buy_box_avg90=buy_box_avg90,
+        amazon_buybox_share=amazon_buybox_share,
+    )
+
+
+def test_fetch_drops_30_returns_value() -> None:
+    """`fetch_drops_30` ritorna il valore parsato dal response."""
+    adapter = _FixedAdapter(_arsenale_product(drops_30=42))
+    client = _make_client(adapter)
+    assert client.fetch_drops_30("B0CN3VDM4G") == 42
+
+
+def test_fetch_drops_30_returns_none_on_miss() -> None:
+    """`fetch_drops_30` NON solleva su miss (dato ancillare): ritorna None."""
+    adapter = _FixedAdapter(_arsenale_product(drops_30=None))
+    client = _make_client(adapter)
+    assert client.fetch_drops_30("B0CN3VDM4G") is None
+
+
+def test_fetch_avg_price_90d_returns_value() -> None:
+    """`fetch_avg_price_90d` ritorna Decimal."""
+    adapter = _FixedAdapter(_arsenale_product(buy_box_avg90=Decimal("150.00")))
+    client = _make_client(adapter)
+    assert client.fetch_avg_price_90d("B0CN3VDM4G") == Decimal("150.00")
+
+
+def test_fetch_avg_price_90d_returns_none_on_miss() -> None:
+    """`fetch_avg_price_90d` NON solleva: None su miss."""
+    adapter = _FixedAdapter(_arsenale_product(buy_box_avg90=None))
+    client = _make_client(adapter)
+    assert client.fetch_avg_price_90d("B0CN3VDM4G") is None
+
+
+def test_fetch_buybox_amazon_share_returns_value() -> None:
+    """`fetch_buybox_amazon_share` ritorna float in [0, 1]."""
+    adapter = _FixedAdapter(_arsenale_product(amazon_buybox_share=0.30))
+    client = _make_client(adapter)
+    assert client.fetch_buybox_amazon_share("B0CN3VDM4G") == 0.30
+
+
+def test_fetch_buybox_amazon_share_returns_none_on_miss() -> None:
+    """`fetch_buybox_amazon_share` NON solleva: None su miss."""
+    adapter = _FixedAdapter(_arsenale_product(amazon_buybox_share=None))
+    client = _make_client(adapter)
+    assert client.fetch_buybox_amazon_share("B0CN3VDM4G") is None
+
+
+def test_keepa_product_default_arsenale_fields_none() -> None:
+    """KeepaProduct senza i nuovi kwarg → campi default None (backwards-compat)."""
+    p = KeepaProduct(
+        asin="B0AAA",
+        buybox_eur=Decimal(100),
+        bsr=10,
+        fee_fba_eur=Decimal(5),
+    )
+    assert p.drops_30 is None
+    assert p.buy_box_avg90 is None
+    assert p.amazon_buybox_share is None
+
+
+def test_arsenale_fields_dont_trigger_retry_when_none() -> None:
+    """Miss campi ancillari NON triggera retry (sono `None` graceful)."""
+    adapter = _FixedAdapter(_arsenale_product(drops_30=None, buy_box_avg90=None))
+    client = _make_client(adapter, retry_max_attempts=5)
+    client.fetch_drops_30("X")
+    client.fetch_avg_price_90d("X")
+    # adapter chiamato solo 2 volte (no retry).
+    assert adapter.calls == 2
+
+
+def test_arsenale_share_clamped_validity() -> None:
+    """`amazon_buybox_share` in [0.0, 1.0]: il client espone valori reali."""
+    adapter = _FixedAdapter(_arsenale_product(amazon_buybox_share=0.99))
+    client = _make_client(adapter)
+    share = client.fetch_buybox_amazon_share("X")
+    assert share is not None
+    assert 0.0 <= share <= 1.0

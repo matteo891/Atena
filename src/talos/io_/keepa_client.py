@@ -25,7 +25,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Final, Protocol
 
 import structlog
 from pyrate_limiter import Duration, Limiter, Rate
@@ -68,13 +68,21 @@ class KeepaProduct:
 
     Un campo `None` significa miss del piano subscription corrente
     o del provider. Il client mappa `None` -> `KeepaMissError`
-    (R-01 NO SILENT DROPS).
+    (R-01 NO SILENT DROPS) per i campi critici (buybox/bsr/fee_fba).
+
+    CHG-2026-05-02-035: 3 campi ancillari per filtri Arsenale 180k
+    (CHG-031/032/034). `None` su miss NON solleva (caller riceve
+    `None` → filtro pull-only graceful skip).
     """
 
     asin: str
     buybox_eur: Decimal | None
     bsr: int | None
     fee_fba_eur: Decimal | None
+    # CHG-2026-05-02-035: campi ancillari per filtri Arsenale (pull-only).
+    drops_30: int | None = None
+    buy_box_avg90: Decimal | None = None
+    amazon_buybox_share: float | None = None
 
 
 class KeepaApiAdapter(Protocol):
@@ -126,6 +134,41 @@ class KeepaTransientError(Exception):
     Triggera retry esponenziale. Dopo `retry_max_attempts` tentativi
     falliti -> propagato al caller con `reraise=True`.
     """
+
+
+# CHG-2026-05-02-035: Amazon ATVPDKIKX0DER è il seller_id Amazon su tutti
+# i marketplace. Usato per estrarre `buyBoxStats[Amazon]['percentageWon']`.
+_AMAZON_SELLER_ID: Final[str] = "ATVPDKIKX0DER"
+
+
+def _safe_int(value: Any) -> int | None:
+    """Converte safely un value Keepa a int; None se non parseable o sentinel <0."""
+    if value is None:
+        return None
+    try:
+        i = int(value)
+    except (TypeError, ValueError):
+        return None
+    if i < 0:  # Keepa sentinel out-of-stock / miss
+        return None
+    return i
+
+
+def _safe_index(arr: Any, index: int) -> float | None:
+    """Indicizza safely un array Keepa; None se out-of-bound o sentinel <0."""
+    try:
+        value = arr[index]
+    except (IndexError, KeyError, TypeError):
+        return None
+    if value is None:
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(f) or math.isinf(f) or f < 0:
+        return None
+    return f
 
 
 def _last_valid_value(arr: Iterable[Any] | None) -> float | None:
@@ -217,12 +260,36 @@ class _LiveKeepaAdapter:
         bsr_value = _last_valid_value(data.get("SALES"))
         bsr: int | None = int(bsr_value) if bsr_value is not None else None
 
+        # CHG-2026-05-02-035: campi ancillari Arsenale 180k (pull-only).
+        # Tutti opzionali: miss → None (NON solleva, dati non blocking).
+        stats = product.get("stats") or {}
+        drops_30 = _safe_int(stats.get("salesRankDrops30"))
+        # avg90 è array per source: usiamo NEW (index 1, coerente con
+        # _BUYBOX_SOURCE_HIERARCHY decisione A2 buybox CHG-2026-05-01-015).
+        avg90_arr = stats.get("avg90") or []
+        avg90_new = _safe_index(avg90_arr, 1)
+        buy_box_avg90 = Decimal(str(avg90_new)) if avg90_new is not None and avg90_new > 0 else None
+        # buyBoxStats è dict {seller_id: {percentageWon, avgPrice, ...}}.
+        buybox_stats = product.get("buyBoxStats") or {}
+        amazon_entry = buybox_stats.get(_AMAZON_SELLER_ID) or {}
+        amazon_share_raw = amazon_entry.get("percentageWon")
+        amazon_buybox_share: float | None = None
+        if amazon_share_raw is not None:
+            try:
+                # Keepa espone percentageWon come 0-100 (intero o float).
+                amazon_buybox_share = float(amazon_share_raw) / 100.0
+            except (TypeError, ValueError):
+                amazon_buybox_share = None
+
         # Decisione alpha'': fee_fba_eur sempre None (caller usa fee_fba_manual).
         return KeepaProduct(
             asin=asin,
             buybox_eur=buybox_eur,
             bsr=bsr,
             fee_fba_eur=None,
+            drops_30=drops_30,
+            buy_box_avg90=buy_box_avg90,
+            amazon_buybox_share=amazon_buybox_share,
         )
 
 
@@ -316,6 +383,36 @@ class KeepaClient:
             self._emit_miss(asin, field="fee_fba")
             raise KeepaMissError(asin, field="fee_fba")
         return product.fee_fba_eur
+
+    def fetch_drops_30(self, asin: str) -> int | None:
+        """Ritorna `salesRankDrops30` Keepa (Dynamic Floor Arsenale, CHG-035).
+
+        Diversamente da `fetch_buybox`/`fetch_bsr`/`fetch_fee_fba`: dato
+        ancillare, NON solleva su miss → ritorna `None`. Il caller (filtro
+        pull-only ADR-0018 errata CHG-034) decide se fallback a placeholder
+        BSR o `default_zero`.
+        """
+        product = self._fetch_with_retry(asin)
+        return product.drops_30
+
+    def fetch_avg_price_90d(self, asin: str) -> Decimal | None:
+        """Ritorna avg Buy Box NEW 90gg (Stress Test ADR-0023, CHG-035).
+
+        Dato ancillare per filtro pull-only ADR-0023. NON solleva su miss
+        → ritorna `None` (filter pass = ASIN nuovo senza storia 90gg).
+        """
+        product = self._fetch_with_retry(asin)
+        return product.buy_box_avg90
+
+    def fetch_buybox_amazon_share(self, asin: str) -> float | None:
+        """Ritorna percentuale BuyBox detenuta da Amazon (ADR-0024, CHG-035).
+
+        Frazione [0, 1]. Dato ancillare per filtro pull-only ADR-0024.
+        NON solleva su miss → ritorna `None` (filter pass = ASIN nuovo
+        senza dati `buyBoxStats[Amazon]`).
+        """
+        product = self._fetch_with_retry(asin)
+        return product.amazon_buybox_share
 
     @staticmethod
     def _emit_miss(asin: str, *, field: str) -> None:
