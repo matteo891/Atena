@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-039
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0018, ADR-0019, ADR-0014
-commit: TBD
+commit: 4813222
 ---
 
 ## What
@@ -74,4 +74,4 @@ ruff/format/mypy strict OK. **1043 test PASS** (+7 vs 1036 CHG-038).
 - Predecessore: CHG-038 (hotfix kwarg).
 - Successore atteso: errata corrige ADR-0017 α'' post ratifica Leader
   (CHG-040+).
-- Commit: TBD.
+- Commit: `4813222`.
