@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-034
 date: 2026-05-02
 adr_ref: ADR-0018, ADR-0009, ADR-0017, ADR-0021, ADR-0019, ADR-0014
-commit: TBD
+commit: a91a44e
 ---
 
 ## What
@@ -73,4 +73,4 @@ ruff/format/mypy strict OK. **TBD PASS**.
 - Pattern: Arsenale 180k Dynamic Floor filtro 2/4 (chiusura concettuale).
 - Decisione Leader 2026-05-02: "vai con decisioni default" → drops_30
   promosso a fonte preferita.
-- Commit: TBD.
+- Commit: `a91a44e`.
