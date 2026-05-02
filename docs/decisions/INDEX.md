@@ -31,9 +31,9 @@ Grafo relazionale di tutti gli ADR ratificati. Aggiornare **prima** della ratifi
 | [ADR-0019](ADR-0019-test-strategy-applicativa.md) | Test Strategy Applicativa — pytest + golden dataset | Active | process | 2026-04-29 | ADR-0001, ADR-0002, ADR-0006, ADR-0011, ADR-0014 | `tests/`, `pyproject.toml [tool.pytest]`, coverage gate |
 | [ADR-0020](ADR-0020-cicd-github-actions.md) | CI/CD Pipeline — GitHub Actions | Active | process | 2026-04-29 | ADR-0002, ADR-0003, ADR-0006, ADR-0011, ADR-0014, ADR-0019 | `.github/workflows/`, branch protection, GitHub Secrets |
 | [ADR-0021](ADR-0021-logging-telemetria.md) | Logging & Telemetria — structlog + R-01 enforcement | Active | architecture | 2026-04-29 | ADR-0008, ADR-0013, ADR-0014, ADR-0015, ADR-0017, ADR-0018, ADR-0019 | `src/talos/observability/`, catalogo eventi canonici |
-| [ADR-0022](ADR-0022-ghigliottina-tier-profit-filter.md) | Ghigliottina Tier Profit Filter — gating profitto assoluto stratificato | Proposed | architecture | 2026-05-02 | ADR-0001, ADR-0018, ADR-0021 | (in attesa ratifica Leader — Pattern Arsenale 180k) |
-| [ADR-0023](ADR-0023-90-day-stress-test-filter.md) | 90-Day Stress Test Filter — gating resilienza prezzo storico | Proposed | architecture | 2026-05-02 | ADR-0001, ADR-0017, ADR-0018, ADR-0021 | (in attesa ratifica Leader — Pattern Arsenale 180k) |
-| [ADR-0024](ADR-0024-amazon-presence-filter.md) | Amazon Presence Filter — gating monopolio Amazon BuyBox | Proposed | architecture | 2026-05-02 | ADR-0001, ADR-0017, ADR-0018, ADR-0021 | (in attesa ratifica Leader — Pattern Arsenale 180k) |
+| [ADR-0022](ADR-0022-ghigliottina-tier-profit-filter.md) | Ghigliottina Tier Profit Filter — gating profitto assoluto stratificato | Active | architecture | 2026-05-02 | ADR-0001, ADR-0018, ADR-0021 | `src/talos/risk/ghigliottina.py` (CHG-033 in macina) |
+| [ADR-0023](ADR-0023-90-day-stress-test-filter.md) | 90-Day Stress Test Filter — gating resilienza prezzo storico | Active | architecture | 2026-05-02 | ADR-0001, ADR-0017, ADR-0018, ADR-0021 | `src/talos/risk/stress_test.py` (CHG-032 in macina) |
+| [ADR-0024](ADR-0024-amazon-presence-filter.md) | Amazon Presence Filter — gating monopolio Amazon BuyBox | Active | architecture | 2026-05-02 | ADR-0001, ADR-0017, ADR-0018, ADR-0021 | `src/talos/risk/amazon_presence.py` (CHG-031 in macina) |
 
 ¹ ADR-0004 mantiene status `Active` con **hardening patch** applicata da ADR-0010 sulla sezione "Flusso di Re-Briefing" (vedi ADR-0009 per il meccanismo, sezione `## Errata` di ADR-0004 per il dettaglio).
 

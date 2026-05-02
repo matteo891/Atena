@@ -35,6 +35,11 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - `docs/decisions/ADR-0023-90-day-stress-test-filter.md` — gating resilienza prezzo storico (avg90 Keepa break-even). Pattern Arsenale 180k. [CHG-2026-05-02-029]
 - `docs/decisions/ADR-0024-amazon-presence-filter.md` — hard veto Amazon BuyBox share > 25%. Pattern Arsenale 180k. [CHG-2026-05-02-029]
 
+### Ratified (Active)
+- ADR-0022 Ghigliottina ratificato `Active` con decisioni default Leader 2026-05-02 (affianca R-08, tier 10/25/50€). [CHG-2026-05-02-030]
+- ADR-0023 90-Day Stress Test ratificato `Active` con decisioni default (window 90gg fisso, break-even, source `stats.avg90`). [CHG-2026-05-02-030]
+- ADR-0024 Amazon Presence ratificato `Active` con decisioni default (threshold 25%, hard veto, ASIN nuovi → pass). [CHG-2026-05-02-030]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.

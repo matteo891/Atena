@@ -2,8 +2,8 @@
 id: ADR-0023
 title: 90-Day Stress Test Filter — gating resilienza prezzo storico
 date: 2026-05-02
-status: Proposed
-deciders: Leader (in attesa ratifica)
+status: Active
+deciders: Leader (ratificato 2026-05-02 con decisioni default)
 category: architecture
 supersedes: —
 superseded_by: —

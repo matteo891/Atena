@@ -2,8 +2,8 @@
 id: ADR-0024
 title: Amazon Presence Filter — gating monopolio Amazon BuyBox
 date: 2026-05-02
-status: Proposed
-deciders: Leader (in attesa ratifica)
+status: Active
+deciders: Leader (ratificato 2026-05-02 con decisioni default)
 category: architecture
 supersedes: —
 superseded_by: —
