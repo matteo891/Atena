@@ -223,3 +223,44 @@ Se pandas + greedy si rivelano inadeguati:
    - migrazione a polars (cambio import + .iterrows → .iter_rows lazy).
    - Tetris da greedy → DP/ILP via PuLP / OR-Tools (richiede dipendenza extra).
 3. Mantenere golden dataset come oracolo di equivalenza.
+
+## Errata
+
+### 2026-05-02 (CHG-2026-05-02-020) — F5/R-06 greedy max-fill ratificato Leader
+
+**Bug**: F5 `Qty_Final = Floor(Qty_Target / 5) * 5` era usata dal Pass 2
+R-06 come **quantità esatta** allocabile. Risultato: cart con 1 lotto per
+ASIN top-VGP (~5 unità), saturation 19% (Leader live test 2026-05-02),
+budget residuo non utilizzato.
+
+**Decisione Leader 2026-05-02 (ratifica esplicita)**: "5 sono i multipli,
+non il massimo". `Qty_Final` è il **MINIMO** (1 lotto fornitore Samsung
+MVP). Pass 2 R-06 ora compra il **MAX multiplo di lot_size** che sta nel
+budget residuo, per ogni ASIN VGP DESC che passa veto (greedy max-fill).
+
+**Cambiamento Pass 2 R-06**:
+- PRIMA: `qty = qty_final velocity-based`. Skip se `qty * cost > remaining`.
+- DOPO: `qty = floor(remaining / cost / lot_size) * lot_size`. Skip se
+  nemmeno 1 lotto sta nel budget.
+
+**Pass 1 R-04 INVARIATO**: locked-in conserva `qty_final` velocity-based.
+
+**Coerenza PROJECT-RAW.md**:
+- Riga 224 (R-06 saturazione 99.9%): ora effettivamente raggiungibile.
+- Riga 308 ("liberando l'altra metà del capitale per il Tetris"):
+  interpretazione ratificata = greedy multipli sui top-VGP.
+- Riga 313 (F5): `Floor(Qty_Target / 5) * 5` letterale ma re-interpretato
+  come "lotto minimo, non massimo".
+
+**Impatto golden Samsung-mini** (10 ASIN, budget 5000):
+- Saturation: 0.72 → 0.90 (+18pp).
+- Cart total: 3600 → 4500 EUR.
+- Cart composition: `[S004_GOOD, S005_LOW, S003_MID]` → `[S004_GOOD,
+  S002_HIGH, S005_LOW]` (S002_HIGH ora entra greedy nel residuo).
+- Budget T+1: 6187.21 → 6658.87 EUR.
+
+**Test di conformità**: 9 test allocator riscritti, 1 nuovo
+`test_residual_budget_spills_to_lower_vgp`, 1 telemetry aggiornato,
+5 golden snapshot rinnovati. **897 PASS** post-errata.
+
+**Non rinegoziabile** senza nuova errata o ADR di supersessione.
