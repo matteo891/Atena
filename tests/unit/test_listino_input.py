@@ -1107,11 +1107,23 @@ class _FakeCachedRow:
 
 
 class _FakeProductData:
-    """Stub minimo di `ProductData` (`buybox_eur` + `bsr` consumati dall'helper)."""
+    """Stub minimo di `ProductData` (CHG-035 + CHG-036 campi ancillari)."""
 
-    def __init__(self, buybox_eur: Decimal | None, bsr: int | None = None) -> None:
+    def __init__(
+        self,
+        buybox_eur: Decimal | None,
+        bsr: int | None = None,
+        *,
+        drops_30: int | None = None,
+        buy_box_avg90: Decimal | None = None,
+        amazon_buybox_share: float | None = None,
+    ) -> None:
         self.buybox_eur = buybox_eur
         self.bsr = bsr
+        # CHG-2026-05-02-036: campi ancillari Arsenale propagati.
+        self.drops_30 = drops_30
+        self.buy_box_avg90 = buy_box_avg90
+        self.amazon_buybox_share = amazon_buybox_share
 
 
 class _FakeFactory:
@@ -1349,3 +1361,100 @@ def test_apply_overrides_idx_out_of_range_no_crash() -> None:
     rows = [_ambiguous_resolved()]
     result = apply_candidate_overrides(rows, {99: "B0CAND00002"})
     assert result == rows
+
+
+# ---------------------------------------------------------------------------
+# CHG-2026-05-02-036: propagation Arsenale upstream end-to-end
+# ---------------------------------------------------------------------------
+
+
+def test_resolved_row_default_arsenale_fields_none() -> None:
+    """ResolvedRow senza i nuovi kwarg → 3 campi ancillari default None."""
+    r = ResolvedRow(
+        descrizione="x",
+        prezzo_eur=Decimal(100),
+        asin="B0AAA",
+        confidence_pct=80.0,
+        is_ambiguous=False,
+        is_cache_hit=False,
+        v_tot=0,
+        s_comp=0,
+        category_node=None,
+        notes=(),
+    )
+    assert r.drops_30 is None
+    assert r.buy_box_avg90 is None
+    assert r.amazon_buybox_share is None
+
+
+def test_build_listino_raw_includes_arsenale_columns() -> None:
+    """`build_listino_raw_from_resolved` deve includere 3 colonne Arsenale."""
+    rows = [
+        ResolvedRow(
+            descrizione="Galaxy S24",
+            prezzo_eur=Decimal(400),
+            asin="B0AAA",
+            confidence_pct=95.0,
+            is_ambiguous=False,
+            is_cache_hit=False,
+            v_tot=50,
+            s_comp=2,
+            category_node=None,
+            notes=(),
+            drops_30=42,
+            buy_box_avg90=Decimal("550.00"),
+            amazon_buybox_share=0.10,
+        ),
+    ]
+    df = build_listino_raw_from_resolved(rows)
+    assert "drops_30" in df.columns
+    assert "buy_box_avg90" in df.columns
+    assert "amazon_buybox_share" in df.columns
+    assert df.iloc[0]["drops_30"] == 42
+    assert df.iloc[0]["buy_box_avg90"] == 550.00
+    assert df.iloc[0]["amazon_buybox_share"] == 0.10
+
+
+def test_build_listino_raw_uses_drops_30_for_v_tot_when_csv_zero() -> None:
+    """drops_30 propagato → resolve_v_tot lo usa come fonte preferita (CHG-034)."""
+    rows = [
+        ResolvedRow(
+            descrizione="Galaxy S24",
+            prezzo_eur=Decimal(400),
+            asin="B0AAA",
+            confidence_pct=95.0,
+            is_ambiguous=False,
+            is_cache_hit=False,
+            v_tot=0,  # nessun override CSV
+            s_comp=2,
+            category_node=None,
+            notes=(),
+            bsr_root=10000,  # placeholder fallback
+            drops_30=80,  # gold-standard, deve vincere
+        ),
+    ]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["v_tot"] == 80.0  # da drops_30
+    assert df.iloc[0]["v_tot_source"] == "drops_30"
+
+
+def test_build_listino_raw_arsenale_fields_none_when_absent() -> None:
+    """Senza dati Keepa upstream → 3 colonne con valori None (filtri pull-only graceful)."""
+    rows = [
+        ResolvedRow(
+            descrizione="Galaxy S24",
+            prezzo_eur=Decimal(400),
+            asin="B0AAA",
+            confidence_pct=95.0,
+            is_ambiguous=False,
+            is_cache_hit=False,
+            v_tot=50,
+            s_comp=2,
+            category_node=None,
+            notes=(),
+        ),
+    ]
+    df = build_listino_raw_from_resolved(rows)
+    assert df.iloc[0]["drops_30"] is None
+    assert df.iloc[0]["buy_box_avg90"] is None
+    assert df.iloc[0]["amazon_buybox_share"] is None

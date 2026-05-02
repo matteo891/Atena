@@ -86,6 +86,12 @@ class ResolutionCandidate:
     delta_price_pct: float | None
     confidence_pct: float
     bsr_root: int | None = None
+    # CHG-2026-05-02-036: campi ancillari Arsenale 180k (pull-only).
+    # Popolati dal lookup Keepa (CHG-035), propagati a `ResolvedRow` poi
+    # alle colonne `enriched_df` per `compute_vgp_score` (CHG-031/032).
+    drops_30: int | None = None
+    buy_box_avg90: Decimal | None = None
+    amazon_buybox_share: float | None = None
 
 
 @dataclass(frozen=True)
@@ -266,11 +272,18 @@ class _LiveAsinResolver:
         for serp_item in serp_results:
             buybox: Decimal | None = None
             bsr_root: int | None = None
+            drops_30: int | None = None
+            buy_box_avg90: Decimal | None = None
+            amazon_buybox_share: float | None = None
             try:
                 product = self._lookup(serp_item.asin)
                 buybox = product.buybox_eur
                 # CHG-2026-05-02-003: propaga BSR per estimator v_tot.
                 bsr_root = product.bsr
+                # CHG-2026-05-02-036: propaga 3 campi ancillari Arsenale.
+                drops_30 = product.drops_30
+                buy_box_avg90 = product.buy_box_avg90
+                amazon_buybox_share = product.amazon_buybox_share
             except Exception as exc:  # noqa: BLE001 — lookup puo' lanciare KeepaTransient/Rate/Selector*; tutti -> note + buybox=None
                 notes.append(
                     f"candidato {serp_item.asin} lookup failed: {type(exc).__name__}",
@@ -287,6 +300,9 @@ class _LiveAsinResolver:
                     delta_price_pct=delta,
                     confidence_pct=confidence,
                     bsr_root=bsr_root,
+                    drops_30=drops_30,
+                    buy_box_avg90=buy_box_avg90,
+                    amazon_buybox_share=amazon_buybox_share,
                 ),
             )
 

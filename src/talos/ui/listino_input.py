@@ -207,6 +207,13 @@ class ResolvedRow:
     # non specifica `v_tot` esplicito. None se cache hit + lookup fail
     # oppure resolver senza buybox/bsr disponibili.
     bsr_root: int | None = None
+    # CHG-2026-05-02-036: campi ancillari Arsenale 180k propagati da
+    # `ProductData` (CHG-035) → `enriched_df` per filtri pull-only
+    # `compute_vgp_score` (CHG-031/032) e `resolve_v_tot(drops_30=...)`
+    # (CHG-034 errata Dynamic Floor preferred source).
+    drops_30: int | None = None
+    buy_box_avg90: Decimal | None = None
+    amazon_buybox_share: float | None = None
 
 
 def _column_price_parseable_ratio(series: pd.Series) -> float:
@@ -459,26 +466,50 @@ def _is_finite(value: object) -> bool:
         return True
 
 
+@dataclass(frozen=True)
+class _LiveLookupSnapshot:
+    """Snapshot live `lookup_product` per cache hit (CHG-2026-05-02-036).
+
+    Estende `_fetch_buybox_live_or_none` da 3-tuple a struct named.
+    Campi: tutti `None` se `lookup_callable=None` o lookup failed.
+    """
+
+    buybox_eur: Decimal | None = None
+    bsr_root: int | None = None
+    drops_30: int | None = None
+    buy_box_avg90: Decimal | None = None
+    amazon_buybox_share: float | None = None
+    notes: tuple[str, ...] = ()
+
+
 def _fetch_buybox_live_or_none(
     lookup_callable: Callable[[str], ProductData] | None,
     asin: str,
-) -> tuple[Decimal | None, int | None, tuple[str, ...]]:
-    """Recupera `(buybox_eur, bsr_root)` live tramite `lookup_callable` (Keepa).
+) -> _LiveLookupSnapshot:
+    """Recupera snapshot live tramite `lookup_callable` (Keepa via lookup_product).
 
     CHG-2026-05-01-039 (buybox live cache hit) + CHG-2026-05-02-003
-    (bsr_root per stima v_tot). Helper isolato per garantire che
-    `verified_buybox_eur` e `bsr_root` siano fresh anche su cache hit
-    (la mappatura desc→ASIN è invariante, buy box e BSR no). Errori
-    (KeepaMiss / RateLimit / Transient / Selector*) → `(None, None, notes)`
-    (R-01 UX-side: row esposta in tabella con nota esplicita).
+    (bsr_root) + CHG-2026-05-02-036 (drops_30/avg90/amazon_share).
+    Helper isolato per garantire che i 5 campi live siano fresh anche
+    su cache hit (la mappatura desc→ASIN è invariante, gli altri no).
+    Errori (KeepaMiss / RateLimit / Transient / Selector*) → snapshot
+    vuoto + nota (R-01 UX-side: row esposta in tabella con nota esplicita).
     """
     if lookup_callable is None:
-        return None, None, ()
+        return _LiveLookupSnapshot()
     try:
         product = lookup_callable(asin)
     except Exception as exc:  # noqa: BLE001 — Keepa* / Selector* / network: tutti -> note
-        return None, None, (f"buybox lookup live failed: {type(exc).__name__}",)
-    return product.buybox_eur, product.bsr, ()
+        return _LiveLookupSnapshot(
+            notes=(f"buybox lookup live failed: {type(exc).__name__}",),
+        )
+    return _LiveLookupSnapshot(
+        buybox_eur=product.buybox_eur,
+        bsr_root=product.bsr,
+        drops_30=product.drops_30,
+        buy_box_avg90=product.buy_box_avg90,
+        amazon_buybox_share=product.amazon_buybox_share,
+    )
 
 
 def resolve_listino_with_cache(
@@ -537,10 +568,7 @@ def resolve_listino_with_cache(
                     _emit_cache_miss(table=_CACHE_TABLE_DESCRIPTION_RESOLUTIONS)
 
         if cached_asin is not None and cached_confidence is not None:
-            buybox_live, bsr_live, lookup_notes = _fetch_buybox_live_or_none(
-                lookup_callable,
-                cached_asin,
-            )
+            snap = _fetch_buybox_live_or_none(lookup_callable, cached_asin)
             out.append(
                 ResolvedRow(
                     descrizione=row.descrizione,
@@ -552,16 +580,15 @@ def resolve_listino_with_cache(
                     v_tot=row.v_tot,
                     s_comp=row.s_comp,
                     category_node=row.category_node,
-                    notes=lookup_notes,
+                    notes=snap.notes,
                     # CHG-2026-05-01-039: buybox live anche su cache hit.
-                    # La cache mappa solo desc→ASIN (invariante); il buy box
-                    # è volatile e va sempre verificato. lookup_callable=None
-                    # -> retro-compat (verified_buybox_eur=None, fallback in
-                    # build_listino_raw_from_resolved).
-                    verified_buybox_eur=buybox_live,
-                    # CHG-2026-05-02-003: BSR per stima v_tot (cache miss
-                    # passa via _resolved_row_from_result).
-                    bsr_root=bsr_live,
+                    verified_buybox_eur=snap.buybox_eur,
+                    # CHG-2026-05-02-003: BSR per stima v_tot.
+                    bsr_root=snap.bsr_root,
+                    # CHG-2026-05-02-036: 3 campi ancillari Arsenale.
+                    drops_30=snap.drops_30,
+                    buy_box_avg90=snap.buy_box_avg90,
+                    amazon_buybox_share=snap.amazon_buybox_share,
                 ),
             )
             continue
@@ -628,6 +655,10 @@ def _resolved_row_from_result(
         candidates=result.candidates,
         # CHG-2026-05-02-003: BSR del candidato selected per stima v_tot.
         bsr_root=result.selected.bsr_root,
+        # CHG-2026-05-02-036: campi ancillari Arsenale propagati dal candidato.
+        drops_30=result.selected.drops_30,
+        buy_box_avg90=result.selected.buy_box_avg90,
+        amazon_buybox_share=result.selected.amazon_buybox_share,
     )
 
 
@@ -715,9 +746,12 @@ def build_listino_raw_from_resolved(
         # Sblocca MVP CFO Path B': listino con CSV minimal (solo
         # descrizione+prezzo) ottiene v_tot stimato dal BSR Keepa
         # invece di 0 (che azzerava qty_final e svuotava il cart).
+        # CHG-2026-05-02-036: drops_30 promosso a fonte preferita (errata
+        # ADR-0018, CHG-034). Pull-only: None → fallback BSR placeholder.
         v_tot_resolved, v_tot_source = resolve_v_tot(
             csv_v_tot=r.v_tot,
             bsr_root=r.bsr_root,
+            drops_30=r.drops_30,
         )
         # CHG-2026-05-02-005: telemetria evento canonico ADR-0021 (errata).
         # Emit solo quando la stima viene effettivamente da BSR (audit
@@ -738,6 +772,12 @@ def build_listino_raw_from_resolved(
             "v_tot_source": v_tot_source,
             "s_comp": r.s_comp,
             "match_status": match_status,
+            # CHG-2026-05-02-036: 3 colonne Arsenale per filtri pull-only
+            # in `compute_vgp_score` (CHG-031/032). None se Keepa lookup
+            # fail / cache hit senza lookup_callable / KeepaProduct miss.
+            "buy_box_avg90": (float(r.buy_box_avg90) if r.buy_box_avg90 is not None else None),
+            "amazon_buybox_share": r.amazon_buybox_share,
+            "drops_30": r.drops_30,
         }
         if has_category_node:
             record["category_node"] = r.category_node or ""
@@ -787,6 +827,11 @@ def apply_candidate_overrides(
                 # CHG-2026-05-02-003: propaga BSR del candidato override
                 # per coerenza stima v_tot post-override CFO.
                 bsr_root=match.bsr_root,
+                # CHG-2026-05-02-036: propaga 3 campi ancillari Arsenale
+                # del candidato override per coerenza filtri downstream.
+                drops_30=match.drops_30,
+                buy_box_avg90=match.buy_box_avg90,
+                amazon_buybox_share=match.amazon_buybox_share,
                 notes=(
                     *row.notes,
                     f"override manuale CFO: {match.asin} (era {original_asin or '(nessuno)'})",

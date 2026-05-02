@@ -88,6 +88,18 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - Integration test live con `KEEPA_API_KEY` reale (1-2 token Keepa).
 Senza CHG-036, i 3 filtri Arsenale restano dormienti (nessuna colonna nel dataframe pipeline). CHG-035 chiude la prima metà del wiring (io_ layer pronto).
 
+### Added (CHG-2026-05-02-036 — Propagation upstream Arsenale end-to-end)
+- `src/talos/extract/asin_resolver.py:ResolutionCandidate` esteso con `drops_30`/`buy_box_avg90`/`amazon_buybox_share` (default None). `_LiveAsinResolver.resolve_description` propaga da `ProductData` (CHG-035) per ogni candidato SERP. [CHG-2026-05-02-036]
+- `src/talos/ui/listino_input.py:ResolvedRow` esteso simmetricamente. + dataclass `_LiveLookupSnapshot` (sostituisce 3-tuple di `_fetch_buybox_live_or_none`). `_resolved_row_from_result` + `apply_candidate_overrides` propagation. [CHG-2026-05-02-036]
+- `tests/unit/test_listino_input.py` — 4 test propagation puri (default None / colonne incluse / drops_30 → v_tot source / fields None se assenti). + `_FakeProductData` esteso. [CHG-2026-05-02-036]
+
+### Changed (CHG-2026-05-02-036)
+- `_fetch_buybox_live_or_none` signature: ritorna `_LiveLookupSnapshot` invece di `(buybox, bsr, notes)` 3-tuple. Cache hit branch in `resolve_listino_with_cache` aggiornato. [CHG-2026-05-02-036]
+- `build_listino_raw_from_resolved` aggiunge al DataFrame le 3 colonne `drops_30`/`buy_box_avg90`/`amazon_buybox_share` + chiama `resolve_v_tot(drops_30=...)` (errata ADR-0018 CHG-034 ora **live**: drops_30 promosso a fonte preferita per stima v_tot quando disponibile). [CHG-2026-05-02-036]
+
+### Pipeline Arsenale end-to-end CHIUSA
+Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si attivano **automaticamente** quando `KEEPA_API_KEY` è configurata e il `lookup_callable` viene iniettato in `resolve_listino_with_cache`. La pipeline è ora: `Keepa.product() → ProductData → ResolutionCandidate → ResolvedRow → listino_raw (3 nuove colonne) → enriched_df (cascade) → compute_vgp_score (5 gate AND)`.
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
