@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-025
 date: 2026-05-02
 adr_ref: ADR-0016, ADR-0019, ADR-0014
-commit: TBD
+commit: 62c2ecc
 ---
 
 ## What
@@ -56,4 +56,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
 - Predecessori: CHG-2026-04-30-039 (orchestrator F3 compounding), CHG-2026-05-02-012 (portale TALOS multi-modulo).
 - Mockup riferimento: ScalerBot 500K (immagine Leader 2026-05-02).
 - Decisione Leader 2026-05-02 round 7+: macina blocco UI restyle + risk-filters Arsenale.
-- Commit: TBD.
+- Commit: `62c2ecc`.
