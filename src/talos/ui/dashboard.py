@@ -17,11 +17,13 @@ Refactor multi-page ADR-0016 compliant (`pages/`, `components/`,
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 import streamlit as st
 import structlog
+from sqlalchemy import select as sqla_select
 
 from talos.formulas import (
     DEFAULT_LOT_SIZE,
@@ -734,33 +736,183 @@ def _build_enriched_cart_view(
 
 
 def _render_action_buttons_shell() -> None:
-    """3 bottoni azione header shell (CHG-2026-05-02-026).
+    """4 bottoni azione header shell (CHG-2026-05-02-026/028).
 
     Disabled con tooltip "In arrivo" (placeholder UX). Ognuno aggancia
     un ADR proposed:
+    - Override → semantica per ASIN da chiarire Leader (CHG-028 sentinel).
     - Satura Cash → ADR-0022 Ghigliottina (re-allocate forzando profit
       assoluto minimo invece di ROI%).
     - WhatsApp Ordini → ADR proposed futuro (out-of-MVP CFO).
     - Chiudi Ciclo → ADR proposed futuro (snapshot ciclo + reset budget).
     """
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.button(
+        "⚙ Override",
+        disabled=True,
+        help="In arrivo (CHG separato: override per ASIN, semantica da chiarire Leader).",
+        key="action_override_btn",
+    )
+    col2.button(
         "💰 Satura Cash",
         disabled=True,
         help="In arrivo (ADR-0022 Ghigliottina proposed).",
         key="action_satura_cash_btn",
     )
-    col2.button(
+    col3.button(
         "💬 WhatsApp Ordini",
         disabled=True,
         help="In arrivo (ADR proposed futuro, fuori MVP CFO).",
         key="action_whatsapp_btn",
     )
-    col3.button(
+    col4.button(
         "🔒 Chiudi Ciclo",
         disabled=True,
         help="In arrivo (ADR proposed futuro: snapshot ciclo + reset budget).",
         key="action_chiudi_ciclo_btn",
+    )
+
+
+def fetch_asin_masters_or_empty(
+    factory: sessionmaker[Session] | None,
+    asins: list[str],
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,  # noqa: ARG001 — tenant_id reserved per RLS futuro
+) -> list[dict[str, object]]:
+    """Query AsinMaster filtrata per ASIN list cart (CHG-2026-05-02-028).
+
+    Graceful pattern (factory=None → list vuota; eccezione → list vuota).
+    Read-only, zero blast radius. AsinMaster è standalone (no RLS oggi),
+    ma `tenant_id` è kw reserved per estensione futura senza signature change.
+    """
+    if factory is None or not asins:
+        return []
+    from talos.persistence import AsinMaster  # noqa: PLC0415
+
+    try:
+        with session_scope(factory) as db:
+            stmt = sqla_select(AsinMaster).where(AsinMaster.asin.in_(asins))
+            rows = db.execute(stmt).scalars().all()
+            return [
+                {
+                    "asin": r.asin,
+                    "title": r.title,
+                    "brand": r.brand,
+                    "model": r.model or _CART_SHELL_SENTINEL,
+                    "ram_gb": r.ram_gb,
+                    "rom_gb": r.rom_gb,
+                    "connectivity": r.connectivity or _CART_SHELL_SENTINEL,
+                    "color_family": r.color_family or _CART_SHELL_SENTINEL,
+                    "category_node": r.category_node or _CART_SHELL_SENTINEL,
+                    "last_seen_at": r.last_seen_at,
+                }
+                for r in rows
+            ]
+    except Exception:  # noqa: BLE001 — graceful UI: log + empty list
+        _logger.warning("anagrafica.fetch_failed", asins_count=len(asins))
+        return []
+
+
+def _render_anagrafica_modal(
+    factory: sessionmaker[Session] | None,
+    cart_items: list[dict[str, object]],
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> None:
+    """Expander Anagrafica (CHG-2026-05-02-028): AsinMaster del cart corrente.
+
+    Bottone-style: `st.expander` con dataframe filtrato per ASIN cart.
+    Graceful: factory=None → placeholder st.info.
+    """
+    with st.expander("📇 Anagrafica · AsinMaster del cart corrente"):
+        if factory is None:
+            st.info(
+                "Persistenza disabilitata. Anagrafica disponibile con `TALOS_DB_URL` configurato.",
+            )
+            return
+        asins = [str(item["asin"]) for item in cart_items if item.get("asin")]
+        rows = fetch_asin_masters_or_empty(factory, asins, tenant_id=tenant_id)
+        if not rows:
+            st.caption(
+                "Nessun ASIN del cart presente in `asin_master`. "
+                "Risolvi un listino via flow descrizione+prezzo per popolare l'anagrafica.",
+            )
+            return
+        df_rows = pd.DataFrame(rows)
+        st.dataframe(df_rows, use_container_width=True)
+        st.caption(f"{len(rows)} ASIN trovati su {len(asins)} del cart.")
+
+
+def _build_ordine_strategia_csv(  # noqa: PLR0913 — 6 parametri = audit ciclo CFO
+    cart_items: list[dict[str, object]],
+    *,
+    budget: float,
+    velocity_target_days: int,
+    veto_threshold: float,
+    saturation: float,
+    cycle_kpis: dict[str, float],
+) -> bytes:
+    """Costruisce CSV "ORDINE + STRATEGIA" CHG-2026-05-02-028.
+
+    Helper puro testabile mock-only. Output:
+    - 5+ righe commento `# key=value` con metadata ciclo (budget, velocity,
+      veto, saturation, cash_profit, projected_annual).
+    - Header CSV cart 13-col.
+    - Righe cart enriched.
+
+    Il CFO può forwardare il file al fornitore con TUTTI i parametri di
+    sessione decisi (audit trail completo).
+    """
+    from datetime import datetime  # noqa: PLC0415
+    from io import StringIO  # noqa: PLC0415
+
+    buf = StringIO()
+    timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    buf.write(f"# generated={timestamp}\n")
+    buf.write(f"# budget_eur={budget:.2f}\n")
+    buf.write(f"# velocity_target_days={velocity_target_days}\n")
+    buf.write(f"# veto_roi_threshold={veto_threshold:.4f}\n")
+    buf.write(f"# saturation={saturation:.4f}\n")
+    buf.write(f"# cash_profit_eur={cycle_kpis.get('cash_profit_eur', 0.0):.2f}\n")
+    buf.write(
+        f"# projected_annual_eur={cycle_kpis.get('projected_annual_eur', 0.0):.2f}\n",
+    )
+    buf.write(f"# cycles_per_year={cycle_kpis.get('cycles_per_year', 0.0):.2f}\n")
+    if cart_items:
+        cart_df = pd.DataFrame(cart_items)
+        display_cols = [c for c in _CART_COLUMN_ORDER if c in cart_df.columns]
+        cart_df[display_cols].to_csv(buf, index=False)
+    return buf.getvalue().encode("utf-8")
+
+
+def _render_export_ordine_strategia(  # noqa: PLR0913 — passthrough audit ciclo CFO
+    cart_items: list[dict[str, object]],
+    *,
+    budget: float,
+    velocity_target_days: int,
+    veto_threshold: float,
+    saturation: float,
+    cycle_kpis: dict[str, float],
+) -> None:
+    """CTA Esporta ORDINE + STRATEGIA (CHG-2026-05-02-028).
+
+    Bottone download CSV combinato (metadata ciclo header + cart 13-col).
+    """
+    csv_bytes = _build_ordine_strategia_csv(
+        cart_items,
+        budget=budget,
+        velocity_target_days=velocity_target_days,
+        veto_threshold=veto_threshold,
+        saturation=saturation,
+        cycle_kpis=cycle_kpis,
+    )
+    st.download_button(
+        "📤 Esporta ORDINE + STRATEGIA",
+        data=csv_bytes,
+        file_name=f"talos_ordine_strategia_{velocity_target_days}gg.csv",
+        mime="text/csv",
+        type="primary",
+        key="export_ordine_strategia_btn",
     )
 
 
@@ -2475,9 +2627,27 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         f"Budget T+1 (R-07) € {result.budget_t1:,.2f}",
     )
 
-    # CHG-2026-05-02-026: 3 bottoni azione header shell (Satura Cash /
-    # WhatsApp / Chiudi Ciclo) disabled. Wireup reali post ADR proposed.
+    # CHG-2026-05-02-026/028: 4 bottoni azione header shell (Override /
+    # Satura Cash / WhatsApp / Chiudi Ciclo) disabled. Wireup reali post
+    # ADR proposed.
     _render_action_buttons_shell()
+
+    # CHG-2026-05-02-022 cart exhaustive + CHG-2026-05-02-026 tab strip +
+    # CHG-2026-05-02-027 enriched 13-col view (anticipato qui per Anagrafica
+    # + Esporta CSV builders che riusano il dict 13-col).
+    cart_items_view = _build_enriched_cart_view(result)
+
+    # CHG-2026-05-02-028: Anagrafica modal + Esporta ORDINE+STRATEGIA CTA.
+    factory_anagrafica = get_session_factory_or_none()
+    _render_anagrafica_modal(factory_anagrafica, cart_items_view)
+    _render_export_ordine_strategia(
+        cart_items_view,
+        budget=float(result.cart.budget),
+        velocity_target_days=velocity_target,
+        veto_threshold=veto_threshold,
+        saturation=result.cart.saturation,
+        cycle_kpis=cycle_kpis,
+    )
 
     # CHG-2026-05-02-006: caption audit V_tot source extracted to helper.
     from talos.ui.listino_input import format_v_tot_source_caption  # noqa: PLC0415
@@ -2486,9 +2656,8 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
     if v_tot_caption:
         st.caption(v_tot_caption)
 
-    # CHG-2026-05-02-022 cart exhaustive + CHG-2026-05-02-026 tab strip +
-    # CHG-2026-05-02-027 enriched 13-col view (JOIN cart x enriched_df).
-    cart_items_view = _build_enriched_cart_view(result)
+    # cart_items_view già calcolato sopra (CHG-2026-05-02-028 anticipa
+    # il build per Anagrafica + Esporta CTA).
     _render_tabs_section(
         cart_items=cart_items_view,
         panchina_df=result.panchina,

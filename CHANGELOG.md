@@ -24,6 +24,11 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - `tests/unit/test_dashboard_tabs_shell.py` — 3 smoke test (import helpers + signature kw-only sentinel anti-regressione CHG-027). [CHG-2026-05-02-026]
 - `_build_enriched_cart_view(result)` helper puro JOIN cart_items x enriched_df → 13 colonne ScalerBot-like + `_classify_velocity_badge` (placeholder ≥30/≥10/<10 monthly per Veloce/Buona/Lento, errata ADR-0018 con valori autoritativi Leader prevista FASE 2). Costante `_CART_COLUMN_ORDER` 17 colonne (13 visibili + locked). 6 sentinel `—` (HW_ID/PRODOTTO/FORNITORE/STOCK/MRG/A_M) shell CHG-028+ / risk-filters Arsenale. `_render_cart_table` aggiornato signature backwards-compat ma consuma 13-col view (era 6-col). [CHG-2026-05-02-027]
 - `tests/unit/test_dashboard_cart_enriched.py` — 15 test (10 boundary velocity badge classification + 5 JOIN/sentinel/locked/empty/column order completeness sentinel). [CHG-2026-05-02-027]
+- `fetch_asin_masters_or_empty(factory, asins, *, tenant_id)` graceful query AsinMaster ORM filtrata per ASIN cart list. + `_render_anagrafica_modal(factory, cart_items)` expander `📇 Anagrafica`. + `_build_ordine_strategia_csv(cart, *, budget, velocity, veto, saturation, cycle_kpis) -> bytes` (CSV audit con 8 righe `# key=value` metadata ciclo + cart 13-col). + `_render_export_ordine_strategia` CTA `type=primary`. + 4° bottone shell Override in `_render_action_buttons_shell`. Import `sqla_select` aggiunto. [CHG-2026-05-02-028]
+- `tests/unit/test_dashboard_anagrafica_export.py` — 6 test puri (CSV content/empty/metadata-first/graceful None factory/empty asins/smoke import). [CHG-2026-05-02-028]
+
+### Changed
+- `_render_action_buttons_shell` ora 4 colonne (Override aggiunto come 4° shell). `cart_items_view` calcolato una sola volta nel main flow (anticipato per riuso in Anagrafica + Esporta CTA + tabs section). [CHG-2026-05-02-028]
 
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
