@@ -46,6 +46,10 @@ from talos.persistence.session_repository import (
     load_session_full,
     save_session_result,
 )
+from talos.persistence.storico_ordini_repository import (
+    count_orders_for_session,
+    record_orders_from_session,
+)
 
 __all__ = [
     "KEY_REFERRAL_FEE_PCT",
@@ -65,6 +69,7 @@ __all__ = [
     "SessionSummary",
     "StoricoOrdine",
     "VgpResult",
+    "count_orders_for_session",
     "create_app_engine",
     "delete_config_override",
     "find_session_by_hash",
@@ -74,6 +79,7 @@ __all__ = [
     "load_session_by_id",
     "load_session_full",
     "make_session_factory",
+    "record_orders_from_session",
     "save_session_result",
     "session_scope",
     "set_config_override_numeric",

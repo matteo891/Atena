@@ -1897,11 +1897,80 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         if success:
             st.toast(f"Sessione #{sid} salvata", icon="✓")
             st.success(f"Sessione persistita. id = `{sid}`.")
+            st.session_state["last_saved_session_id"] = sid
         else:  # pragma: no cover - UI-only error path
             st.toast(f"Persistenza fallita: {err}", icon="⚠️")
             st.error(f"Persistenza fallita: {err}")
 
+    # CHG-2026-05-02-017: R-03 ORDER-DRIVEN MEMORY wiring.
+    # Bottone "Conferma ordini" scrive `storico_ordini` per ogni cart_item
+    # della sessione persistita. Idempotente lato repository.
+    last_sid = st.session_state.get("last_saved_session_id")
+    if last_sid is not None:
+        already_count = _count_orders_already_recorded(factory, last_sid)
+        if already_count > 0:
+            st.info(f"Sessione #{last_sid}: {already_count} ordini già nel registro.")
+        elif st.button(
+            f"Conferma ordini sessione #{last_sid} → registro permanente",
+            key="confirm_orders_btn",
+            type="primary",
+        ):
+            ok, n_recorded, err = try_record_orders(
+                factory,
+                session_id=last_sid,
+                tenant_id=DEFAULT_TENANT_ID,
+            )
+            if ok:
+                st.toast(f"{n_recorded} ordini registrati", icon="✓")
+                st.success(
+                    f"R-03 OK · {n_recorded} ordini scritti su `storico_ordini` "
+                    f"(sessione #{last_sid}).",
+                )
+            else:  # pragma: no cover - UI-only
+                st.toast(f"Registrazione fallita: {err}", icon="⚠️")
+                st.error(f"Registrazione ordini fallita: {err}")
+
     _render_history(factory, tenant_id=DEFAULT_TENANT_ID)
+
+
+def try_record_orders(
+    factory: sessionmaker[Session],
+    *,
+    session_id: int,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> tuple[bool, int, str | None]:
+    """Wrapper graceful per `record_orders_from_session`. Ritorna (ok, n, err)."""
+    from talos.persistence import record_orders_from_session  # noqa: PLC0415
+
+    try:
+        with session_scope(factory) as db:
+            n = record_orders_from_session(
+                db,
+                session_id=session_id,
+                tenant_id=tenant_id,
+            )
+            return True, n, None
+    except Exception as exc:  # noqa: BLE001 - graceful UI
+        return False, 0, str(exc)
+
+
+def _count_orders_already_recorded(
+    factory: sessionmaker[Session],
+    session_id: int,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> int:
+    """Quanti `storico_ordini` esistono già per la sessione (idempotenza UX)."""
+    from talos.persistence import count_orders_for_session  # noqa: PLC0415
+
+    try:
+        with session_scope(factory) as db:
+            return count_orders_for_session(
+                db,
+                session_id=session_id,
+                tenant_id=tenant_id,
+            )
+    except Exception:  # noqa: BLE001 - graceful UI
+        return 0
 
 
 def _render_existing_session_warning(
