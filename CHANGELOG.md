@@ -127,6 +127,12 @@ Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si 
 - `tests/unit/test_orchestrator_fee_fba_keepa_priority.py` — nuovo: 3 test (Keepa preferred / L11b fallback / backwards-compat). [CHG-2026-05-02-040]
 - `tests/integration/test_live_keepa.py` — 2 test legacy aggiornati a tolleranza errata (Keepa atomica O miss accettati). [CHG-2026-05-02-040]
 
+### Fixed (CHG-2026-05-02-041 — Hotfix proiezione compound r-cap)
+- `src/talos/ui/dashboard.py:_compute_cycle_kpis` — costanti `_PROJECTION_R_MAX_CAP = 0.15` + `_PROJECTION_R_DELTA_TOLERANCE = 0.001`. Nuovo kwarg `veto_roi_threshold`. Nuova chiave dict `projection_r_pct = clamp(profit_cost_pct, [veto_threshold, MAX_CAP])`. Proiezione ora `(1 + projection_r_pct)^cycles_per_year`. [CHG-2026-05-02-041]
+- `_render_cycle_overview` meta tile esplicita r conservativo + r effettivo del cart quando divergono. [CHG-2026-05-02-041]
+- Bug Leader live: cart r=30% × 24 cicli → proiezione €11M matematicamente corretta ma irrealistica. Cap allinea ScalerBot500K (r conservativo ≈ veto threshold come default). [CHG-2026-05-02-041]
+- `tests/unit/test_dashboard_cycle_overview.py` — 3 test boundary (high cap 30%→15%, low floor 5%→8%, passthrough 12%→12%). [CHG-2026-05-02-041]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
