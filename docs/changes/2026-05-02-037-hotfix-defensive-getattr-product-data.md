@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-037
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0036, ADR-0019, ADR-0014
-commit: TBD
+commit: 7581ffd
 ---
 
 ## What
@@ -53,4 +53,4 @@ ruff/format/mypy strict OK. **TBD PASS** (+1 test sentinel hotfix).
 
 - ADR-0017, CHG-035, CHG-036.
 - Bug Leader live 2026-05-02 post-deploy CHG-036.
-- Commit: TBD.
+- Commit: `7581ffd`.
