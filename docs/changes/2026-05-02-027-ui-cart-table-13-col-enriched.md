@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-027
 date: 2026-05-02
 adr_ref: ADR-0016, ADR-0019, ADR-0014
-commit: TBD
+commit: 1c792e6
 ---
 
 ## What
@@ -63,4 +63,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
 - Mockup ScalerBot 500K (Leader 2026-05-02).
 - Soglie velocity badge: placeholder MVP, errata ADR-0018 prevista
   FASE 2 (Leader ratificherà valori autoritativi).
-- Commit: TBD.
+- Commit: `1c792e6`.
