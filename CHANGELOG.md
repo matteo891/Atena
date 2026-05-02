@@ -18,6 +18,8 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 ### Changed
 - `parse_descrizione_prezzo_csv` ora chiama `_detect_columns` e rinomina internamente le colonne riconosciute a `descrizione`/`prezzo`. Header canonici NON più obbligatori. Vincolo 2 colonne separate invariato. R-01 NO SILENT DROPS: 4 errori espliciti (1-col / no-price-cand / tie-ambiguous / no-desc-cand). Backwards-compat 100% (header canonici matchano via alias al primo step). [CHG-2026-05-02-023]
 - `_parse_csv` encoding fallback chain: `utf-8-sig → cp1252 → latin-1`. CSV Excel italiano (cp1252) ora parseable senza intervento CFO. `latin-1` finale è single-byte catch-all (mai solleva). [CHG-2026-05-02-024]
+- `src/talos/ui/dashboard.py` — `_compute_cycle_kpis(result, *, velocity_target_days)` helper puro (cart_value/cash_profit/profit_cost_pct/n_orders/cycles_per_year/projected_annual_eur). + `_render_cycle_overview(*, budget, velocity_target_days, veto_threshold_pct, kpis, last_order_days_ago)` (3 pillole header + 4 KPI tile gradient + Proiezione Annua Compound). CSS +95 righe `.talos-pills-row` / `.talos-pill` / `.talos-tiles-cycle` / `.talos-tile-cycle` / `.talos-tile-projection` con animazioni `talos-fade-in`. Sostituisce `_render_metrics` post-`run_session` (legacy preservato per `_render_replay_result`). [CHG-2026-05-02-025]
+- `tests/unit/test_dashboard_cycle_overview.py` — 8 test math F3 + edge cases (empty cart, single allocated, qty=0 excluded, velocity boundaries 7/15/30gg, ValueError R-01, compound math sentinel). [CHG-2026-05-02-025]
 
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 

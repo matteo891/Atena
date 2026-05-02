@@ -522,6 +522,140 @@ def _render_metrics(saturation: float, budget_t1: float) -> None:
     col2.metric("Budget T+1 (R-07)", f"€ {budget_t1:,.2f}")
 
 
+# CHG-2026-05-02-025: cycle overview = pillole + 4 KPI tile + proiezione annua.
+DEFAULT_CYCLES_PER_YEAR_DIVISOR: float = 365.0
+_MIN_VELOCITY_TARGET_DAYS_FOR_CYCLES: int = 1
+
+
+def _compute_cycle_kpis(
+    result: SessionResult,
+    *,
+    velocity_target_days: int,
+) -> dict[str, float]:
+    """KPI compatti del ciclo corrente per `_render_cycle_overview`.
+
+    Helper puro (no Streamlit). Tutti i valori derivati da `SessionResult`
+    già calcolato dall'orchestrator (CHG-2026-04-30-039).
+
+    Returns dict con chiavi:
+    - `cart_value_eur`: spesa totale cart allocated (sum cost_total qty>0).
+    - `cash_profit_eur`: profitto netto ciclo (sum cash_inflow_eur · qty
+       sull'allocated; usa `enriched_df` per lookup Cash_Profit unitario).
+    - `profit_cost_pct`: cash_profit / cart_value (0..1, NaN-safe).
+    - `n_orders`: count cart items con qty>0.
+    - `cycles_per_year`: 365 / velocity_target_days (R-01: ValueError se
+       velocity_target_days < 1).
+    - `projected_annual_eur`: budget · (1 + profit_cost_pct)^cycles_per_year
+       (compound). Fallback a budget se n_orders==0.
+
+    R-01 NO SILENT DROPS: `velocity_target_days < 1` → ValueError esplicito.
+    """
+    if velocity_target_days < _MIN_VELOCITY_TARGET_DAYS_FOR_CYCLES:
+        msg = (
+            f"velocity_target_days deve essere >= "
+            f"{_MIN_VELOCITY_TARGET_DAYS_FOR_CYCLES}, "
+            f"ricevuto {velocity_target_days}."
+        )
+        raise ValueError(msg)
+
+    allocated_items = [item for item in result.cart.items if item.qty > 0]
+    n_orders = len(allocated_items)
+    cart_value = sum(float(item.cost_total) for item in allocated_items)
+    # F3 (formulas/compounding.py): Budget_T+1 = Budget_T + sum(cash_profit).
+    # Quindi cash_profit ciclo = budget_t1 - budget (semplice differenza).
+    cash_profit = float(result.budget_t1 - result.cart.budget)
+    profit_cost_pct = cash_profit / cart_value if cart_value > 0 else 0.0
+    cycles_per_year = DEFAULT_CYCLES_PER_YEAR_DIVISOR / velocity_target_days
+    if n_orders == 0:
+        projected_annual = float(result.cart.budget)
+    else:
+        # Compound: Budget · (1 + r)^N.
+        projected_annual = float(result.cart.budget) * ((1.0 + profit_cost_pct) ** cycles_per_year)
+    return {
+        "cart_value_eur": cart_value,
+        "cash_profit_eur": cash_profit,
+        "profit_cost_pct": profit_cost_pct,
+        "n_orders": float(n_orders),
+        "cycles_per_year": cycles_per_year,
+        "projected_annual_eur": projected_annual,
+    }
+
+
+def _render_cycle_overview(
+    *,
+    budget: float,
+    velocity_target_days: int,
+    veto_threshold_pct: float,
+    kpis: dict[str, float],
+    last_order_days_ago: int | None = None,
+) -> None:
+    """Header pillole + 4 KPI tile gradient + proiezione annua compound.
+
+    CHG-2026-05-02-025: replica UX ScalerBot 500K per portale Demetra.
+    Display read-only sopra il cart. Input authoritative restano in
+    sidebar (semantica invariata).
+    """
+    last_order_html = (
+        f"<div class='talos-pill'><span class='talos-pill-label'>Ultimo ordine</span>"
+        f"<span class='talos-pill-value'>{last_order_days_ago} gg fa</span></div>"
+        if last_order_days_ago is not None
+        else "<div class='talos-pill'><span class='talos-pill-label'>Ultimo ordine</span>"
+        "<span class='talos-pill-value'>—</span></div>"
+    )
+
+    pills_html = f"""
+    <div class="talos-pills-row">
+        <div class="talos-pill">
+            <span class="talos-pill-label">Budget Server (€)</span>
+            <span class="talos-pill-value">{budget:,.2f}</span>
+        </div>
+        <div class="talos-pill">
+            <span class="talos-pill-label">Margine Min ROI (%)</span>
+            <span class="talos-pill-value">{veto_threshold_pct:.1f}</span>
+        </div>
+        <div class="talos-pill">
+            <span class="talos-pill-label">Velocity Target</span>
+            <span class="talos-pill-value">{velocity_target_days} gg</span>
+        </div>
+        {last_order_html}
+    </div>
+    """
+    st.markdown(pills_html, unsafe_allow_html=True)
+
+    tiles_html = f"""
+    <div class="talos-tiles-cycle">
+        <div class="talos-tile-cycle">
+            <span class="talos-tile-cycle-label">Spesa Carrello</span>
+            <span class="talos-tile-cycle-value">€ {kpis["cart_value_eur"]:,.0f}</span>
+        </div>
+        <div class="talos-tile-cycle talos-tile-profit">
+            <span class="talos-tile-cycle-label">Cash Profit ciclo</span>
+            <span class="talos-tile-cycle-value">+€ {kpis["cash_profit_eur"]:,.2f}</span>
+        </div>
+        <div class="talos-tile-cycle">
+            <span class="talos-tile-cycle-label">Profitto / Costo</span>
+            <span class="talos-tile-cycle-value">{kpis["profit_cost_pct"] * 100:.1f}%</span>
+        </div>
+        <div class="talos-tile-cycle">
+            <span class="talos-tile-cycle-label"># Ordini ciclo</span>
+            <span class="talos-tile-cycle-value">{int(kpis["n_orders"])}</span>
+        </div>
+    </div>
+    """
+    st.markdown(tiles_html, unsafe_allow_html=True)
+
+    proj_html = f"""
+    <div class="talos-tile-projection">
+        <div class="talos-tile-projection-label">Proiezione Annua (Compound)</div>
+        <div class="talos-tile-projection-value">€ {kpis["projected_annual_eur"]:,.2f}</div>
+        <div class="talos-tile-projection-meta">
+            {kpis["cycles_per_year"]:.1f} cicli/anno
+        </div>
+    </div>
+    """
+    st.markdown(proj_html, unsafe_allow_html=True)
+
+
 def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
     """CHG-2026-05-02-022: Cart exhaustive (TUTTI gli ASIN del listino con reason flag).
 
@@ -1780,6 +1914,69 @@ _TALOS_CSS = """
   .talos-status-dot.warn  { background: #D29922; box-shadow: 0 0 8px #D2992266; }
   .talos-status-dot.off   { background: #6B7280; }
   .talos-status-label { color: #C9A961; font-weight: 600; letter-spacing: 0.05rem; }
+
+  /* =============== Cycle overview (CHG-2026-05-02-025) =============== */
+  /* 3 pillole header (Saldo Banca / Margine Min / Velocity Target / Ultimo ordine) */
+  .talos-pills-row {
+    display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0 1.25rem 0;
+  }
+  .talos-pill {
+    flex: 1 1 180px; min-width: 160px;
+    padding: 0.65rem 1rem;
+    border: 1px solid #21262D; border-radius: 10px;
+    background: linear-gradient(135deg, #0E1117 0%, #161B22 100%);
+    display: flex; flex-direction: column; gap: 0.15rem;
+    animation: talos-fade-in 480ms ease-out;
+  }
+  .talos-pill-label {
+    font-size: 0.72rem; color: #8B949E;
+    text-transform: uppercase; letter-spacing: 0.06rem;
+  }
+  .talos-pill-value {
+    font-size: 1.15rem; color: #C9A961; font-weight: 700;
+  }
+
+  /* 4 KPI tile gradient ciclo corrente */
+  .talos-tiles-cycle {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem; margin: 0.5rem 0 1rem 0;
+  }
+  .talos-tile-cycle {
+    padding: 1rem 1.1rem;
+    border: 1px solid #21262D; border-radius: 12px;
+    background: linear-gradient(135deg, #161B22 0%, #1F262E 100%);
+    display: flex; flex-direction: column; gap: 0.3rem;
+    animation: talos-fade-in 480ms ease-out;
+  }
+  .talos-tile-cycle-label {
+    font-size: 0.72rem; color: #8B949E;
+    text-transform: uppercase; letter-spacing: 0.05rem;
+  }
+  .talos-tile-cycle-value {
+    font-size: 1.65rem; font-weight: 700; color: #E6EDF3;
+  }
+  .talos-tile-cycle.talos-tile-profit .talos-tile-cycle-value { color: #3FB950; }
+
+  /* Proiezione Annua Compound (banner gradient oro) */
+  .talos-tile-projection {
+    margin: 0.5rem 0 1.25rem 0;
+    padding: 1rem 1.5rem;
+    border: 1px solid #C9A96155; border-radius: 12px;
+    background: linear-gradient(135deg, #1F1A10 0%, #161B22 100%);
+    text-align: right;
+    animation: talos-fade-in 480ms ease-out;
+  }
+  .talos-tile-projection-label {
+    font-size: 0.72rem; color: #C9A961;
+    text-transform: uppercase; letter-spacing: 0.08rem;
+  }
+  .talos-tile-projection-value {
+    font-size: 2.2rem; font-weight: 800; color: #E8D08B;
+    line-height: 1.2;
+  }
+  .talos-tile-projection-meta {
+    font-size: 0.78rem; color: #8B949E; margin-top: 0.2rem;
+  }
 </style>
 """
 
@@ -2050,7 +2247,23 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         st.error(f"Validazione fallita: {exc}")
         return
 
-    _render_metrics(saturation=result.cart.saturation, budget_t1=result.budget_t1)
+    # CHG-2026-05-02-025: cycle overview replace _render_metrics (pills + 4
+    # KPI tile gradient + Proiezione Annua Compound). Saturation/Budget T+1
+    # restano disponibili nella tabella cart e nel render_metrics legacy
+    # usato da `_render_replay_result`.
+    cycle_kpis = _compute_cycle_kpis(result, velocity_target_days=velocity_target)
+    _render_cycle_overview(
+        budget=float(result.cart.budget),
+        velocity_target_days=velocity_target,
+        veto_threshold_pct=veto_threshold * 100.0,
+        kpis=cycle_kpis,
+        last_order_days_ago=None,  # CHG-027 wiring storico ordini
+    )
+    # Saturation legacy come caption sotto le pillole.
+    st.caption(
+        f"Saturazione cart {result.cart.saturation:.1%} · "
+        f"Budget T+1 (R-07) € {result.budget_t1:,.2f}",
+    )
 
     # CHG-2026-05-02-006: caption audit V_tot source extracted to helper.
     from talos.ui.listino_input import format_v_tot_source_caption  # noqa: PLC0415
