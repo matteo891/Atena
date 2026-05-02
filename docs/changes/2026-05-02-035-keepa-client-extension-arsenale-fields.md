@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-035
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0024, ADR-0023, ADR-0018, ADR-0019, ADR-0014
-commit: TBD
+commit: 60cfbec
 ---
 
 ## What
@@ -75,4 +75,4 @@ ruff/format/mypy strict OK. **TBD PASS**.
 - Successore: CHG-036 (propagation upstream end-to-end).
 - Pattern Arsenale 180k filtri pull-only: completati lato `vgp/score.py`,
   questa il primo passo upstream `io_/keepa_client.py`.
-- Commit: TBD.
+- Commit: `60cfbec`.
