@@ -22,6 +22,8 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - `tests/unit/test_dashboard_cycle_overview.py` — 8 test math F3 + edge cases (empty cart, single allocated, qty=0 excluded, velocity boundaries 7/15/30gg, ValueError R-01, compound math sentinel). [CHG-2026-05-02-025]
 - `_render_tabs_section(*, cart_items, panchina_df)` con `st.tabs(['🛒 Carrello', '🪑 Panchina', '🤝 Comparazione Fornitori', '✅ Centrale Validazione'])`. Tab 3-4 = shell ADR-0022/0023 proposed. + `_render_action_buttons_shell` (3 bottoni disabled: Satura Cash/WhatsApp/Chiudi Ciclo). CSS +25 righe `.talos-shell-info` / icon / title / meta. Sostituisce chiamata `_render_cart_table` diretta nel main flow. [CHG-2026-05-02-026]
 - `tests/unit/test_dashboard_tabs_shell.py` — 3 smoke test (import helpers + signature kw-only sentinel anti-regressione CHG-027). [CHG-2026-05-02-026]
+- `_build_enriched_cart_view(result)` helper puro JOIN cart_items x enriched_df → 13 colonne ScalerBot-like + `_classify_velocity_badge` (placeholder ≥30/≥10/<10 monthly per Veloce/Buona/Lento, errata ADR-0018 con valori autoritativi Leader prevista FASE 2). Costante `_CART_COLUMN_ORDER` 17 colonne (13 visibili + locked). 6 sentinel `—` (HW_ID/PRODOTTO/FORNITORE/STOCK/MRG/A_M) shell CHG-028+ / risk-filters Arsenale. `_render_cart_table` aggiornato signature backwards-compat ma consuma 13-col view (era 6-col). [CHG-2026-05-02-027]
+- `tests/unit/test_dashboard_cart_enriched.py` — 15 test (10 boundary velocity badge classification + 5 JOIN/sentinel/locked/empty/column order completeness sentinel). [CHG-2026-05-02-027]
 
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 

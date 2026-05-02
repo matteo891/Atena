@@ -656,6 +656,83 @@ def _render_cycle_overview(
     st.markdown(proj_html, unsafe_allow_html=True)
 
 
+# CHG-2026-05-02-027: soglie velocity badge placeholder MVP
+# (errata ADR-0018 con valori autoritativi Leader prevista FASE 2).
+_VEL_BADGE_VELOCE_MIN_MONTHLY: float = 30.0
+_VEL_BADGE_BUONA_MIN_MONTHLY: float = 10.0
+_CART_SHELL_SENTINEL: str = "—"
+
+
+def _classify_velocity_badge(velocity_monthly: float) -> str:
+    """Classifica velocity_monthly in 3 livelli ScalerBot-like.
+
+    CHG-2026-05-02-027: soglie placeholder MVP. Errata ADR-0018 con
+    valori autoritativi Leader prevista FASE 2 del piano restyle.
+
+    >>> _classify_velocity_badge(45.0)
+    'Veloce'
+    >>> _classify_velocity_badge(15.0)
+    'Buona'
+    >>> _classify_velocity_badge(2.0)
+    'Lento'
+    """
+    if velocity_monthly >= _VEL_BADGE_VELOCE_MIN_MONTHLY:
+        return "Veloce"
+    if velocity_monthly >= _VEL_BADGE_BUONA_MIN_MONTHLY:
+        return "Buona"
+    return "Lento"
+
+
+def _build_enriched_cart_view(
+    result: SessionResult,
+) -> list[dict[str, object]]:
+    """JOIN cart x enriched_df -> vista 13-col ScalerBot-like.
+
+    CHG-2026-05-02-027: helper puro (no Streamlit). Costruisce la lista
+    di dict per `_render_cart_table` mappando ogni cart_item al suo row
+    in `enriched_df`. Sentinel `—` per le 5 colonne shell
+    (HW_ID/FORNITORE/STOCK/MRG/A_M) in attesa CHG-028+.
+
+    R-01: KeyError esplicito se un ASIN del cart non è in enriched_df
+    (non dovrebbe mai accadere, sentinel di consistenza).
+    """
+    enriched = result.enriched_df.set_index("asin", drop=False)
+    out: list[dict[str, object]] = []
+    for item in result.cart.items:
+        row = enriched.loc[item.asin]
+        cost_unit = float(row.get("cost_eur", 0.0))
+        cash_inflow_unit = float(row.get("cash_inflow_eur", 0.0))
+        roi_pct = float(row.get("roi", 0.0))
+        velocity_m = float(row.get("velocity_monthly", 0.0))
+        qty_target_v = int(row.get("qty_target", 0) or 0)
+        cash_profit_unit = float(row.get("cash_profit_eur", 0.0))
+        spesa_total = cost_unit * item.qty
+        prft_total = cash_profit_unit * item.qty
+        out.append(
+            {
+                "asin": item.asin,
+                "hw_id": _CART_SHELL_SENTINEL,
+                "prodotto": _CART_SHELL_SENTINEL,
+                "fornitore": _CART_SHELL_SENTINEL,
+                "cst_unit": cost_unit,
+                "prft_unit": cash_inflow_unit,
+                "vgp": item.vgp_score,
+                "mrg": _CART_SHELL_SENTINEL,
+                "roi": roi_pct,
+                "vel": _classify_velocity_badge(velocity_m),
+                "q_15gg": qty_target_v,
+                "stock": _CART_SHELL_SENTINEL,
+                "qta": item.qty,
+                "prft_total": prft_total,
+                "spesa_total": spesa_total,
+                "a_m": _CART_SHELL_SENTINEL,
+                "azioni": item.reason,
+                "locked": item.locked,
+            },
+        )
+    return out
+
+
 def _render_action_buttons_shell() -> None:
     """3 bottoni azione header shell (CHG-2026-05-02-026).
 
@@ -738,12 +815,37 @@ def _render_tabs_section(
         )
 
 
-def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
-    """CHG-2026-05-02-022: Cart exhaustive (TUTTI gli ASIN del listino con reason flag).
+_CART_COLUMN_ORDER: tuple[str, ...] = (
+    "asin",
+    "hw_id",
+    "prodotto",
+    "fornitore",
+    "cst_unit",
+    "prft_unit",
+    "vgp",
+    "mrg",
+    "roi",
+    "vel",
+    "q_15gg",
+    "stock",
+    "qta",
+    "prft_total",
+    "spesa_total",
+    "a_m",
+    "azioni",
+)
 
-    DP knapsack alloca optimal mix multipli di lot_size. ASIN qty=0 mostrati
-    con `reason` esplicito (VETO_ROI / KILL_SWITCH / ZERO_QTY_TARGET /
-    BUDGET_EXHAUSTED / MIN_LOT_OVER_BUDGET / LOCKED_IN).
+
+def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
+    """CHG-2026-05-02-027: cart table 13-col enriched ScalerBot-like.
+
+    Cart exhaustive (CHG-022): TUTTI gli ASIN del listino con qty/reason.
+    Colonne 13: ASIN/HW_ID/PRODOTTO/FORNITORE/CST/PRFT/VGP/MRG/ROI/VEL/
+    Q.15GG/STOCK/QTA/PRFT_total/SPESA_total/A_M/AZIONI. 5 sentinel `—`
+    (HW_ID/PRODOTTO/FORNITORE/STOCK/MRG/A_M) shell in attesa CHG-028+.
+
+    `cart_items`: list di dict da `_build_enriched_cart_view` (NUOVO
+    formato 13-col CHG-027). Caller deve passare il formato enriched.
     """
     _section("4", "Cart · listino completo con qty allocata e motivo (R-06 DP)")
     if not cart_items:
@@ -758,19 +860,24 @@ def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
         )
         return
     cart_df = pd.DataFrame(cart_items)
-    # Sort: allocated (qty>0) first, then by vgp_score DESC.
+    # Sort: allocated (qta>0) first, then by VGP DESC (column "vgp" CHG-027).
     cart_df = cart_df.sort_values(
-        ["qty", "vgp_score"],
+        ["qta", "vgp"],
         ascending=[False, False],
     ).reset_index(drop=True)
-    cart_view, cart_cfg = _percentage_view(cart_df)
+    # Column order ScalerBot-like (locked excluded da display, ma usato per styling futuro).
+    display_cols = [c for c in _CART_COLUMN_ORDER if c in cart_df.columns]
+    cart_display = cart_df[display_cols]
+    cart_view, cart_cfg = _percentage_view(cart_display)
     st.dataframe(cart_view, use_container_width=True, column_config=cart_cfg)
-    n_allocated = sum(1 for item in cart_items if cast("int", item["qty"]) > 0)
+    n_allocated = sum(1 for item in cart_items if cast("int", item["qta"]) > 0)
     n_total = len(cart_items)
     st.caption(
         f"{n_allocated}/{n_total} ASIN allocati. "
-        "Reason flags: ALLOCATED/LOCKED_IN (qty>0), "
-        "VETO_ROI/KILL_SWITCH/ZERO_QTY_TARGET/MIN_LOT_OVER_BUDGET/BUDGET_EXHAUSTED (qty=0).",
+        "Reason flags (col AZIONI): ALLOCATED/LOCKED_IN (qty>0), "
+        "VETO_ROI/KILL_SWITCH/ZERO_QTY_TARGET/MIN_LOT_OVER_BUDGET/BUDGET_EXHAUSTED (qty=0). "
+        f"Sentinel '{_CART_SHELL_SENTINEL}' in HW_ID/PRODOTTO/FORNITORE/STOCK/MRG/A_M = "
+        "shell CHG-028+ (Anagrafica modal + Override + Esporta) e ADR risk-filters Arsenale.",
     )
     st.download_button(
         "⬇ Esporta Cart (CSV)",
@@ -2379,21 +2486,9 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
     if v_tot_caption:
         st.caption(v_tot_caption)
 
-    # CHG-2026-05-02-022 cart exhaustive: mostra TUTTI gli ASIN del listino
-    # con qty (0+) e reason flag esplicito.
-    # CHG-2026-05-02-026: cart + panchina ora in tab strip (Carrello/Panchina/
-    # Comparazione Fornitori shell/Centrale Validazione shell).
-    cart_items_view = [
-        {
-            "asin": item.asin,
-            "qty": item.qty,
-            "cost_total": item.cost_total,
-            "vgp_score": item.vgp_score,
-            "locked": item.locked,
-            "reason": item.reason,
-        }
-        for item in result.cart.items
-    ]
+    # CHG-2026-05-02-022 cart exhaustive + CHG-2026-05-02-026 tab strip +
+    # CHG-2026-05-02-027 enriched 13-col view (JOIN cart x enriched_df).
+    cart_items_view = _build_enriched_cart_view(result)
     _render_tabs_section(
         cart_items=cart_items_view,
         panchina_df=result.panchina,
