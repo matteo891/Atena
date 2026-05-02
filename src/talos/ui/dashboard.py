@@ -1190,7 +1190,14 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
                     max_candidates=3,
                 )
 
-            with st.spinner(f"Risoluzione di {len(rows)} descrizioni in corso..."):
+            with st.status(
+                f"Risoluzione di {len(rows)} descrizioni in corso…",
+                expanded=False,
+            ) as status:
+                status.write("◈ Apertura browser headless (Chromium)")
+                status.write("◈ Query SERP Amazon.it (top-3 candidati per riga)")
+                status.write("◈ Verifica live Keepa (Buy Box + BSR)")
+                status.write("◈ Confidence score (fuzzy title 60% + price delta 40%)")
                 resolved = resolve_listino_with_cache(
                     rows,
                     factory=factory,
@@ -1200,6 +1207,11 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
                     # buybox live anche su cache hit (cache solo desc→ASIN
                     # invariante; buybox volatile va sempre verificato).
                     lookup_callable=lookup_callable,
+                )
+                status.update(
+                    label=f"Risolte {len(resolved)} righe ✓",
+                    state="complete",
+                    expanded=False,
                 )
         st.session_state.resolved_rows = resolved
 
