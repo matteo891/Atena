@@ -29,6 +29,13 @@ SUPPORTED_SUFFIXES: tuple[str, ...] = ("csv", "xlsx", "xls", "pdf", "docx")
 # Minimo righe per considerare una tabella DOCX valida (header + 1 dato).
 _MIN_DOCX_TABLE_ROWS: int = 2
 
+# CHG-2026-05-02-024: catena encoding per CSV (Excel italiano usa cp1252,
+# byte 0x97 em-dash non decodificabile in UTF-8 strict). `latin-1` finale
+# è single-byte catch-all (mai solleva), garantisce R-01 NO SILENT DROPS.
+# `utf-8-sig` come primo: rimuove BOM se presente, altrimenti decode UTF-8
+# standard. Copre Excel office 365 + export moderni in un colpo.
+CSV_ENCODING_CHAIN: tuple[str, ...] = ("utf-8-sig", "cp1252", "latin-1")
+
 
 def parse_uploaded_document(uploaded: IO[bytes], suffix: str) -> pd.DataFrame:
     """Dispatcher per parsing multi-formato.
@@ -51,20 +58,52 @@ def parse_uploaded_document(uploaded: IO[bytes], suffix: str) -> pd.DataFrame:
     raise ValueError(msg)
 
 
+def _decode_with_fallback(raw: bytes) -> str:
+    """Decode bytes su `CSV_ENCODING_CHAIN` (utf-8-sig → cp1252 → latin-1).
+
+    CHG-2026-05-02-024: `latin-1` è single-byte e NON solleva mai
+    (256 punti codice tutti validi), quindi il loop termina sempre
+    con un risultato. Mojibake possibile solo se il file è in encoding
+    esotico (kr/jp/etc) — fuori scope CFO italiano.
+    """
+    for enc in CSV_ENCODING_CHAIN:
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1", errors="replace")  # defensive, mai raggiunto
+
+
 def _parse_csv(uploaded: IO[bytes]) -> pd.DataFrame:
-    """Auto-detect separatore (`,` vs `;`) per tolleranza Excel italiano."""
+    """Auto-detect separatore + encoding fallback (Excel italiano cp1252).
+
+    CHG-2026-05-02-024: chain encoding `CSV_ENCODING_CHAIN` (utf-8-sig →
+    cp1252 → latin-1) prima di fallire. Bug live Leader 2026-05-02:
+    byte 0x97 em-dash da Excel italiano rompeva UTF-8 strict.
+    """
     import csv  # noqa: PLC0415
     import io  # noqa: PLC0415
 
     raw = uploaded.read()
-    sample = raw[:4096].decode("utf-8", errors="ignore")
+    sample_text = _decode_with_fallback(raw[:4096])
     try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+        dialect = csv.Sniffer().sniff(sample_text, delimiters=",;\t|")
         sep = dialect.delimiter
     except csv.Error:
         # Fallback heuristico: conta separatori candidati nelle prime righe.
-        sep = ";" if sample.count(";") > sample.count(",") else ","
-    return pd.read_csv(io.BytesIO(raw), sep=sep)
+        sep = ";" if sample_text.count(";") > sample_text.count(",") else ","
+
+    last_exc: UnicodeDecodeError | None = None
+    for enc in CSV_ENCODING_CHAIN:
+        try:
+            return pd.read_csv(io.BytesIO(raw), sep=sep, encoding=enc)
+        except UnicodeDecodeError as exc:
+            last_exc = exc
+            continue
+    msg = (
+        f"CSV non decodificabile in nessun encoding {CSV_ENCODING_CHAIN}. Ultimo errore: {last_exc}"
+    )
+    raise ValueError(msg)
 
 
 def _parse_xlsx(uploaded: IO[bytes]) -> pd.DataFrame:

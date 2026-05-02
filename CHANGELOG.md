@@ -12,9 +12,12 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 ### Added
 - `src/talos/ui/listino_input.py` — `_detect_columns(df) -> tuple[str, str]` heuristica deterministica (alias canonici 10+10 → fallback ratio price-parseable ≥80% + avg-len descrizione ≥4 char). + `_column_price_parseable_ratio` / `_column_avg_string_length` oracle. + `_coerce_prezzo(value)` con fallback `parse_eur` per stringhe formato italiano (`€ 549,99`). + costanti `DESCRIZIONE_HEADER_ALIASES` / `PREZZO_HEADER_ALIASES` (frozenset). [CHG-2026-05-02-023]
 - `tests/unit/test_listino_input.py` — 12 test nuovi (alias parametrico 6-case, header anonimi, prezzi italiano, opzionali preservate, errori espliciti R-01, alias-overrides-heuristic, backwards-compat sentinel). [CHG-2026-05-02-023]
+- `src/talos/ui/document_parser.py` — costante `CSV_ENCODING_CHAIN` (`utf-8-sig` → `cp1252` → `latin-1`) + helper `_decode_with_fallback(raw) -> str`. `_parse_csv` ora itera la chain per `pd.read_csv(encoding=...)`. Bug fix live Leader: byte 0x97 em-dash da Excel italiano cp1252 rompeva UTF-8 strict. [CHG-2026-05-02-024]
+- `tests/unit/test_document_parser.py` — 5 test nuovi (UTF-8 ASCII, UTF-8 italiano accenti, UTF-8-sig BOM, cp1252 em-dash 0x97, cp1252 accenti italiano). [CHG-2026-05-02-024]
 
 ### Changed
 - `parse_descrizione_prezzo_csv` ora chiama `_detect_columns` e rinomina internamente le colonne riconosciute a `descrizione`/`prezzo`. Header canonici NON più obbligatori. Vincolo 2 colonne separate invariato. R-01 NO SILENT DROPS: 4 errori espliciti (1-col / no-price-cand / tie-ambiguous / no-desc-cand). Backwards-compat 100% (header canonici matchano via alias al primo step). [CHG-2026-05-02-023]
+- `_parse_csv` encoding fallback chain: `utf-8-sig → cp1252 → latin-1`. CSV Excel italiano (cp1252) ora parseable senza intervento CFO. `latin-1` finale è single-byte catch-all (mai solleva). [CHG-2026-05-02-024]
 
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
