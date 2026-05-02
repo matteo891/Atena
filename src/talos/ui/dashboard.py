@@ -261,7 +261,7 @@ def parse_locked_in(raw: str) -> list[str]:
     return [a.strip() for a in raw.split(",") if a.strip()]
 
 
-def _render_sidebar(
+def _render_sidebar(  # noqa: C901, PLR0912 — UI orchestrator, complessità accettabile
     factory: sessionmaker[Session] | None = None,
 ) -> tuple[float, int, float, int]:
     """Sidebar: parametri sessione configurabili dal CFO.
@@ -335,12 +335,24 @@ def _render_sidebar(
                 "La cache `description_resolutions` mappa descrizione → ASIN. "
                 "Svuotala se vuoi forzare il re-resolve live SERP+Keepa.",
             )
-            if st.button("Svuota cache risoluzioni", key="clear_cache_btn"):
-                ok, n_deleted, err = try_clear_description_cache(factory)
-                if ok:
-                    st.success(f"Cache svuotata: {n_deleted} righe rimosse.")
-                else:
-                    st.error(f"Reset fallito: {err}")  # pragma: no cover
+            # CHG-2026-05-02-014: confirm 2-step (cliccabile distruttivo).
+            if st.session_state.get("cache_reset_confirm_pending"):
+                st.warning("Confermi? L'operazione è irreversibile.")
+                col_yes, col_no = st.columns(2)
+                if col_yes.button("Sì, svuota", key="cache_reset_yes", type="primary"):
+                    ok, n_deleted, err = try_clear_description_cache(factory)
+                    st.session_state["cache_reset_confirm_pending"] = False
+                    if ok:
+                        st.toast(f"Cache svuotata: {n_deleted} righe rimosse.", icon="🧹")
+                        st.success(f"Cache svuotata: {n_deleted} righe rimosse.")
+                    else:
+                        st.error(f"Reset fallito: {err}")  # pragma: no cover
+                if col_no.button("Annulla", key="cache_reset_no"):
+                    st.session_state["cache_reset_confirm_pending"] = False
+                    st.rerun()
+            elif st.button("Svuota cache risoluzioni", key="clear_cache_btn"):
+                st.session_state["cache_reset_confirm_pending"] = True
+                st.rerun()
 
     return float(budget), int(velocity_target), float(veto_threshold), int(lot_size)
 
@@ -1871,8 +1883,10 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
             tenant_id=DEFAULT_TENANT_ID,
         )
         if success:
+            st.toast(f"Sessione #{sid} salvata", icon="✓")
             st.success(f"Sessione persistita. id = `{sid}`.")
         else:  # pragma: no cover - UI-only error path
+            st.toast(f"Persistenza fallita: {err}", icon="⚠️")
             st.error(f"Persistenza fallita: {err}")
 
     _render_history(factory, tenant_id=DEFAULT_TENANT_ID)
