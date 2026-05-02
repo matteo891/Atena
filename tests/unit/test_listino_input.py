@@ -1458,3 +1458,44 @@ def test_build_listino_raw_arsenale_fields_none_when_absent() -> None:
     assert df.iloc[0]["drops_30"] is None
     assert df.iloc[0]["buy_box_avg90"] is None
     assert df.iloc[0]["amazon_buybox_share"] is None
+
+
+# ---------------------------------------------------------------------------
+# CHG-2026-05-02-037: hotfix defensive getattr (Streamlit cached ProductData)
+# ---------------------------------------------------------------------------
+
+
+class _LegacyProductDataStub:
+    """ProductData "vecchio" senza attributi CHG-035 (simula cache stale)."""
+
+    def __init__(
+        self,
+        buybox_eur: Decimal | None,
+        bsr: int | None = None,
+    ) -> None:
+        self.buybox_eur = buybox_eur
+        self.bsr = bsr
+        # NESSUN attributo drops_30/buy_box_avg90/amazon_buybox_share.
+
+
+def test_fetch_buybox_live_or_none_legacy_product_data_no_crash() -> None:
+    """Hotfix sentinel: ProductData pre-CHG-035 (no nuovi attributi) → snapshot
+    graceful con campi None, NESSUNA AttributeError.
+
+    Bug Leader live 2026-05-02 post-CHG-036 deploy: Streamlit @st.cache_data
+    serviva ProductData vecchio senza drops_30 → AttributeError crash.
+    """
+    from talos.ui.listino_input import _fetch_buybox_live_or_none  # noqa: PLC0415
+
+    def lookup(_asin: str) -> _LegacyProductDataStub:
+        return _LegacyProductDataStub(buybox_eur=Decimal("549.00"), bsr=1234)
+
+    snap = _fetch_buybox_live_or_none(lookup, "B0AAA")
+    # Campi vecchi popolati dal stub.
+    assert snap.buybox_eur == Decimal("549.00")
+    assert snap.bsr_root == 1234
+    # 3 campi nuovi → graceful None (no AttributeError).
+    assert snap.drops_30 is None
+    assert snap.buy_box_avg90 is None
+    assert snap.amazon_buybox_share is None
+    assert snap.notes == ()

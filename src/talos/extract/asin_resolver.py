@@ -277,13 +277,16 @@ class _LiveAsinResolver:
             amazon_buybox_share: float | None = None
             try:
                 product = self._lookup(serp_item.asin)
-                buybox = product.buybox_eur
+                # CHG-2026-05-02-037 hotfix: defensive `getattr` per tolleranza
+                # a `ProductData` cached da Streamlit (`@st.cache_data` può
+                # servire oggetti pre-CHG-035 senza i 3 nuovi attributi).
+                buybox = getattr(product, "buybox_eur", None)
                 # CHG-2026-05-02-003: propaga BSR per estimator v_tot.
-                bsr_root = product.bsr
+                bsr_root = getattr(product, "bsr", None)
                 # CHG-2026-05-02-036: propaga 3 campi ancillari Arsenale.
-                drops_30 = product.drops_30
-                buy_box_avg90 = product.buy_box_avg90
-                amazon_buybox_share = product.amazon_buybox_share
+                drops_30 = getattr(product, "drops_30", None)
+                buy_box_avg90 = getattr(product, "buy_box_avg90", None)
+                amazon_buybox_share = getattr(product, "amazon_buybox_share", None)
             except Exception as exc:  # noqa: BLE001 — lookup puo' lanciare KeepaTransient/Rate/Selector*; tutti -> note + buybox=None
                 notes.append(
                     f"candidato {serp_item.asin} lookup failed: {type(exc).__name__}",

@@ -100,6 +100,12 @@ Senza CHG-036, i 3 filtri Arsenale restano dormienti (nessuna colonna nel datafr
 ### Pipeline Arsenale end-to-end CHIUSA
 Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si attivano **automaticamente** quando `KEEPA_API_KEY` è configurata e il `lookup_callable` viene iniettato in `resolve_listino_with_cache`. La pipeline è ora: `Keepa.product() → ProductData → ResolutionCandidate → ResolvedRow → listino_raw (3 nuove colonne) → enriched_df (cascade) → compute_vgp_score (5 gate AND)`.
 
+### Fixed (CHG-2026-05-02-037 — Hotfix defensive getattr ProductData)
+- `src/talos/ui/listino_input.py:_fetch_buybox_live_or_none` legge i 5 attributi via `getattr(product, "<name>", None)` (defensive). [CHG-2026-05-02-037]
+- `src/talos/extract/asin_resolver.py:_LiveAsinResolver.resolve_description` idem nel try-block lookup candidato SERP. [CHG-2026-05-02-037]
+- Bug live Leader 2026-05-02 post-CHG-036: Streamlit `@st.cache_data` serviva `ProductData` pre-CHG-035 → `AttributeError`. Fix tollerante a oggetti legacy. [CHG-2026-05-02-037]
+- `tests/unit/test_listino_input.py` — 1 test sentinel `_LegacyProductDataStub` anti-regressione hotfix. [CHG-2026-05-02-037]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
