@@ -901,6 +901,66 @@ def fetch_recent_orders_or_empty(
     ]
 
 
+def _render_kpi_aggregate(
+    factory: sessionmaker[Session],
+    *,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> None:
+    """KPI aggregati storico ordini (CHG-2026-05-02-021): cross-session view CFO."""
+    from talos.persistence import (  # noqa: PLC0415
+        aggregate_orders_last_days,
+        top_asins_by_total_qty,
+    )
+
+    with st.expander("Riepilogo storico · KPI CFO"):
+        days = st.selectbox(
+            "Finestra temporale",
+            options=(7, 30, 90, 180),
+            index=1,
+            format_func=lambda d: f"Ultimi {d} giorni",
+            key="kpi_days_window",
+        )
+        try:
+            with session_scope(factory) as db:
+                summary = aggregate_orders_last_days(
+                    db,
+                    days=int(days),
+                    tenant_id=tenant_id,
+                )
+                top_asins = top_asins_by_total_qty(db, limit=10, tenant_id=tenant_id)
+        except Exception as exc:  # noqa: BLE001 - graceful UI
+            st.warning(f"Aggregati non disponibili: {exc}")
+            return
+
+        col_s, col_o, col_e, col_r = st.columns(4)
+        col_s.metric("# Sessioni", summary.n_sessions)
+        col_o.metric("# Ordini", summary.n_orders)
+        col_e.metric("Spesa totale (EUR)", f"€ {float(summary.total_eur):,.0f}")
+        col_r.metric(
+            "ROI medio cart",
+            f"{summary.avg_roi * 100:.1f}%" if summary.avg_roi is not None else "—",
+        )
+        st.caption(
+            f"Aggregato su {summary.n_orders} ordini · {summary.total_qty} unità totali · "
+            f"window {summary.days_window} gg.",
+        )
+
+        if top_asins:
+            st.markdown("**Top 10 ASIN per quantità cumulata**")
+            top_df = pd.DataFrame(
+                [
+                    {
+                        "asin": a.asin,
+                        "n_orders": a.n_orders,
+                        "total_qty": a.total_qty,
+                        "total_eur": float(a.total_eur),
+                    }
+                    for a in top_asins
+                ],
+            )
+            st.dataframe(top_df, use_container_width=True)
+
+
 def _render_orders_history(
     factory: sessionmaker[Session],
     *,
@@ -2062,6 +2122,7 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
 
     _render_history(factory, tenant_id=DEFAULT_TENANT_ID)
     _render_orders_history(factory, tenant_id=DEFAULT_TENANT_ID)
+    _render_kpi_aggregate(factory, tenant_id=DEFAULT_TENANT_ID)
 
 
 def try_record_orders(

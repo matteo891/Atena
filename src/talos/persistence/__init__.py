@@ -8,6 +8,12 @@ così che `migrations/env.py` (che fa `target_metadata = Base.metadata`)
 le veda tutte automaticamente in `alembic revision --autogenerate`.
 """
 
+from talos.persistence.analytics_repository import (
+    AsinAggregate,
+    OrdersAggregateSummary,
+    aggregate_orders_last_days,
+    top_asins_by_total_qty,
+)
 from talos.persistence.base import Base
 from talos.persistence.config_repository import (
     KEY_REFERRAL_FEE_PCT,
@@ -66,6 +72,7 @@ __all__ = [
     "SCOPE_CATEGORY",
     "SCOPE_GLOBAL",
     "AnalysisSession",
+    "AsinAggregate",
     "AsinMaster",
     "AuditLog",
     "Base",
@@ -76,11 +83,13 @@ __all__ = [
     "LockedInItem",
     "LockedInSummary",
     "OrderSummary",
+    "OrdersAggregateSummary",
     "PanchinaItem",
     "SessionSummary",
     "StoricoOrdine",
     "VgpResult",
     "add_locked_in",
+    "aggregate_orders_last_days",
     "count_orders_for_session",
     "create_app_engine",
     "delete_config_override",
@@ -99,5 +108,6 @@ __all__ = [
     "save_session_result",
     "session_scope",
     "set_config_override_numeric",
+    "top_asins_by_total_qty",
     "with_tenant",
 ]
