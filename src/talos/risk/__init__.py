@@ -23,6 +23,12 @@ from talos.risk.amazon_presence import (
     is_amazon_dominant_mask,
     passes_amazon_presence,
 )
+from talos.risk.ghigliottina import (
+    GHIGLIOTTINA_TIERS,
+    is_ghigliottina_failed_mask,
+    min_profit_for_cost,
+    passes_ghigliottina,
+)
 from talos.risk.stress_test import (
     is_stress_test_failed_mask,
     passes_90d_stress_test,
@@ -30,8 +36,12 @@ from talos.risk.stress_test import (
 
 __all__ = (
     "AMAZON_PRESENCE_MAX_SHARE",
+    "GHIGLIOTTINA_TIERS",
     "is_amazon_dominant_mask",
+    "is_ghigliottina_failed_mask",
     "is_stress_test_failed_mask",
+    "min_profit_for_cost",
     "passes_90d_stress_test",
     "passes_amazon_presence",
+    "passes_ghigliottina",
 )

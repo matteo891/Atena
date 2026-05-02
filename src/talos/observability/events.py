@@ -78,6 +78,10 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # (`cash_inflow_eur(avg90) < cost_eur`): perdita catastrofica se prezzo
     # torna alla media storica.
     "vgp.stress_test_failed": ("asin", "buy_box_avg90", "cost"),
+    # Risk filter Ghigliottina tier profit (ADR-0022) — errata CHG-2026-05-02-033
+    # Emesso quando ASIN fallisce min profit assoluto stratificato per
+    # tier di costo (10€/25€/50€ per cost <50€/50-150€/>150€).
+    "vgp.ghigliottina_failed": ("asin", "cost", "cash_profit", "min_required"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -102,3 +106,4 @@ EVENT_V_TOT_ESTIMATED_FROM_BSR: Final[str] = "v_tot.estimated_from_bsr"
 EVENT_SESSION_PERSISTED: Final[str] = "session.persisted"
 EVENT_VGP_AMAZON_DOMINANT_SELLER: Final[str] = "vgp.amazon_dominant_seller"
 EVENT_VGP_STRESS_TEST_FAILED: Final[str] = "vgp.stress_test_failed"
+EVENT_VGP_GHIGLIOTTINA_FAILED: Final[str] = "vgp.ghigliottina_failed"

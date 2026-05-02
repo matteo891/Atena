@@ -46,6 +46,8 @@ _logger = structlog.get_logger(__name__)
 #   CHG-031): asin/amazon_share/threshold.
 # - "vgp.stress_test_failed": riga vetata da 90-Day Stress Test (ADR-0023,
 #   CHG-032): asin/buy_box_avg90/cost.
+# - "vgp.ghigliottina_failed": riga vetata da Ghigliottina (ADR-0022,
+#   CHG-033): asin/cost/cash_profit/min_required.
 
 # Pesi VGP verbatim PROJECT-RAW.md riga 329-331 (chiusa L04 Round 3).
 # Modifica richiede errata corrige ADR-0018 (regola ADR-0009).
@@ -68,6 +70,8 @@ def compute_vgp_score(  # noqa: PLR0913, C901, PLR0912 — design ADR-0018 + ris
     avg90_col: str = "buy_box_avg90",
     fee_fba_col: str = "fee_fba_eur",
     referral_fee_col: str = "referral_fee_resolved",
+    enable_ghigliottina: bool = True,
+    cost_col: str = "cost_eur",
 ) -> pd.DataFrame:
     """Calcola il VGP Score vettoriale con applicazione di R-05 e R-08.
 
@@ -153,8 +157,28 @@ def compute_vgp_score(  # noqa: PLR0913, C901, PLR0912 — design ADR-0018 + ris
     else:
         stress_test_mask = pd.Series(data=False, index=out.index)
 
-    # R-05 + R-08 + ADR-0024 + ADR-0023 applicati.
-    blocked = kill_mask | ~out["veto_roi_passed"] | amazon_dominant_mask | stress_test_mask
+    # CHG-2026-05-02-033: Ghigliottina (ADR-0022). Mask attiva sempre se
+    # `enable_ghigliottina=True` (default) e cost_col + cash_profit_col
+    # presenti. `enable_ghigliottina=False` permette test isolati R-08.
+    if enable_ghigliottina and cost_col in out.columns and cash_profit_col in out.columns:
+        from talos.risk import is_ghigliottina_failed_mask  # noqa: PLC0415
+
+        ghigliottina_mask = is_ghigliottina_failed_mask(
+            out,
+            cost_col=cost_col,
+            cash_profit_col=cash_profit_col,
+        )
+    else:
+        ghigliottina_mask = pd.Series(data=False, index=out.index)
+
+    # R-05 + R-08 + ADR-0024 + ADR-0023 + ADR-0022 applicati.
+    blocked = (
+        kill_mask
+        | ~out["veto_roi_passed"]
+        | amazon_dominant_mask
+        | stress_test_mask
+        | ghigliottina_mask
+    )
     out["vgp_score"] = out["vgp_score_raw"].where(~blocked, 0.0)
 
     # Telemetria (ADR-0021). Eventi per-asin a livello DEBUG: silenti in produzione,
@@ -221,6 +245,23 @@ def compute_vgp_score(  # noqa: PLR0913, C901, PLR0912 — design ADR-0018 + ris
                     asin=str(asin),
                     buy_box_avg90=float(avg90),
                     cost=float(cost),
+                )
+        # vgp.ghigliottina_failed: ASIN vetato da ADR-0022 (CHG-033).
+        if ghigliottina_mask.any() and cost_col in out.columns:
+            from talos.risk import min_profit_for_cost  # noqa: PLC0415
+
+            for asin, cost, profit in zip(
+                out.loc[ghigliottina_mask, asin_col],
+                out.loc[ghigliottina_mask, cost_col],
+                out.loc[ghigliottina_mask, cash_profit_col],
+                strict=False,
+            ):
+                _logger.debug(
+                    "vgp.ghigliottina_failed",
+                    asin=str(asin),
+                    cost=float(cost),
+                    cash_profit=float(profit),
+                    min_required=min_profit_for_cost(float(cost)),
                 )
 
     return out

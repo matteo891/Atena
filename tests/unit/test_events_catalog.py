@@ -37,6 +37,8 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         "vgp.amazon_dominant_seller",
         # Errata CHG-2026-05-02-032 — 90-Day Stress Test (ADR-0023)
         "vgp.stress_test_failed",
+        # Errata CHG-2026-05-02-033 — Ghigliottina (ADR-0022)
+        "vgp.ghigliottina_failed",
     },
 )
 
