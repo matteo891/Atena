@@ -144,7 +144,6 @@ def test_compute_cycle_kpis_compound_math_simple() -> None:
 
     F3: budget_t1 = budget + cash_profit. profit_cost = cash_profit / cart_value.
     Esempio: budget 10k, cart 1k, cash_profit 100 → r=0.10, N=365/30≈12.17.
-    r=10% rientra nel range [veto=8%, cap=15%] → projection_r=10% (no clamp).
     """
     result = _build_session_result(
         budget=10000.0,
@@ -155,68 +154,3 @@ def test_compute_cycle_kpis_compound_math_simple() -> None:
     cycles = 365.0 / 30
     expected = 10000.0 * (1.1**cycles)
     assert kpis["projected_annual_eur"] == pytest.approx(expected, rel=1e-6)
-
-
-# ---------------------------------------------------------------------------
-# CHG-2026-05-02-041: r-cap conservativo proiezione compound
-# ---------------------------------------------------------------------------
-
-
-def test_compute_cycle_kpis_projection_r_cap_high_actual_r() -> None:
-    """r effettivo 30% → projection_r capped a 15% (evita esplosione 11M€).
-
-    Bug live Leader: cart con r alto (~30%) produceva proiezione €11M
-    su budget €6k. CHG-041 cap a 15% per ciclo → ~91k su 24 cicli.
-    """
-    result = _build_session_result(
-        budget=6000.0,
-        items=[("B0AAA", 5, 1000.0, 0.5)],
-        budget_t1=6300.0,  # cash_profit = 300, su cart 1000 → r effettivo = 30%
-    )
-    kpis = _compute_cycle_kpis(result, velocity_target_days=15)  # type: ignore[arg-type]
-    # r effettivo del ciclo (per KPI tile dedicato): 30%.
-    assert kpis["profit_cost_pct"] == pytest.approx(0.30)
-    # r conservativo per proiezione: capped a 15%.
-    assert kpis["projection_r_pct"] == pytest.approx(0.15)
-    # Proiezione: 6000 * 1.15^24.33 ≈ 168k (NON 11M).
-    cycles = 365.0 / 15
-    expected = 6000.0 * (1.15**cycles)
-    assert kpis["projected_annual_eur"] == pytest.approx(expected, rel=1e-6)
-    assert kpis["projected_annual_eur"] < 500_000.0  # sanity: NON 11M
-
-
-def test_compute_cycle_kpis_projection_r_floor_low_actual_r() -> None:
-    """r effettivo 5% (sotto veto 8%) → projection_r floor a veto_threshold.
-
-    Allineamento ScalerBot500K: usa la soglia veto come r conservativo,
-    anche se il cart ha margine inferiore.
-    """
-    result = _build_session_result(
-        budget=10000.0,
-        items=[("B0AAA", 10, 1000.0, 0.5)],
-        budget_t1=10050.0,  # cash_profit = 50, su cart 1000 → r effettivo = 5%
-    )
-    kpis = _compute_cycle_kpis(
-        result,  # type: ignore[arg-type]
-        velocity_target_days=30,
-        veto_roi_threshold=0.08,
-    )
-    assert kpis["profit_cost_pct"] == pytest.approx(0.05)
-    # Floor a veto_threshold: projection usa 8% non 5%.
-    assert kpis["projection_r_pct"] == pytest.approx(0.08)
-
-
-def test_compute_cycle_kpis_projection_r_passthrough_in_range() -> None:
-    """r effettivo 12% (dentro [veto=8%, cap=15%]) → projection_r = r effettivo."""
-    result = _build_session_result(
-        budget=10000.0,
-        items=[("B0AAA", 10, 1000.0, 0.5)],
-        budget_t1=10120.0,  # cash_profit = 120, r effettivo = 12%
-    )
-    kpis = _compute_cycle_kpis(
-        result,  # type: ignore[arg-type]
-        velocity_target_days=30,
-        veto_roi_threshold=0.08,
-    )
-    assert kpis["profit_cost_pct"] == pytest.approx(0.12)
-    assert kpis["projection_r_pct"] == pytest.approx(0.12)

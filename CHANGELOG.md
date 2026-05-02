@@ -111,27 +111,11 @@ Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si 
 - Bug live Leader 2026-05-02 post-CHG-037: Streamlit hot-reload skew (listino_input.py reloaded ma velocity_estimator.py no) → `TypeError unexpected kwarg drops_30`. [CHG-2026-05-02-038]
 - `tests/unit/test_listino_input.py` — 1 sentinel `monkeypatch` resolve_v_tot legacy stub anti-regressione hotfix. [CHG-2026-05-02-038]
 
-### Added (CHG-2026-05-02-039 — Calibration toolkit ground truth ScalerBot500K)
-- `tests/golden/test_ground_truth_scaler500k.py` — fixture inline `GROUND_TRUTH_ASINS` (7 ASIN Samsung reali da file Leader `ordine_scaler500k (22).xlsx` 3 tab) + 7 test field-by-field. [CHG-2026-05-02-039]
-
-### Discovery (CHG-2026-05-02-039 — discrepanza critica fee_fba)
-- TALOS `fee_fba_manual` L11b ≈ €22 vs ScalerBot fee atomica ≈ €3. 6-50x. 5/6 ASIN ScalerBot CARRELLO sarebbero VETOed da TALOS L11b (ROI < 8%). **Bot inutilizzabile in produzione finché Leader ratifica errata corrige ADR-0017 α'' policy fee_fba**. Match conformi: ROI exact (con atomica), velocity badge perfetto, qty_target ±2. [CHG-2026-05-02-039]
-- Decisione Leader pendente: A) mantieni L11b conservativo, B) sostituisci → atomica (allinea ScalerBot), C) hybrid Keepa-live + L11b fallback. [CHG-2026-05-02-039]
-
-### Changed (CHG-2026-05-02-040 — Errata ADR-0017 fee_fba atomica Keepa)
-- Decisione α'' INVERTITA. `_LiveKeepaAdapter.query()` parsa `product["fbaFees"]["pickAndPackFee"]` cents → EUR Decimal. Pipeline propagation: `KeepaProduct → ProductData → ResolutionCandidate → ResolvedRow → listino_raw colonna fee_fba_eur_keepa → orchestrator._enrich_listino` (preferisce Keepa, L11b fallback). `fee_fba_manual` L11b conservata per fallback Keepa miss / no-KEEPA_API_KEY. [CHG-2026-05-02-040]
-- `docs/decisions/ADR-0017-stack-acquisizione-dati.md` sezione `## Errata` aggiunta con razionale post-calibrazione + pattern propagation. [CHG-2026-05-02-040]
-
-### Added (CHG-2026-05-02-040)
-- `tests/unit/test_keepa_client.py` — 3 test post-errata (KeepaProduct atomica field, fetch_fee_fba ritorna atomica quando presente, KeepaMiss quando None). [CHG-2026-05-02-040]
-- `tests/unit/test_orchestrator_fee_fba_keepa_priority.py` — nuovo: 3 test (Keepa preferred / L11b fallback / backwards-compat). [CHG-2026-05-02-040]
-- `tests/integration/test_live_keepa.py` — 2 test legacy aggiornati a tolleranza errata (Keepa atomica O miss accettati). [CHG-2026-05-02-040]
-
-### Fixed (CHG-2026-05-02-041 — Hotfix proiezione compound r-cap)
-- `src/talos/ui/dashboard.py:_compute_cycle_kpis` — costanti `_PROJECTION_R_MAX_CAP = 0.15` + `_PROJECTION_R_DELTA_TOLERANCE = 0.001`. Nuovo kwarg `veto_roi_threshold`. Nuova chiave dict `projection_r_pct = clamp(profit_cost_pct, [veto_threshold, MAX_CAP])`. Proiezione ora `(1 + projection_r_pct)^cycles_per_year`. [CHG-2026-05-02-041]
-- `_render_cycle_overview` meta tile esplicita r conservativo + r effettivo del cart quando divergono. [CHG-2026-05-02-041]
-- Bug Leader live: cart r=30% × 24 cicli → proiezione €11M matematicamente corretta ma irrealistica. Cap allinea ScalerBot500K (r conservativo ≈ veto threshold come default). [CHG-2026-05-02-041]
-- `tests/unit/test_dashboard_cycle_overview.py` — 3 test boundary (high cap 30%→15%, low floor 5%→8%, passthrough 12%→12%). [CHG-2026-05-02-041]
+### Reverted (CHG-2026-05-02-042 — Revert CHG-039/040/041)
+- 5 commit revertati in singolo commit unificato: `4813222` CHG-039 (golden ground truth ScalerBot500K), `bf75142` backfill CHG-040, `5bfa844` CHG-040 (errata ADR-0017 fee_fba atomica Keepa), `39b261a` backfill CHG-039, `4717755` CHG-041 (proiezione compound r-cap). Decisione Leader 2026-05-02 round 7+ post-confronto file `ordine_scaler500k (22).xlsx`. [CHG-2026-05-02-042]
+- ADR-0017 sezione `## Errata` rimossa: decisione α'' originale CHG-2026-05-01-015 ripristinata (`_LiveKeepaAdapter.query()` ritorna SEMPRE `fee_fba_eur=None`; `fee_fba_manual` L11b verbatim Frozen Samsung resta verbatim). [CHG-2026-05-02-042]
+- Pipeline propagation Keepa→ResolutionCandidate→ResolvedRow per `fee_fba_eur` rimossa. Proiezione compound torna a `(1+r_actual)^N` senza cap (`_PROJECTION_R_MAX_CAP` rimosso). Golden test ground truth ScalerBot500K rimosso (file Leader resta su disco non versionato). [CHG-2026-05-02-042]
+- Working tree ripristinato a `c689799` pre-CHG-039. Test count: 894 PASS unit/gov/golden + integration (-16 vs 1052 post-CHG-041 atteso). Quality gate ruff/format/mypy strict puliti. [CHG-2026-05-02-042]
 
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 

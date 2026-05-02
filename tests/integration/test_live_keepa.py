@@ -61,13 +61,13 @@ def live_client() -> KeepaClient:
     return KeepaClient(api_key=api_key, rate_limit_per_minute=20)
 
 
-def test_live_query_returns_buybox_bsr_and_fee_atomic(
+def test_live_query_returns_buybox_bsr_and_fee_none(
     live_adapter: _LiveKeepaAdapter,
 ) -> None:
-    """`query()` su ASIN reale -> buybox/bsr popolati. Post-CHG-040 errata
-    alpha-prime invertita: `fee_fba_eur` ora puo' essere popolato dal
-    `pickAndPackFee` Keepa (atomica, ~€3 per Samsung). Caller fallback a
-    `fee_fba_manual` L11b solo se Keepa non espone il campo.
+    """`query()` su ASIN reale -> buybox e bsr popolati, fee_fba SEMPRE None.
+
+    Decisione alpha'': l'adapter NON popola fee_fba_eur (semantica L11b
+    preservata, caller usa `fee_fba_manual`).
     """
     product = live_adapter.query(_GALAXY_S24_ASIN)
     assert product.asin == _GALAXY_S24_ASIN
@@ -77,10 +77,8 @@ def test_live_query_returns_buybox_bsr_and_fee_atomic(
     assert 400 <= float(product.buybox_eur) <= 1500
     assert product.bsr is not None
     assert product.bsr > 0
-    # Post-CHG-040: fee_fba_eur puo' essere None (Keepa miss) o atomica.
-    # Test live tollerante a entrambi gli stati.
-    if product.fee_fba_eur is not None:
-        assert 0 < float(product.fee_fba_eur) < 50  # atomica plausibile <€50
+    # Decisione alpha''
+    assert product.fee_fba_eur is None
 
 
 def test_live_fetch_buybox_returns_decimal(live_client: KeepaClient) -> None:
@@ -96,22 +94,13 @@ def test_live_fetch_bsr_returns_int(live_client: KeepaClient) -> None:
     assert bsr > 0
 
 
-def test_live_fetch_fee_fba_atomic_or_miss(live_client: KeepaClient) -> None:
-    """`fetch_fee_fba` post-CHG-040: ritorna pickAndPackFee atomica se disponibile,
-    altrimenti `KeepaMissError` (caller fallback `fee_fba_manual` L11b).
+def test_live_fetch_fee_fba_raises_keepa_miss(live_client: KeepaClient) -> None:
+    """`fetch_fee_fba` SOLLEVA `KeepaMissError` (decisione alpha'').
 
-    Errata alpha-prime invertita 2026-05-02 (CHG-2026-05-02-040).
-    Test live tollerante a entrambi gli esiti (dipende da quale dato
-    Keepa espone per l'ASIN test).
+    Caller (es. `lookup_product`) cattura e attiva il fallback
+    `fee_fba_manual` (L11b Frozen, CHG-022).
     """
-    try:
-        fee = live_client.fetch_fee_fba(_GALAXY_S24_ASIN)
-    except KeepaMissError as exc:
-        # Branch legacy alpha-prime: Keepa non espone pickAndPackFee per ASIN.
-        miss_exc = exc
-    else:
-        miss_exc = None
-        assert 0 < float(fee) < 50  # atomica plausibile range
-    if miss_exc is not None:
-        assert miss_exc.asin == _GALAXY_S24_ASIN
-        assert miss_exc.field == "fee_fba"
+    with pytest.raises(KeepaMissError) as exc_info:
+        live_client.fetch_fee_fba(_GALAXY_S24_ASIN)
+    assert exc_info.value.asin == _GALAXY_S24_ASIN
+    assert exc_info.value.field == "fee_fba"

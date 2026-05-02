@@ -527,23 +527,12 @@ def _render_metrics(saturation: float, budget_t1: float) -> None:
 # CHG-2026-05-02-025: cycle overview = pillole + 4 KPI tile + proiezione annua.
 DEFAULT_CYCLES_PER_YEAR_DIVISOR: float = 365.0
 _MIN_VELOCITY_TARGET_DAYS_FOR_CYCLES: int = 1
-# CHG-2026-05-02-041: cap r per proiezione compound annua.
-# Senza cap, `(1+r)^24` esplode con r>20% → numeri irrealistici (€11M
-# su €6k budget). ScalerBot500K usa la soglia veto come r conservativo
-# (~8%): proiezione di €52k su €6k a 28 cicli (= compound al margine
-# minimo, scenario realistico). TALOS adotta stessa semantica:
-# `r_projection = clamp(r_actual, [veto_threshold, MAX_R_CAP])`.
-# Il r realistico del ciclo corrente resta visibile come
-# `profit_cost_pct` separato (KPI tile dedicato).
-_PROJECTION_R_MAX_CAP: float = 0.15  # 15% per ciclo = ~24x annuo a velocity 15gg
-_PROJECTION_R_DELTA_TOLERANCE: float = 0.001  # epsilon per "r effettivo == projection"
 
 
 def _compute_cycle_kpis(
     result: SessionResult,
     *,
     velocity_target_days: int,
-    veto_roi_threshold: float = 0.08,
 ) -> dict[str, float]:
     """KPI compatti del ciclo corrente per `_render_cycle_overview`.
 
@@ -552,16 +541,14 @@ def _compute_cycle_kpis(
 
     Returns dict con chiavi:
     - `cart_value_eur`: spesa totale cart allocated (sum cost_total qty>0).
-    - `cash_profit_eur`: profitto netto ciclo (budget_t1 - budget, F3).
-    - `profit_cost_pct`: r EFFETTIVO del ciclo corrente (cash_profit /
-       cart_value, NaN-safe). Mostrato come KPI tile "Profitto/Costo".
+    - `cash_profit_eur`: profitto netto ciclo (sum cash_inflow_eur · qty
+       sull'allocated; usa `enriched_df` per lookup Cash_Profit unitario).
+    - `profit_cost_pct`: cash_profit / cart_value (0..1, NaN-safe).
     - `n_orders`: count cart items con qty>0.
-    - `cycles_per_year`: 365 / velocity_target_days.
-    - `projection_r_pct`: r CONSERVATIVO usato per proiezione annua
-       (CHG-041): `clamp(profit_cost_pct, [veto_roi_threshold, 0.15])`.
-       Allineamento ScalerBot500K (semantica "r minimo garantito + cap
-       per evitare proiezione esplosiva su cart eccezionali").
-    - `projected_annual_eur`: budget · (1 + projection_r_pct)^cycles_per_year.
+    - `cycles_per_year`: 365 / velocity_target_days (R-01: ValueError se
+       velocity_target_days < 1).
+    - `projected_annual_eur`: budget · (1 + profit_cost_pct)^cycles_per_year
+       (compound). Fallback a budget se n_orders==0.
 
     R-01 NO SILENT DROPS: `velocity_target_days < 1` → ValueError esplicito.
     """
@@ -576,30 +563,22 @@ def _compute_cycle_kpis(
     allocated_items = [item for item in result.cart.items if item.qty > 0]
     n_orders = len(allocated_items)
     cart_value = sum(float(item.cost_total) for item in allocated_items)
+    # F3 (formulas/compounding.py): Budget_T+1 = Budget_T + sum(cash_profit).
+    # Quindi cash_profit ciclo = budget_t1 - budget (semplice differenza).
     cash_profit = float(result.budget_t1 - result.cart.budget)
     profit_cost_pct = cash_profit / cart_value if cart_value > 0 else 0.0
     cycles_per_year = DEFAULT_CYCLES_PER_YEAR_DIVISOR / velocity_target_days
-
-    # CHG-041: r conservativo allineato ScalerBot. Floor = veto_threshold,
-    # cap = _PROJECTION_R_MAX_CAP. Evita proiezione esplosiva su cart
-    # eccezionali (es. r=30% x 24 cicli = €11M su €6k budget).
-    projection_r = max(
-        veto_roi_threshold,
-        min(profit_cost_pct, _PROJECTION_R_MAX_CAP),
-    )
-
     if n_orders == 0:
         projected_annual = float(result.cart.budget)
     else:
-        # Compound conservativo: Budget · (1 + projection_r)^N.
-        projected_annual = float(result.cart.budget) * ((1.0 + projection_r) ** cycles_per_year)
+        # Compound: Budget · (1 + r)^N.
+        projected_annual = float(result.cart.budget) * ((1.0 + profit_cost_pct) ** cycles_per_year)
     return {
         "cart_value_eur": cart_value,
         "cash_profit_eur": cash_profit,
         "profit_cost_pct": profit_cost_pct,
         "n_orders": float(n_orders),
         "cycles_per_year": cycles_per_year,
-        "projection_r_pct": projection_r,
         "projected_annual_eur": projected_annual,
     }
 
@@ -667,24 +646,12 @@ def _render_cycle_overview(
     """
     st.markdown(tiles_html, unsafe_allow_html=True)
 
-    # CHG-2026-05-02-041: meta esplicita r conservativo + r effettivo.
-    # Il r effettivo del cart corrente puo' essere alto (es. 30%) ma per
-    # la proiezione annua usiamo cap [veto, 15%] per evitare numeri esplosivi.
-    proj_r_pct = kpis.get("projection_r_pct", kpis["profit_cost_pct"])
-    actual_r_pct = kpis["profit_cost_pct"]
-    if abs(proj_r_pct - actual_r_pct) > _PROJECTION_R_DELTA_TOLERANCE:
-        meta_r = (
-            f"r conservativo {proj_r_pct * 100:.1f}% "
-            f"(cart effettivo {actual_r_pct * 100:.1f}%, capped)"
-        )
-    else:
-        meta_r = f"r {proj_r_pct * 100:.1f}% per ciclo"
     proj_html = f"""
     <div class="talos-tile-projection">
         <div class="talos-tile-projection-label">Proiezione Annua (Compound)</div>
         <div class="talos-tile-projection-value">€ {kpis["projected_annual_eur"]:,.2f}</div>
         <div class="talos-tile-projection-meta">
-            {kpis["cycles_per_year"]:.1f} cicli/anno · {meta_r}
+            {kpis["cycles_per_year"]:.1f} cicli/anno
         </div>
     </div>
     """
@@ -2646,11 +2613,7 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
     # KPI tile gradient + Proiezione Annua Compound). Saturation/Budget T+1
     # restano disponibili nella tabella cart e nel render_metrics legacy
     # usato da `_render_replay_result`.
-    cycle_kpis = _compute_cycle_kpis(
-        result,
-        velocity_target_days=velocity_target,
-        veto_roi_threshold=veto_threshold,
-    )
+    cycle_kpis = _compute_cycle_kpis(result, velocity_target_days=velocity_target)
     _render_cycle_overview(
         budget=float(result.cart.budget),
         velocity_target_days=velocity_target,
