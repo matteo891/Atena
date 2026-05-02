@@ -111,6 +111,13 @@ Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si 
 - Bug live Leader 2026-05-02 post-CHG-037: Streamlit hot-reload skew (listino_input.py reloaded ma velocity_estimator.py no) → `TypeError unexpected kwarg drops_30`. [CHG-2026-05-02-038]
 - `tests/unit/test_listino_input.py` — 1 sentinel `monkeypatch` resolve_v_tot legacy stub anti-regressione hotfix. [CHG-2026-05-02-038]
 
+### Added (CHG-2026-05-02-039 — Calibration toolkit ground truth ScalerBot500K)
+- `tests/golden/test_ground_truth_scaler500k.py` — fixture inline `GROUND_TRUTH_ASINS` (7 ASIN Samsung reali da file Leader `ordine_scaler500k (22).xlsx` 3 tab) + 7 test field-by-field. [CHG-2026-05-02-039]
+
+### Discovery (CHG-2026-05-02-039 — discrepanza critica fee_fba)
+- TALOS `fee_fba_manual` L11b ≈ €22 vs ScalerBot fee atomica ≈ €3. 6-50x. 5/6 ASIN ScalerBot CARRELLO sarebbero VETOed da TALOS L11b (ROI < 8%). **Bot inutilizzabile in produzione finché Leader ratifica errata corrige ADR-0017 α'' policy fee_fba**. Match conformi: ROI exact (con atomica), velocity badge perfetto, qty_target ±2. [CHG-2026-05-02-039]
+- Decisione Leader pendente: A) mantieni L11b conservativo, B) sostituisci → atomica (allinea ScalerBot), C) hybrid Keepa-live + L11b fallback. [CHG-2026-05-02-039]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
