@@ -20,6 +20,13 @@ from talos.persistence.config_repository import (
     set_config_override_numeric,
 )
 from talos.persistence.engine import create_app_engine
+from talos.persistence.locked_in_repository import (
+    LockedInSummary,
+    add_locked_in,
+    delete_locked_in,
+    list_locked_in,
+    list_locked_in_asins,
+)
 from talos.persistence.models import (
     AnalysisSession,
     AsinMaster,
@@ -67,17 +74,22 @@ __all__ = [
     "ListinoItem",
     "LoadedSession",
     "LockedInItem",
+    "LockedInSummary",
     "OrderSummary",
     "PanchinaItem",
     "SessionSummary",
     "StoricoOrdine",
     "VgpResult",
+    "add_locked_in",
     "count_orders_for_session",
     "create_app_engine",
     "delete_config_override",
+    "delete_locked_in",
     "find_session_by_hash",
     "get_config_override_numeric",
     "list_category_referral_fees",
+    "list_locked_in",
+    "list_locked_in_asins",
     "list_recent_orders",
     "list_recent_sessions",
     "load_session_by_id",

@@ -330,6 +330,9 @@ def _render_sidebar(  # noqa: C901, PLR0912 — UI orchestrator, complessità ac
     )
 
     if factory is not None:
+        _render_sidebar_locked_in_persistent(factory)
+
+    if factory is not None:
         with st.sidebar.expander("Manutenzione cache"):
             st.caption(
                 "La cache `description_resolutions` mappa descrizione → ASIN. "
@@ -355,6 +358,71 @@ def _render_sidebar(  # noqa: C901, PLR0912 — UI orchestrator, complessità ac
                 st.rerun()
 
     return float(budget), int(velocity_target), float(veto_threshold), int(lot_size)
+
+
+def _render_sidebar_locked_in_persistent(factory: sessionmaker[Session]) -> None:
+    """CRUD locked_in permanenti (R-04). Sidebar expander."""
+    from talos.persistence import (  # noqa: PLC0415
+        add_locked_in,
+        delete_locked_in,
+        list_locked_in,
+    )
+
+    with st.sidebar.expander("Locked-in permanenti (R-04)"):
+        st.caption(
+            "ASIN forzati in cart Priorità ∞ a OGNI sessione. "
+            "Si combinano col text input transient.",
+        )
+        try:
+            with session_scope(factory) as db:
+                items = list_locked_in(db, tenant_id=DEFAULT_TENANT_ID)
+        except Exception:  # noqa: BLE001
+            items = []
+        if items:
+            for item in items:
+                col_info, col_del = st.columns([4, 1])
+                col_info.markdown(
+                    f"**`{item.asin}`** · qty_min={item.qty_min}"
+                    + (f" · {item.notes[:40]}" if item.notes else ""),
+                )
+                if col_del.button("✕", key=f"del_locked_{item.id}"):
+                    try:
+                        with session_scope(factory) as db:
+                            delete_locked_in(
+                                db,
+                                item_id=item.id,
+                                tenant_id=DEFAULT_TENANT_ID,
+                            )
+                        st.toast(f"`{item.asin}` rimosso", icon="✓")
+                        st.rerun()
+                    except Exception as exc:  # noqa: BLE001
+                        st.error(f"Delete fallito: {exc}")
+        else:
+            st.caption("Nessun ASIN locked-in permanente.")
+        st.divider()
+        new_asin = st.text_input(
+            "ASIN (10 char)",
+            max_chars=10,
+            key="new_locked_asin",
+        )
+        new_qty = st.number_input("qty_min", min_value=1, value=1, key="new_locked_qty")
+        new_notes = st.text_input("Note (opz.)", key="new_locked_notes")
+        if st.button("+ Aggiungi locked-in", key="add_locked_btn"):
+            try:
+                with session_scope(factory) as db:
+                    add_locked_in(
+                        db,
+                        asin=new_asin,
+                        qty_min=int(new_qty),
+                        notes=new_notes or None,
+                        tenant_id=DEFAULT_TENANT_ID,
+                    )
+                st.toast(f"`{new_asin.upper()}` aggiunto", icon="✓")
+                st.rerun()
+            except ValueError as exc:
+                st.error(f"Validazione: {exc}")
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"Insert fallito: {exc}")
 
 
 def try_clear_description_cache(
@@ -1846,6 +1914,16 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         help="R-04: ASIN forzati con priorità infinita prima del Pass 2 Tetris.",
     )
     locked_in = parse_locked_in(locked_in_raw)
+    # CHG-2026-05-02-019: union con locked_in permanenti DB (R-04).
+    if factory_for_sidebar is not None:
+        from talos.persistence import list_locked_in_asins  # noqa: PLC0415
+
+        try:
+            with session_scope(factory_for_sidebar) as db:
+                db_locked = list_locked_in_asins(db, tenant_id=DEFAULT_TENANT_ID)
+            locked_in = sorted(set(locked_in) | set(db_locked))
+        except Exception as exc:  # noqa: BLE001 - graceful UI
+            _logger.debug("locked_in.db_load_failed", error=str(exc))
 
     listino: pd.DataFrame | None = None
     if mode == "Descrizione + prezzo":
