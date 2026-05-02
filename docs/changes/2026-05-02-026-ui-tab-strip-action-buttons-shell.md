@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-026
 date: 2026-05-02
 adr_ref: ADR-0016, ADR-0019, ADR-0014
-commit: TBD
+commit: 4a0c370
 ---
 
 ## What
@@ -59,4 +59,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
 - Mockup ScalerBot 500K (Leader 2026-05-02).
 - Roadmap risk-filters: ADR-0022 Ghigliottina / ADR-0023 Stress Test /
   ADR-0024 Amazon Presence (proposed) — abiliteranno tab 3-4 reali.
-- Commit: TBD.
+- Commit: `4a0c370`.
