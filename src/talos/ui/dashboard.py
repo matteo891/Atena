@@ -1519,8 +1519,76 @@ _TALOS_CSS = """
     font-size: 0.75rem; letter-spacing: 0.15rem;
     text-transform: uppercase;
   }
+
+  /* =============== Animazioni =============== */
+  @keyframes talos-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .talos-portal-hero, .talos-module-card { animation: talos-fade-in 480ms ease-out; }
+  .talos-module-card:nth-child(2) { animation-delay: 60ms; animation-fill-mode: backwards; }
+  .talos-module-card:nth-child(3) { animation-delay: 120ms; animation-fill-mode: backwards; }
+  @keyframes talos-pulse-gold {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 97, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(201, 169, 97, 0); }
+  }
+  .stButton > button[kind="primary"]:focus-visible,
+  .stButton > button[kind="primary"]:focus {
+    animation: talos-pulse-gold 1.6s ease-out infinite;
+  }
+  /* Hero mark gradient text */
+  .talos-portal-mark {
+    background: linear-gradient(135deg, #C9A961 0%, #E8D08B 50%, #C9A961 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+
+  /* =============== Status indicator (sidebar) =============== */
+  .talos-status {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #21262D; border-radius: 8px;
+    background: #0E1117; margin-bottom: 0.6rem;
+    font-size: 0.78rem; color: #8B949E;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .talos-status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .talos-status-dot.ok    { background: #3FB950; box-shadow: 0 0 8px #3FB95066; }
+  .talos-status-dot.warn  { background: #D29922; box-shadow: 0 0 8px #D2992266; }
+  .talos-status-dot.off   { background: #6B7280; }
+  .talos-status-label { color: #C9A961; font-weight: 600; letter-spacing: 0.05rem; }
 </style>
 """
+
+
+def _render_sidebar_status() -> None:
+    """Status indicators sistema (DB / Keepa) in cima alla sidebar."""
+    from talos.config import get_settings  # noqa: PLC0415
+
+    settings = get_settings()
+    db_url = settings.db_url
+    keepa_key = settings.keepa_api_key
+
+    db_dot = "ok" if db_url else "off"
+    db_label = "Connesso" if db_url else "Disabilitato"
+    keepa_dot = "ok" if keepa_key else "warn"
+    keepa_label = "Configurata" if keepa_key else "Non configurata"
+
+    st.sidebar.markdown(
+        f"""
+        <div class="talos-status">
+          <span class="talos-status-dot {db_dot}"></span>
+          <span><span class="talos-status-label">DB</span> · {db_label}</span>
+        </div>
+        <div class="talos-status">
+          <span class="talos-status-dot {keepa_dot}"></span>
+          <span><span class="talos-status-label">Keepa API</span> · {keepa_label}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _render_portal() -> None:
@@ -1680,6 +1748,7 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         subtitle="Listino → ASIN verificati live → VGP score → allocazione Tetris budget.",
     )
 
+    _render_sidebar_status()
     factory_for_sidebar = get_session_factory_or_none()
     budget, velocity_target, veto_threshold, lot_size = _render_sidebar(factory_for_sidebar)
 
