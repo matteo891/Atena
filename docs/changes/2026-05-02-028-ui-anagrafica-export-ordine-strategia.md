@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-028
 date: 2026-05-02
 adr_ref: ADR-0016, ADR-0015, ADR-0019, ADR-0014
-commit: TBD
+commit: 0305290
 ---
 
 ## What
@@ -64,4 +64,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
   CHG-2026-05-01-005 (asin_master_writer + telemetria).
 - Mockup ScalerBot 500K (Leader 2026-05-02).
 - Override semantica: scope futuro (CHG separato + decisione Leader).
-- Commit: TBD.
+- Commit: `0305290`.
