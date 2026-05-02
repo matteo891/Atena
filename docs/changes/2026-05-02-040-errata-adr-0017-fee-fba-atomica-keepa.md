@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-040
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0009, ADR-0018, ADR-0019, ADR-0014
-commit: TBD
+commit: 5bfa844
 ---
 
 ## What
@@ -78,4 +78,4 @@ ruff/format/mypy strict OK. **1049 PASS** (+6 vs 1043 CHG-039).
 - Ground truth Leader: `ordine_scaler500k (22).xlsx`.
 - Successore atteso: integration test live con KEEPA_API_KEY +
   validazione completa 7/7 ASIN ground truth.
-- Commit: TBD.
+- Commit: `5bfa844`.
