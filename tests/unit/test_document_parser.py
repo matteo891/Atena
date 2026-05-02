@@ -24,6 +24,22 @@ def test_csv_dispatch() -> None:
     assert len(df) == 2
 
 
+def test_csv_auto_detect_semicolon_excel_italiano() -> None:
+    """CHG-016: CSV con `;` (Excel italiano) auto-detected."""
+    buf = io.BytesIO(b"descrizione;prezzo\nGalaxy S24;549\nGalaxy A54;329\n")
+    df = parse_uploaded_document(buf, "csv")
+    assert list(df.columns) == ["descrizione", "prezzo"]
+    assert len(df) == 2
+
+
+def test_csv_auto_detect_tab_separator() -> None:
+    """CHG-016: TSV-like (tab separator)."""
+    buf = io.BytesIO(b"descrizione\tprezzo\nGalaxy S24\t549\nGalaxy A54\t329\n")
+    df = parse_uploaded_document(buf, "csv")
+    assert list(df.columns) == ["descrizione", "prezzo"]
+    assert len(df) == 2
+
+
 def test_xlsx_dispatch() -> None:
     from openpyxl import Workbook  # noqa: PLC0415
 

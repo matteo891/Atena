@@ -52,7 +52,19 @@ def parse_uploaded_document(uploaded: IO[bytes], suffix: str) -> pd.DataFrame:
 
 
 def _parse_csv(uploaded: IO[bytes]) -> pd.DataFrame:
-    return pd.read_csv(uploaded)
+    """Auto-detect separatore (`,` vs `;`) per tolleranza Excel italiano."""
+    import csv  # noqa: PLC0415
+    import io  # noqa: PLC0415
+
+    raw = uploaded.read()
+    sample = raw[:4096].decode("utf-8", errors="ignore")
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+        sep = dialect.delimiter
+    except csv.Error:
+        # Fallback heuristico: conta separatori candidati nelle prime righe.
+        sep = ";" if sample.count(";") > sample.count(",") else ","
+    return pd.read_csv(io.BytesIO(raw), sep=sep)
 
 
 def _parse_xlsx(uploaded: IO[bytes]) -> pd.DataFrame:
