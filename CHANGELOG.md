@@ -40,6 +40,16 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - ADR-0023 90-Day Stress Test ratificato `Active` con decisioni default (window 90gg fisso, break-even, source `stats.avg90`). [CHG-2026-05-02-030]
 - ADR-0024 Amazon Presence ratificato `Active` con decisioni default (threshold 25%, hard veto, ASIN nuovi → pass). [CHG-2026-05-02-030]
 
+### Added (CHG-2026-05-02-031 — Amazon Presence implementazione)
+- `src/talos/risk/` — 8° cluster applicativo (ADR-0013 area permessa). `__init__.py` re-export.
+- `src/talos/risk/amazon_presence.py` — `AMAZON_PRESENCE_MAX_SHARE=0.25` + `passes_amazon_presence(share)` scalare + `is_amazon_dominant_mask(series)` vettoriale (NaN/None → False = pass). [CHG-2026-05-02-031]
+- `src/talos/observability/events.py` — voce catalogo `vgp.amazon_dominant_seller` (asin/amazon_share/threshold) + costante `EVENT_VGP_AMAZON_DOMINANT_SELLER`. Catalogo ADR-0021 ora 21 eventi. [CHG-2026-05-02-031]
+- `tests/unit/test_risk_amazon_presence.py` — 17 test (boundary inclusivo 0.0/0.25/0.2501/None + vettoriale + NaN handling + integrazione `compute_vgp_score` + telemetria `log_capture` LogCapture + backwards-compat sentinel). [CHG-2026-05-02-031]
+- `tests/unit/test_events_catalog.py` — `_EXPECTED_EVENTS` esteso con `vgp.amazon_dominant_seller`. [CHG-2026-05-02-031]
+
+### Changed (CHG-2026-05-02-031)
+- `src/talos/vgp/score.py:compute_vgp_score` — kwarg opzionale `amazon_share_col: str = "amazon_buybox_share"`. Mask `amazon_dominant_mask` calcolata se colonna presente (graceful skip altrimenti). Composizione `blocked = kill | ~veto_passed | amazon_dominant`. Telemetria `vgp.amazon_dominant_seller` per ASIN vetati. Backwards-compat 100%: 953 test esistenti invariati. [CHG-2026-05-02-031]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.

@@ -42,6 +42,8 @@ _logger = structlog.get_logger(__name__)
 # Eventi canonici emessi (ADR-0021):
 # - "vgp.veto_roi_failed": riga vetata da R-08 (asin/roi_pct/threshold).
 # - "vgp.kill_switch_zero": riga killed da R-05 (asin/match_status).
+# - "vgp.amazon_dominant_seller": riga vetata da Amazon Presence (ADR-0024,
+#   CHG-031): asin/amazon_share/threshold.
 
 # Pesi VGP verbatim PROJECT-RAW.md riga 329-331 (chiusa L04 Round 3).
 # Modifica richiede errata corrige ADR-0018 (regola ADR-0009).
@@ -50,7 +52,7 @@ VELOCITY_WEIGHT: float = 0.4
 CASH_PROFIT_WEIGHT: float = 0.2
 
 
-def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name override + 1 threshold + 1 asin_col opzionale per telemetria
+def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name override + 1 threshold + 1 asin_col + amazon_share_col opzionale CHG-031
     df: pd.DataFrame,
     *,
     roi_col: str = "roi",
@@ -60,6 +62,7 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
     veto_roi_threshold: float = DEFAULT_ROI_VETO_THRESHOLD,
     asin_col: str = "asin",
     match_status_col: str = "match_status",
+    amazon_share_col: str = "amazon_buybox_share",
 ) -> pd.DataFrame:
     """Calcola il VGP Score vettoriale con applicazione di R-05 e R-08.
 
@@ -117,8 +120,20 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
     # `is_vetoed_by_roi(roi) = roi < threshold` -> passa = ~vetoed.
     out["veto_roi_passed"] = out[roi_col] >= veto_roi_threshold
 
-    # R-05 + R-08 applicati: vgp_score = 0 dove kill | ~veto_passed.
-    blocked = kill_mask | ~out["veto_roi_passed"]
+    # CHG-2026-05-02-031: Amazon Presence Filter (ADR-0024). Mask attiva solo
+    # se la colonna `amazon_share_col` è presente nel DataFrame (graceful skip
+    # backwards-compat: listini senza dato Keepa NON sono filtrati).
+    import pandas as pd  # noqa: PLC0415 — lazy runtime import (TYPE_CHECKING only sopra)
+
+    if amazon_share_col in out.columns:
+        from talos.risk import is_amazon_dominant_mask  # noqa: PLC0415
+
+        amazon_dominant_mask = is_amazon_dominant_mask(out[amazon_share_col])
+    else:
+        amazon_dominant_mask = pd.Series(data=False, index=out.index)
+
+    # R-05 + R-08 + ADR-0024 applicati: vgp_score = 0 dove kill | ~veto_passed | amazon_dominant.
+    blocked = kill_mask | ~out["veto_roi_passed"] | amazon_dominant_mask
     out["vgp_score"] = out["vgp_score_raw"].where(~blocked, 0.0)
 
     # Telemetria (ADR-0021). Eventi per-asin a livello DEBUG: silenti in produzione,
@@ -155,6 +170,22 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
                     "vgp.kill_switch_zero",
                     asin=str(asin),
                     match_status=str(match_status) if match_status is not None else "",
+                )
+        # vgp.amazon_dominant_seller: ASIN vetato da ADR-0024 (CHG-031).
+        # Solo se la colonna è presente e c'è almeno un dominant_seller.
+        if amazon_share_col in out.columns and amazon_dominant_mask.any():
+            from talos.risk import AMAZON_PRESENCE_MAX_SHARE  # noqa: PLC0415
+
+            for asin, share in zip(
+                out.loc[amazon_dominant_mask, asin_col],
+                out.loc[amazon_dominant_mask, amazon_share_col],
+                strict=False,
+            ):
+                _logger.debug(
+                    "vgp.amazon_dominant_seller",
+                    asin=str(asin),
+                    amazon_share=float(share),
+                    threshold=AMAZON_PRESENCE_MAX_SHARE,
                 )
 
     return out

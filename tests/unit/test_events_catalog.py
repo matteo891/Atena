@@ -33,6 +33,8 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         "v_tot.estimated_from_bsr",
         # Errata CHG-2026-05-02-010 — persistenza sessione (ADR-0015+0016)
         "session.persisted",
+        # Errata CHG-2026-05-02-031 — Amazon Presence Filter (ADR-0024)
+        "vgp.amazon_dominant_seller",
     },
 )
 

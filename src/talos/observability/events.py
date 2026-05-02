@@ -69,6 +69,10 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # Emesso post-save in `try_persist_session` per audit aggregato:
     # quante sessioni persistite, distribuzione cart size, etc.
     "session.persisted": ("session_id", "n_cart_items", "n_panchina_items"),
+    # Risk filter Amazon Presence (ADR-0024) — errata CHG-2026-05-02-031
+    # Emesso da `compute_vgp_score` quando un ASIN viene vetato perché
+    # Amazon detiene la BuyBox per > AMAZON_PRESENCE_MAX_SHARE (0.25).
+    "vgp.amazon_dominant_seller": ("asin", "amazon_share", "threshold"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -91,3 +95,4 @@ EVENT_CACHE_HIT: Final[str] = "cache.hit"
 EVENT_CACHE_MISS: Final[str] = "cache.miss"
 EVENT_V_TOT_ESTIMATED_FROM_BSR: Final[str] = "v_tot.estimated_from_bsr"
 EVENT_SESSION_PERSISTED: Final[str] = "session.persisted"
+EVENT_VGP_AMAZON_DOMINANT_SELLER: Final[str] = "vgp.amazon_dominant_seller"
