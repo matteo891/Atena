@@ -205,7 +205,9 @@ def save_session_result(
             vgp_id_by_asin[asin] = vr.id
 
         # 4. CartItem per ogni item allocato.
-        for item in result.cart.items:
+        # CHG-2026-05-02-022 cart exhaustive: persisti solo `allocated_items()`
+        # (qty>0). Cart.items contiene anche qty=0 con reason flag (UI only).
+        for item in result.cart.allocated_items():
             unit_cost = (item.cost_total / item.qty) if item.qty > 0 else 0.0
             ci = CartItem(
                 session_id=analysis_session.id,

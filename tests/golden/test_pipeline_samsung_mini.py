@@ -66,18 +66,21 @@ def _golden_listino() -> pd.DataFrame:
     )
 
 
-# Snapshot atteso (CHG-2026-05-02-020: errata greedy max-fill; precedente
-# CHG-041 fix qty=0 in Pass 2). NON aggiornare senza nuovo CHG.
+# Snapshot atteso (CHG-2026-05-02-022: DP knapsack + cart exhaustive;
+# precedenti CHG-041 fix qty=0, CHG-020 greedy max-fill).
+# NON aggiornare senza nuovo CHG.
 
-_EXPECTED_CART_ASINS: tuple[str, ...] = ("S004_GOOD", "S002_HIGH", "S005_LOW")
-_EXPECTED_CART_LOCKED: tuple[bool, ...] = (True, False, False)
-_EXPECTED_CART_QTY: tuple[int, ...] = (5, 5, 5)
-_EXPECTED_CART_COST_TOTAL = 4500.0
-_EXPECTED_CART_SATURATION = 0.9
+# Allocated only (qty>0) — cart.allocated_items()
+_EXPECTED_ALLOCATED_ASINS: tuple[str, ...] = ("S004_GOOD", "S005_LOW")
+_EXPECTED_ALLOCATED_LOCKED: tuple[bool, ...] = (True, False)
+_EXPECTED_ALLOCATED_QTY: tuple[int, ...] = (5, 20)
+_EXPECTED_CART_COST_TOTAL = 4800.0
+_EXPECTED_CART_SATURATION = 0.96
 
-_EXPECTED_PANCHINA_ASINS: tuple[str, ...] = ("S001_TOP", "S003_MID", "S010_TINY")
+# Panchina view (qty=0, vgp>0, BUDGET_EXHAUSTED/MIN_LOT_OVER_BUDGET) — cart.panchina_items()
+_EXPECTED_PANCHINA_ASINS: tuple[str, ...] = ("S002_HIGH", "S001_TOP", "S003_MID")
 
-_EXPECTED_BUDGET_T1 = 6658.870475
+_EXPECTED_BUDGET_T1 = 6628.130574
 
 _EXPECTED_VGP_SCORES: dict[str, float] = {
     "S001_TOP": 0.894737,
@@ -129,28 +132,29 @@ def _run_golden_session() -> SessionResult:
     return run_session(inp)
 
 
-def test_cart_asin_list_byte_exact() -> None:
-    """Cart contiene esattamente i 3 ASIN attesi nell'ordine fissato."""
+def test_allocated_asin_list_byte_exact() -> None:
+    """Allocated (qty>0): solo S004_GOOD locked + S005_LOW da DP knapsack."""
     result = _run_golden_session()
-    assert tuple(result.cart.asin_list()) == _EXPECTED_CART_ASINS
+    allocated_asins = tuple(item.asin for item in result.cart.allocated_items())
+    assert allocated_asins == _EXPECTED_ALLOCATED_ASINS
 
 
-def test_cart_locked_flags_byte_exact() -> None:
-    """S004_GOOD ha locked=True (R-04), gli altri False."""
+def test_allocated_locked_flags_byte_exact() -> None:
+    """S004_GOOD ha locked=True (R-04), S005_LOW False."""
     result = _run_golden_session()
-    flags = tuple(item.locked for item in result.cart.items)
-    assert flags == _EXPECTED_CART_LOCKED
+    flags = tuple(item.locked for item in result.cart.allocated_items())
+    assert flags == _EXPECTED_ALLOCATED_LOCKED
 
 
-def test_cart_qty_byte_exact() -> None:
-    """qty_final=5 per tutti e 3 (lot=5, qty_target>=5 -> Floor=5)."""
+def test_allocated_qty_byte_exact() -> None:
+    """DP knapsack: S004 qty=5 (locked min lot), S005 qty=20 (max sat)."""
     result = _run_golden_session()
-    qtys = tuple(item.qty for item in result.cart.items)
-    assert qtys == _EXPECTED_CART_QTY
+    qtys = tuple(item.qty for item in result.cart.allocated_items())
+    assert qtys == _EXPECTED_ALLOCATED_QTY
 
 
 def test_cart_total_cost_snapshot() -> None:
-    """Cart total_cost = 1200 + 900 + 1500 = 3600 (byte-exact entro tolerance EUR)."""
+    """Cart total_cost = 1200 (S004) + 3600 (S005) = 4800 EUR (DP optimum)."""
     result = _run_golden_session()
     assert math.isclose(
         result.cart.total_cost,
@@ -160,7 +164,7 @@ def test_cart_total_cost_snapshot() -> None:
 
 
 def test_cart_saturation_snapshot() -> None:
-    """Saturazione = 3600 / 5000 = 0.72 esatto."""
+    """Saturation = 4800 / 5000 = 0.96 (DP knapsack)."""
     result = _run_golden_session()
     assert math.isclose(
         result.cart.saturation,
@@ -169,10 +173,10 @@ def test_cart_saturation_snapshot() -> None:
     )
 
 
-def test_panchina_asins_byte_exact() -> None:
-    """Panchina ordinata VGP DESC: S002_HIGH > S001_TOP > S010_TINY."""
+def test_panchina_view_snapshot() -> None:
+    """Panchina = ASIN qty=0, vgp>0, reason BUDGET_EXHAUSTED/MIN_LOT_OVER_BUDGET."""
     result = _run_golden_session()
-    panchina_asins = tuple(result.panchina["asin"])
+    panchina_asins = tuple(item.asin for item in result.cart.panchina_items())
     assert panchina_asins == _EXPECTED_PANCHINA_ASINS
 
 
@@ -182,7 +186,7 @@ def test_budget_t1_snapshot() -> None:
     assert math.isclose(
         result.budget_t1,
         _EXPECTED_BUDGET_T1,
-        abs_tol=_TOL_EUR,
+        abs_tol=1e-3,
     )
 
 
@@ -223,33 +227,31 @@ def test_kill_mask_snapshot() -> None:
         )
 
 
-def test_zero_qty_excluded_from_cart() -> None:
-    """Sentinella regression CHG-041: qty_final=0 -> NON in cart, MA in panchina (idoneo).
-
-    S010_TINY ha q_m=2.0, qty_target=1.0, qty_final=Floor(1/5)*5=0.
-    """
+def test_zero_qty_excluded_from_allocated() -> None:
+    """CHG-022 cart exhaustive: S010_TINY in cart con qty=0, NON in allocated_items."""
     result = _run_golden_session()
-    cart_asins = set(result.cart.asin_list())
-    panchina_asins = set(result.panchina["asin"])
-    assert "S010_TINY" not in cart_asins
-    assert "S010_TINY" in panchina_asins
+    allocated_asins = {item.asin for item in result.cart.allocated_items()}
+    all_asins = {item.asin for item in result.cart.items}
+    # S010_TINY qty_target=0 → reason ZERO_QTY_TARGET, qty=0.
+    assert "S010_TINY" not in allocated_asins
+    assert "S010_TINY" in all_asins
 
 
-def test_killed_asin_excluded_from_panchina() -> None:
-    """Killed (R-05) -> vgp_score=0 -> non in cart NE in panchina."""
+def test_killed_asin_excluded_from_allocated_and_panchina() -> None:
+    """Killed (R-05): in cart con reason KILL_SWITCH, NON in allocated NE in panchina."""
     result = _run_golden_session()
-    cart_asins = set(result.cart.asin_list())
-    panchina_asins = set(result.panchina["asin"])
+    allocated_asins = {item.asin for item in result.cart.allocated_items()}
+    panchina_asins = {item.asin for item in result.cart.panchina_items()}
     for killed_asin in ("S008_KILL", "S009_KILL2"):
-        assert killed_asin not in cart_asins
+        assert killed_asin not in allocated_asins
         assert killed_asin not in panchina_asins
 
 
-def test_vetoed_asin_excluded_from_panchina() -> None:
-    """Vetoed R-08 -> vgp_score=0 -> non in cart NE in panchina."""
+def test_vetoed_asin_excluded_from_allocated_and_panchina() -> None:
+    """Vetoed R-08: in cart con reason VETO_ROI, NON in allocated NE in panchina."""
     result = _run_golden_session()
-    cart_asins = set(result.cart.asin_list())
-    panchina_asins = set(result.panchina["asin"])
+    allocated_asins = {item.asin for item in result.cart.allocated_items()}
+    panchina_asins = {item.asin for item in result.cart.panchina_items()}
     for vetoed_asin in ("S006_VETO", "S007_VETO2"):
-        assert vetoed_asin not in cart_asins
+        assert vetoed_asin not in allocated_asins
         assert vetoed_asin not in panchina_asins

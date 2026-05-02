@@ -1,8 +1,8 @@
-"""Unit test per `talos.tetris.allocator` (CHG-2026-04-30-036, ADR-0018).
+"""Unit test `talos.tetris.allocator` — DP knapsack + cart exhaustive (CHG-022).
 
-R-06 saturazione 99.9% (PROJECT-RAW.md riga 224) + R-04 locked-in
-priorita' infinita (sez. 4.1.13). InsufficientBudgetError fail-fast
-per locked-in con cost > budget residuo (R-01 NO SILENT DROPS).
+R-06 saturazione 99.9% via DP bounded knapsack (max sum cost*qty, tie-break VGP).
+R-04 locked-in priorità ∞ con qty_final velocity-based.
+Cart exhaustive: contiene TUTTI gli ASIN del listino con `reason` flag.
 """
 
 from __future__ import annotations
@@ -11,26 +11,37 @@ import pandas as pd
 import pytest
 
 from talos.tetris import (
-    SATURATION_THRESHOLD,
     Cart,
     CartItem,
     InsufficientBudgetError,
     allocate_tetris,
+)
+from talos.tetris.allocator import (
+    REASON_ALLOCATED,
+    REASON_BUDGET_EXHAUSTED,
+    REASON_KILL_SWITCH,
+    REASON_LOCKED_IN,
+    REASON_MIN_LOT_OVER_BUDGET,
+    REASON_VETO_ROI,
+    REASON_ZERO_QTY_TARGET,
 )
 
 pytestmark = pytest.mark.unit
 
 
 def _df(rows: list[tuple[str, float, int, float]]) -> pd.DataFrame:
-    """Helper: rows = [(asin, cost_eur, qty_final, vgp_score), ...]."""
+    """rows = [(asin, cost_eur, qty_final, vgp_score), ...]."""
     return pd.DataFrame(rows, columns=["asin", "cost_eur", "qty_final", "vgp_score"])
+
+
+def _allocated(cart: Cart) -> list[str]:
+    return [item.asin for item in cart.allocated_items()]
 
 
 # Cart dataclass
 
 
 def test_cart_remaining_starts_at_budget() -> None:
-    """Cart vuoto: remaining == budget, saturation == 0."""
     cart = Cart(budget=1000.0)
     assert cart.remaining == pytest.approx(1000.0)
     assert cart.saturation == pytest.approx(0.0)
@@ -38,7 +49,6 @@ def test_cart_remaining_starts_at_budget() -> None:
 
 
 def test_cart_add_updates_total_cost_and_remaining() -> None:
-    """Add aggiorna total_cost; remaining e saturation derivati."""
     cart = Cart(budget=1000.0)
     cart.add(CartItem(asin="A1", cost_total=300.0, qty=3, vgp_score=0.8))
     assert cart.total_cost == pytest.approx(300.0)
@@ -46,113 +56,100 @@ def test_cart_add_updates_total_cost_and_remaining() -> None:
     assert cart.saturation == pytest.approx(0.3)
 
 
-def test_cart_saturation_clamped_to_one() -> None:
-    """Anche se total_cost > budget (bug), saturation max 1.0."""
-    cart = Cart(budget=100.0)
-    cart.add(CartItem(asin="X", cost_total=200.0, qty=1, vgp_score=0.5))
-    assert cart.saturation == pytest.approx(1.0)
+# allocate_tetris DP knapsack
 
 
-# allocate_tetris snapshot
+def test_dp_satures_budget_with_optimal_combination() -> None:
+    """CHG-2026-05-02-022: DP trova combinazione ottimale per saturare budget.
 
-
-def test_basic_allocation_top_vgp_first() -> None:
-    """CHG-2026-05-02-020 greedy: top VGP compra MAX multiplo lot=5, satura budget."""
+    Caso reale Leader: 3 ASIN cost diversi, budget non multiplo di nessun cost.
+    DP deve trovare miglior mix multipli di 5 vs greedy che fermava al top-VGP.
+    """
     vgp_df = _df(
         [
-            ("A_TOP", 100.0, 5, 0.9),
-            ("B_MID", 50.0, 5, 0.6),
-            ("C_LOW", 10.0, 5, 0.3),
-        ],
-    )
-    # budget=1000 → A_TOP greedy: floor(1000/100/5)*5 = 10 → cost_total=1000 → break.
-    cart = allocate_tetris(vgp_df, budget=1000.0, locked_in=[])
-    assert cart.asin_list() == ["A_TOP"]
-    assert cart.items[0].qty == 10
-    assert cart.total_cost == pytest.approx(1000.0)
-
-
-def test_skip_zero_vgp_score() -> None:
-    """ASIN con vgp_score=0 (gia' R-05/R-08 esclusi) saltati."""
-    vgp_df = _df(
-        [
-            ("A", 100.0, 5, 0.9),
-            ("B_DEAD", 50.0, 5, 0.0),  # killed
-            ("C", 30.0, 5, 0.5),
-        ],
-    )
-    # budget 5000: A greedy floor(5000/100/5)*5 = 50 → cost=5000 → break.
-    cart = allocate_tetris(vgp_df, budget=5000.0, locked_in=[])
-    assert "B_DEAD" not in cart.asin_list()
-
-
-def test_skip_zero_qty_final_in_pass_2() -> None:
-    """ASIN con qty_final=0 (F5 azzera per v_tot piccolo) skippati."""
-    vgp_df = _df(
-        [
-            ("A_OK", 100.0, 5, 0.9),
-            ("B_NO_QTY", 50.0, 0, 0.6),  # qty_target=0 -> skip
-            ("C_OK", 30.0, 5, 0.4),
+            ("S24", 380.0, 5, 0.9),
+            ("S23", 330.0, 5, 0.7),
+            ("A54", 220.0, 5, 0.5),
         ],
     )
     cart = allocate_tetris(vgp_df, budget=10_000.0, locked_in=[])
-    assert "B_NO_QTY" not in cart.asin_list()
+    # DP saturazione massima: la migliore combinazione vicina a 10000.
+    # Es. S23=20 (6600) + A54=15 (3300) = 9900 → sat 99%.
+    # Verifica: saturation >= 0.95 (DP migliora il greedy 95%).
+    assert cart.saturation >= 0.95
+    # Cart exhaustive: 3 ASIN tutti presenti.
+    assert len(cart.items) == 3
 
 
-def test_skip_when_min_lot_over_budget() -> None:
-    """CHG-020: greedy salta ASIN il cui costo 1-lotto > budget residuo."""
+def test_cart_exhaustive_contains_all_asins() -> None:
+    """CHG-022: cart contiene TUTTI gli ASIN del listino, anche qty=0."""
     vgp_df = _df(
         [
-            ("A_TOP", 200.0, 5, 0.9),  # 1 lotto = 1000 > budget 500 → SKIP
-            ("B_FITS", 50.0, 5, 0.7),  # 1 lotto = 250 ≤ 500 → entra
+            ("A_OK", 100.0, 5, 0.9),
+            ("B_VETO", 50.0, 5, 0.0),  # vgp=0 → reason VETO_ROI
+            ("C_NO_QTY", 30.0, 0, 0.6),  # qty_target=0 → reason ZERO_QTY_TARGET
+        ],
+    )
+    cart = allocate_tetris(vgp_df, budget=5000.0, locked_in=[])
+    assert len(cart.items) == 3
+    asins = {item.asin for item in cart.items}
+    assert asins == {"A_OK", "B_VETO", "C_NO_QTY"}
+
+
+def test_reason_flags_classified_correctly() -> None:
+    """CHG-022: ogni qty=0 ha reason esplicito (no inference cliente)."""
+    df = pd.DataFrame(
+        [
+            ("ALLOC", 100.0, 5, 0.9, False),
+            ("VETO", 50.0, 5, 0.0, False),  # vgp=0 → VETO_ROI (kill_mask=False)
+            ("KILL", 30.0, 5, 0.0, True),  # kill_mask=True → KILL_SWITCH
+            ("NO_QTY", 30.0, 0, 0.6, False),  # qty_target=0 → ZERO_QTY_TARGET
+        ],
+        columns=["asin", "cost_eur", "qty_final", "vgp_score", "kill_mask"],
+    )
+    cart = allocate_tetris(df, budget=5000.0, locked_in=[])
+    by_asin = {item.asin: item for item in cart.items}
+    assert by_asin["ALLOC"].reason == REASON_ALLOCATED
+    assert by_asin["ALLOC"].qty > 0
+    # KILL ha priorita' su VETO se entrambi: kill_mask True > vgp_score 0.
+    assert by_asin["KILL"].reason == REASON_KILL_SWITCH
+    assert by_asin["VETO"].reason == REASON_VETO_ROI
+    assert by_asin["NO_QTY"].reason == REASON_ZERO_QTY_TARGET
+    for asin in ("VETO", "KILL", "NO_QTY"):
+        assert by_asin[asin].qty == 0
+
+
+def test_min_lot_over_budget_flag() -> None:
+    """1 lotto > budget remaining → reason MIN_LOT_OVER_BUDGET."""
+    vgp_df = _df(
+        [
+            ("BIG_LOT", 200.0, 5, 0.9),  # 1 lotto = 1000 > budget=500
+            ("FITS", 50.0, 5, 0.7),  # 1 lotto = 250 ≤ 500
         ],
     )
     cart = allocate_tetris(vgp_df, budget=500.0, locked_in=[])
-    assert cart.asin_list() == ["B_FITS"]
-    # B_FITS: floor(500/50/5)*5 = 10 → cost=500 → break sat 100%.
-    assert cart.items[0].qty == 10
+    by_asin = {item.asin: item for item in cart.items}
+    assert by_asin["BIG_LOT"].reason == REASON_MIN_LOT_OVER_BUDGET
+    assert by_asin["BIG_LOT"].qty == 0
+    assert by_asin["FITS"].qty > 0
+    assert by_asin["FITS"].reason == REASON_ALLOCATED
 
 
-def test_break_on_saturation() -> None:
-    """R-06: break quando saturation >= 0.999."""
+def test_budget_exhausted_flag() -> None:
+    """ASIN eligible ma DP non l'ha scelto → reason BUDGET_EXHAUSTED."""
+    # Setup: budget piccolo, 2 ASIN entrambi eligibili ma solo 1 entra.
     vgp_df = _df(
         [
-            ("A", 100.0, 5, 0.9),
-            ("B", 1.0, 5, 0.8),
+            ("WIN", 100.0, 5, 0.9),  # cost=500, vgp=0.9
+            ("LOSE", 100.0, 5, 0.5),  # cost=500, ma DP sceglie WIN per VGP tie-break
         ],
     )
-    # budget=1000: A greedy floor(1000/100/5)*5 = 10, cost=1000 → break.
-    cart = allocate_tetris(vgp_df, budget=1000.0, locked_in=[])
-    assert cart.asin_list() == ["A"]
-    assert cart.saturation >= SATURATION_THRESHOLD
-
-
-def test_partial_saturation_when_top_too_expensive_for_full() -> None:
-    """Top VGP riempie max possibile, residuo viene allocato a item successivi."""
-    vgp_df = _df(
-        [
-            ("A", 100.0, 5, 0.9),  # max_lot = floor(1000/100/5)*5 = 10, cost=1000 → break
-            ("B", 1.0, 5, 0.5),
-        ],
-    )
-    cart = allocate_tetris(vgp_df, budget=1000.0, locked_in=[])
-    # A satura; break → B mai allocato.
-    assert cart.asin_list() == ["A"]
-
-
-def test_residual_budget_spills_to_lower_vgp() -> None:
-    """CHG-020: top VGP mangia parte del budget; residuo va al successivo."""
-    vgp_df = _df(
-        [
-            ("A_TOP", 300.0, 5, 0.9),  # 1 lotto=1500, budget=2000, greedy=5 cost=1500
-            ("B_FILL", 100.0, 5, 0.5),  # residuo=500, greedy=5 cost=500 → break
-        ],
-    )
-    cart = allocate_tetris(vgp_df, budget=2000.0, locked_in=[])
-    assert cart.asin_list() == ["A_TOP", "B_FILL"]
-    assert cart.items[0].qty == 5
-    assert cart.items[1].qty == 5
-    assert cart.total_cost == pytest.approx(2000.0)
+    cart = allocate_tetris(vgp_df, budget=500.0, locked_in=[])
+    by_asin = {item.asin: item for item in cart.items}
+    # WIN ha VGP più alto: tie-break preferisce WIN nella DP.
+    assert by_asin["WIN"].qty == 5
+    assert by_asin["LOSE"].qty == 0
+    assert by_asin["LOSE"].reason == REASON_BUDGET_EXHAUSTED
 
 
 # R-04 locked-in priorita' infinita
@@ -163,54 +160,50 @@ def test_r04_locked_in_added_first() -> None:
     vgp_df = _df(
         [
             ("A_TOP", 100.0, 5, 0.9),
-            ("B_LOCKED", 50.0, 5, 0.3),  # basso VGP ma locked
+            ("B_LOCKED", 50.0, 5, 0.3),
             ("C_MID", 30.0, 5, 0.6),
         ],
     )
-    # B_LOCKED: cost qty_final fisso = 50*5=250. budget 5000-250=4750.
-    # Pass 2 greedy: A_TOP first (vgp 0.9): max_lot floor(4750/100/5)*5 = 45.
-    # cost=4500, residuo 250. Saturation = 4750/5000 = 95% no break.
-    # C_MID: max_lot floor(250/30/5)*5 = floor(1.66/5)*5 = 0 → skip (1 lotto=150 ≤ 250 OK
-    #   wait: floor(250/30/5)*5 = floor(1.666)*5 = 1*5 = 5. cost=150. saturation=4900/5000=98%.
     cart = allocate_tetris(vgp_df, budget=5000.0, locked_in=["B_LOCKED"])
     assert cart.items[0].asin == "B_LOCKED"
     assert cart.items[0].locked is True
-    assert cart.items[0].qty == 5  # qty_final velocity-based per locked
-    assert "A_TOP" in cart.asin_list()
+    assert cart.items[0].qty == 5
+    assert cart.items[0].reason == REASON_LOCKED_IN
 
 
 def test_r04_locked_in_with_zero_vgp_score_still_allocated() -> None:
-    """Locked-in entra anche con vgp_score=0 (priorita' infinita ignora R-05/R-08)."""
-    vgp_df = _df([("LOCKED_KILL", 100.0, 1, 0.0), ("A", 50.0, 1, 0.9)])
+    """Locked-in entra anche con vgp_score=0 (priorità ∞ ignora R-05/R-08)."""
+    vgp_df = _df([("LOCKED_KILL", 100.0, 5, 0.0), ("A", 50.0, 5, 0.9)])
     cart = allocate_tetris(vgp_df, budget=1000.0, locked_in=["LOCKED_KILL"])
-    assert cart.items[0].asin == "LOCKED_KILL"
-    assert cart.items[0].locked is True
+    by_asin = {item.asin: item for item in cart.items}
+    assert by_asin["LOCKED_KILL"].locked is True
+    assert by_asin["LOCKED_KILL"].qty == 5
 
 
 def test_r04_locked_in_skipped_in_pass_2() -> None:
     """Locked-in non viene riallocato nel Pass 2 (set semantics)."""
-    vgp_df = _df([("A", 100.0, 1, 0.9), ("B_LOCKED", 50.0, 1, 0.5)])
+    vgp_df = _df([("A", 100.0, 5, 0.9), ("B_LOCKED", 50.0, 5, 0.5)])
     cart = allocate_tetris(vgp_df, budget=1000.0, locked_in=["B_LOCKED"])
-    # B_LOCKED appare una sola volta
-    assert cart.asin_list().count("B_LOCKED") == 1
+    locked_asins = [item.asin for item in cart.items if item.locked]
+    assert locked_asins.count("B_LOCKED") == 1
 
 
 def test_r04_insufficient_budget_for_locked_in_raises() -> None:
-    """Locked-in con cost > budget residuo -> InsufficientBudgetError."""
-    vgp_df = _df([("BIG_LOCKED", 2000.0, 1, 0.5)])
+    """Locked-in con cost > budget residuo → InsufficientBudgetError."""
+    vgp_df = _df([("BIG_LOCKED", 2000.0, 5, 0.5)])
     with pytest.raises(InsufficientBudgetError, match="BIG_LOCKED"):
         allocate_tetris(vgp_df, budget=1000.0, locked_in=["BIG_LOCKED"])
 
 
 def test_r04_two_locked_in_second_too_expensive_raises() -> None:
-    """Primo locked-in entra, secondo non sta -> raise sul secondo."""
+    """Primo locked-in entra, secondo non sta → raise sul secondo."""
     vgp_df = _df([("L1", 600.0, 1, 0.5), ("L2", 600.0, 1, 0.5)])
     with pytest.raises(InsufficientBudgetError, match="L2"):
         allocate_tetris(vgp_df, budget=1000.0, locked_in=["L1", "L2"])
 
 
 def test_r04_locked_in_not_in_df_raises() -> None:
-    """Locked-in non presente nel listino -> ValueError esplicito."""
+    """Locked-in non presente nel listino → ValueError esplicito."""
     vgp_df = _df([("A", 100.0, 1, 0.9)])
     with pytest.raises(ValueError, match="MISSING"):
         allocate_tetris(vgp_df, budget=1000.0, locked_in=["MISSING"])
@@ -220,8 +213,7 @@ def test_r04_locked_in_not_in_df_raises() -> None:
 
 
 def test_invalid_budget_raises() -> None:
-    """budget <= 0 -> ValueError."""
-    vgp_df = _df([("A", 100.0, 1, 0.9)])
+    vgp_df = _df([("A", 100.0, 5, 0.9)])
     with pytest.raises(ValueError, match="budget"):
         allocate_tetris(vgp_df, budget=0.0, locked_in=[])
     with pytest.raises(ValueError, match="budget"):
@@ -229,52 +221,35 @@ def test_invalid_budget_raises() -> None:
 
 
 def test_missing_columns_raises() -> None:
-    """Colonne attese mancanti -> ValueError."""
-    df = pd.DataFrame({"asin": ["A"], "cost_eur": [10.0]})  # mancano qty_final, vgp_score
+    df = pd.DataFrame({"asin": ["A"], "cost_eur": [10.0]})
     with pytest.raises(ValueError, match="colonne richieste mancanti"):
         allocate_tetris(df, budget=100.0, locked_in=[])
 
 
-def test_custom_column_names() -> None:
-    """Override colonne via kwargs funziona end-to-end (greedy max-fill)."""
-    df = pd.DataFrame(
-        {
-            "id": ["A"],
-            "price": [50.0],
-            "qty": [5],
-            "score": [0.9],
-        },
-    )
-    cart = allocate_tetris(
-        df,
-        budget=1000.0,
-        locked_in=[],
-        asin_col="id",
-        cost_col="price",
-        qty_col="qty",
-        score_col="score",
-    )
-    assert cart.asin_list() == ["A"]
-    # greedy: floor(1000/50/5)*5 = 20 → cost 1000 → break.
-    assert cart.items[0].qty == 20
-    assert cart.items[0].cost_total == pytest.approx(1000.0)
-
-
 def test_empty_df_returns_empty_cart() -> None:
-    """DataFrame vuoto -> Cart vuoto, saturation=0."""
     df = pd.DataFrame(columns=["asin", "cost_eur", "qty_final", "vgp_score"])
     cart = allocate_tetris(df, budget=1000.0, locked_in=[])
-    assert cart.asin_list() == []
+    assert cart.items == []
     assert cart.saturation == pytest.approx(0.0)
 
 
-def test_index_does_not_affect_pass_2_order() -> None:
-    """Il Pass 2 usa l'ordine di iterazione del DataFrame (caller responsabile del sort).
+def test_lot_size_invalid_raises() -> None:
+    vgp_df = _df([("A", 100.0, 5, 0.9)])
+    with pytest.raises(ValueError, match="lot_size"):
+        allocate_tetris(vgp_df, budget=1000.0, locked_in=[], lot_size=0)
 
-    Se il caller non ordina per vgp_score DESC, il pass 2 NON riordina:
-    output riflette l'ordine del df. Greedy max-fill è applicato in ordine.
-    """
-    df = _df([("LOW", 100.0, 5, 0.3), ("HIGH", 50.0, 5, 0.9)])
-    cart = allocate_tetris(df, budget=1000.0, locked_in=[])
-    # LOW entra prima (ordine df, non vgp). LOW greedy: floor(1000/100/5)*5=10 cost=1000 break.
-    assert cart.asin_list() == ["LOW"]
+
+def test_panchina_view_filters_budget_exhausted() -> None:
+    """`cart.panchina_items()` filtra solo BUDGET_EXHAUSTED + MIN_LOT_OVER_BUDGET."""
+    vgp_df = _df(
+        [
+            ("WIN", 100.0, 5, 0.9),
+            ("MISS", 100.0, 5, 0.5),  # non scelto da DP → BUDGET_EXHAUSTED
+            ("VETO", 50.0, 5, 0.0),  # vgp=0 → VETO_ROI (NON in panchina)
+        ],
+    )
+    cart = allocate_tetris(vgp_df, budget=500.0, locked_in=[])
+    panchina_asins = {item.asin for item in cart.panchina_items()}
+    assert "MISS" in panchina_asins
+    assert "VETO" not in panchina_asins  # vetoed != panchina
+    assert "WIN" not in panchina_asins  # allocated

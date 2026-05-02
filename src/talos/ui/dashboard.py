@@ -17,7 +17,7 @@ Refactor multi-page ADR-0016 compliant (`pages/`, `components/`,
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -523,22 +523,39 @@ def _render_metrics(saturation: float, budget_t1: float) -> None:
 
 
 def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
-    """Tabella Cart (ASIN allocati) + bottone export CSV."""
-    _section("4", "Cart · ASIN allocati (R-04 Locked-in + R-06 Tetris)")
+    """CHG-2026-05-02-022: Cart exhaustive (TUTTI gli ASIN del listino con reason flag).
+
+    DP knapsack alloca optimal mix multipli di lot_size. ASIN qty=0 mostrati
+    con `reason` esplicito (VETO_ROI / KILL_SWITCH / ZERO_QTY_TARGET /
+    BUDGET_EXHAUSTED / MIN_LOT_OVER_BUDGET / LOCKED_IN).
+    """
+    _section("4", "Cart · listino completo con qty allocata e motivo (R-06 DP)")
     if not cart_items:
         st.markdown(
             """
             <div class="talos-empty">
               <div class="talos-empty-icon">◇ ◇ ◇</div>
-              <div>Cart vuoto. Nessun ASIN allocato in questa sessione.</div>
+              <div>Listino vuoto. Carica un file per iniziare.</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
         return
     cart_df = pd.DataFrame(cart_items)
+    # Sort: allocated (qty>0) first, then by vgp_score DESC.
+    cart_df = cart_df.sort_values(
+        ["qty", "vgp_score"],
+        ascending=[False, False],
+    ).reset_index(drop=True)
     cart_view, cart_cfg = _percentage_view(cart_df)
     st.dataframe(cart_view, use_container_width=True, column_config=cart_cfg)
+    n_allocated = sum(1 for item in cart_items if cast("int", item["qty"]) > 0)
+    n_total = len(cart_items)
+    st.caption(
+        f"{n_allocated}/{n_total} ASIN allocati. "
+        "Reason flags: ALLOCATED/LOCKED_IN (qty>0), "
+        "VETO_ROI/KILL_SWITCH/ZERO_QTY_TARGET/MIN_LOT_OVER_BUDGET/BUDGET_EXHAUSTED (qty=0).",
+    )
     st.download_button(
         "⬇ Esporta Cart (CSV)",
         data=cart_df.to_csv(index=False).encode("utf-8"),
@@ -2042,6 +2059,8 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
     if v_tot_caption:
         st.caption(v_tot_caption)
 
+    # CHG-2026-05-02-022 cart exhaustive: mostra TUTTI gli ASIN del listino
+    # con qty (0+) e reason flag esplicito.
     cart_items_view = [
         {
             "asin": item.asin,
@@ -2049,11 +2068,11 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
             "cost_total": item.cost_total,
             "vgp_score": item.vgp_score,
             "locked": item.locked,
+            "reason": item.reason,
         }
         for item in result.cart.items
     ]
     _render_cart_table(cart_items_view)
-    _render_panchina_table(result.panchina)
 
     with st.expander("Listino completo enriched (audit / debug)"):
         enriched_view, enriched_cfg = _percentage_view(result.enriched_df)

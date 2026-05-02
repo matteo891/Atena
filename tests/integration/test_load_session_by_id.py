@@ -83,7 +83,7 @@ def test_load_returns_loaded_session_after_save(orm_session: Session) -> None:
     assert isinstance(loaded.summary, SessionSummary)
     assert loaded.summary.id == sid
     assert loaded.summary.budget_eur == Decimal("5000.0")
-    assert loaded.summary.n_cart_items == len(result.cart.items)
+    assert loaded.summary.n_cart_items == len(result.cart.allocated_items())
     assert loaded.summary.n_panchina_items == len(result.panchina)
 
 
@@ -99,7 +99,7 @@ def test_load_cart_rows_match_orchestrator_cart(orm_session: Session) -> None:
 
     loaded = load_session_by_id(orm_session, sid)
     assert loaded is not None
-    assert len(loaded.cart_rows) == len(result.cart.items)
+    assert len(loaded.cart_rows) == len(result.cart.allocated_items())
 
     # Map by asin per confronto.
     in_mem_by_asin = {item.asin: item for item in result.cart.items}

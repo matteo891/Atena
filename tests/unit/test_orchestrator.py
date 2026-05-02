@@ -141,25 +141,23 @@ def test_run_session_low_roi_asin_vetoed() -> None:
 
 
 def test_run_session_cart_excludes_vetoed_and_killed() -> None:
-    """Cart non contiene ne' i vetati ne' i killed."""
+    """CHG-022 cart exhaustive: vetati/killed nel cart con qty=0 + reason flag."""
     inp = SessionInput(listino_raw=_samsung_listino(), budget=10000.0)
     result = run_session(inp)
-    cart_asins = set(result.cart.asin_list())
-    assert "EEE555" not in cart_asins  # killed
-    assert "DDD444" not in cart_asins  # vetoed
+    allocated_asins = {item.asin for item in result.cart.allocated_items()}
+    assert "EEE555" not in allocated_asins  # killed → qty=0
+    assert "DDD444" not in allocated_asins  # vetoed → qty=0
 
 
 def test_run_session_panchina_excludes_killed_vetoed_and_cart() -> None:
-    """Panchina = idonei (vgp_score>0) NON in cart."""
-    inp = SessionInput(listino_raw=_samsung_listino(), budget=200.0)  # budget tight
+    """Panchina (cart.panchina_items()) = idonei vgp>0 con qty=0, no killed/vetoed."""
+    inp = SessionInput(listino_raw=_samsung_listino(), budget=200.0)
     result = run_session(inp)
-    panchina_asins = set(result.panchina["asin"])
-    cart_asins = set(result.cart.asin_list())
-    # Nessuna sovrapposizione cart/panchina
-    assert panchina_asins.isdisjoint(cart_asins)
-    # Nessun vetato/killed in panchina
-    assert "EEE555" not in panchina_asins
-    assert "DDD444" not in panchina_asins
+    panchina_asins = {item.asin for item in result.cart.panchina_items()}
+    allocated_asins = {item.asin for item in result.cart.allocated_items()}
+    assert panchina_asins.isdisjoint(allocated_asins)
+    assert "EEE555" not in panchina_asins  # killed
+    assert "DDD444" not in panchina_asins  # vetoed
 
 
 def test_run_session_budget_t1_equals_budget_plus_cart_profits() -> None:
@@ -264,8 +262,10 @@ def test_run_session_all_killed_listino() -> None:
     )
     inp = SessionInput(listino_raw=df, budget=10000.0)
     result = run_session(inp)
-    assert len(result.cart.items) == 0
-    assert len(result.panchina) == 0
+    # CHG-022 cart exhaustive: 2 items totali (entrambi KILL), 0 allocated, 0 panchina.
+    assert len(result.cart.items) == 2
+    assert len(result.cart.allocated_items()) == 0
+    assert len(result.cart.panchina_items()) == 0
     assert result.budget_t1 == pytest.approx(10000.0)
 
 

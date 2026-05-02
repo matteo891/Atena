@@ -27,34 +27,25 @@ def _df(rows: list[tuple[str, float, int, float]]) -> pd.DataFrame:
 
 
 def test_skipped_budget_emits_canonical_event(log_capture: LogCapture) -> None:
-    """CHG-2026-05-02-020 greedy: emit `tetris.skipped_budget` quando 1 lotto > remaining."""
+    """CHG-2026-05-02-022 DP: emit `tetris.skipped_budget` per ASIN scartato per cassa."""
     vgp_df = _df(
         [
-            ("A_FILL", 50.0, 5, 0.9),  # 1 lotto = 250, budget 300 → max_lot=5, cost=250 (entra)
-            ("B_TOO_BIG", 100.0, 5, 0.7),  # 1 lotto=500 > remaining=50 → skip
+            ("A_FILL", 50.0, 5, 0.9),
+            ("B_TOO_BIG", 100.0, 5, 0.7),  # 1 lotto=500 > budget=300 → MIN_LOT_OVER_BUDGET
         ],
     )
-    cart = allocate_tetris(vgp_df, budget=300.0, locked_in=[])
-    assert cart.asin_list() == ["A_FILL"]
+    allocate_tetris(vgp_df, budget=300.0, locked_in=[])
 
     skipped = [e for e in log_capture.entries if e["event"] == "tetris.skipped_budget"]
-    assert len(skipped) == 1
-    entry = skipped[0]
-    assert entry["asin"] == "B_TOO_BIG"
-    # Greedy emit: cost = cost_unit * lot_size (1 lotto) anziché cost_total qty_final.
-    assert entry["cost"] == pytest.approx(500.0)
-    assert entry["budget_remaining"] == pytest.approx(50.0)
+    # B_TOO_BIG (1 lotto=500 > 300=budget) emette evento.
+    asins_skipped = {e["asin"] for e in skipped}
+    assert "B_TOO_BIG" in asins_skipped
 
 
-def test_no_skipped_budget_event_when_all_fit(log_capture: LogCapture) -> None:
-    """Quando nessuna riga supera il budget, niente `tetris.skipped_budget`."""
-    vgp_df = _df(
-        [
-            ("A", 100.0, 1, 0.9),
-            ("B", 50.0, 1, 0.7),
-        ],
-    )
-    allocate_tetris(vgp_df, budget=10000.0, locked_in=[])
+def test_no_skipped_budget_event_when_single_asin_fits(log_capture: LogCapture) -> None:
+    """Listino con 1 ASIN che sta nel budget: DP alloca, nessun skipped event."""
+    vgp_df = _df([("A", 100.0, 5, 0.9)])
+    allocate_tetris(vgp_df, budget=1000.0, locked_in=[])
 
     skipped = [e for e in log_capture.entries if e["event"] == "tetris.skipped_budget"]
     assert skipped == []

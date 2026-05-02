@@ -75,11 +75,13 @@ def test_replay_no_overrides_equivalent_to_loaded(orm_session: Session) -> None:
     _, loaded = _save_and_reload(orm_session, inp)
 
     replay = replay_session(loaded)
-    # Stessi ASIN nel cart, stesse qty, stesso budget.
+    # CHG-022: confronto solo allocated_items (qty>0), no exhaustive items.
     assert replay.cart.budget == loaded.cart.budget
-    assert {item.asin for item in replay.cart.items} == {item.asin for item in loaded.cart.items}
-    qty_by_asin = {item.asin: item.qty for item in replay.cart.items}
-    qty_loaded = {item.asin: item.qty for item in loaded.cart.items}
+    rep_alloc = {item.asin for item in replay.cart.allocated_items()}
+    load_alloc = {item.asin for item in loaded.cart.allocated_items()}
+    assert rep_alloc == load_alloc
+    qty_by_asin = {item.asin: item.qty for item in replay.cart.allocated_items()}
+    qty_loaded = {item.asin: item.qty for item in loaded.cart.allocated_items()}
     assert qty_by_asin == qty_loaded
 
 

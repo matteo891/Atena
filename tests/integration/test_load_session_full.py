@@ -95,9 +95,10 @@ def test_load_full_cart_round_trip(orm_session: Session) -> None:
     loaded = load_session_full(orm_session, sid)
     assert loaded is not None
     assert loaded.cart.budget == result.cart.budget
-    assert len(loaded.cart.items) == len(result.cart.items)
+    # CHG-022: loaded.cart.items è il subset DB (allocated only).
+    assert len(loaded.cart.items) == len(result.cart.allocated_items())
 
-    by_asin_in_mem = {item.asin: item for item in result.cart.items}
+    by_asin_in_mem = {item.asin: item for item in result.cart.allocated_items()}
     for li_item in loaded.cart.items:
         original = by_asin_in_mem[li_item.asin]
         assert li_item.qty == original.qty

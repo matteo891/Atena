@@ -127,16 +127,16 @@ def test_save_persists_vgp_results(orm_session: Session) -> None:
 
 
 def test_save_persists_cart_items(orm_session: Session) -> None:
-    """Cart `M` item -> M righe `cart_items` con `unit_cost_eur` corretta."""
+    """CHG-022 cart exhaustive: DB persiste solo `allocated_items()` (qty>0)."""
     inp, result = _make_session()
     sid = save_session_result(orm_session, session_input=inp, result=result)
 
     cart_rows = orm_session.scalars(
         select(CartItem).where(CartItem.session_id == sid),
     ).all()
-    assert len(cart_rows) == len(result.cart.items)
-    # Unit cost = cost_total / qty
-    for db_row, in_mem in zip(cart_rows, result.cart.items, strict=True):
+    allocated = result.cart.allocated_items()
+    assert len(cart_rows) == len(allocated)
+    for db_row, in_mem in zip(cart_rows, allocated, strict=True):
         assert db_row.qty == in_mem.qty
         expected_unit = Decimal(str(in_mem.cost_total / in_mem.qty))
         assert db_row.unit_cost_eur == pytest.approx(expected_unit, abs=Decimal("0.01"))

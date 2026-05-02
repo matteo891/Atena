@@ -150,7 +150,7 @@ def test_list_n_cart_items_matches_actual_count(orm_session: Session) -> None:
 
     summaries = list_recent_sessions(orm_session, tenant_id=1, limit=50)
     s = next(s for s in summaries if s.id == sid)
-    assert s.n_cart_items == len(result.cart.items)
+    assert s.n_cart_items == len(result.cart.allocated_items())
     assert s.n_panchina_items == len(result.panchina)
 
 
