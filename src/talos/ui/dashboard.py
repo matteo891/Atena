@@ -805,6 +805,58 @@ def fetch_existing_session_for_listino(
         return None
 
 
+def fetch_recent_orders_or_empty(
+    factory: sessionmaker[Session],
+    *,
+    limit: int = 50,
+    tenant_id: int = DEFAULT_TENANT_ID,
+) -> list[dict[str, object]]:
+    """Carica ultimi N ordini come list-of-dict per Streamlit (graceful)."""
+    from talos.persistence import list_recent_orders  # noqa: PLC0415
+
+    try:
+        with session_scope(factory) as db:
+            orders = list_recent_orders(db, limit=limit, tenant_id=tenant_id)
+    except Exception:  # noqa: BLE001 - graceful UI
+        return []
+    return [
+        {
+            "id": o.id,
+            "session_id": o.session_id,
+            "asin": o.asin,
+            "qty": o.qty,
+            "unit_cost_eur": float(o.unit_cost_eur),
+            "total_cost_eur": float(o.total_cost_eur),
+            "ordered_at": o.ordered_at,
+        }
+        for o in orders
+    ]
+
+
+def _render_orders_history(
+    factory: sessionmaker[Session],
+    *,
+    tenant_id: int,
+    limit: int = 50,
+) -> None:
+    """Expander storico ordini globali (R-03) + export CSV."""
+    with st.expander("Storico ordini · registro permanente (R-03)"):
+        rows = fetch_recent_orders_or_empty(factory, limit=limit, tenant_id=tenant_id)
+        if not rows:
+            st.caption("Nessun ordine registrato. Conferma una sessione per popolare il registro.")
+            return
+        orders_df = pd.DataFrame(rows)
+        st.dataframe(orders_df, use_container_width=True)
+        st.download_button(
+            "⬇ Esporta storico ordini (CSV)",
+            data=orders_df.to_csv(index=False).encode("utf-8"),
+            file_name="talos_storico_ordini.csv",
+            mime="text/csv",
+            key="export_orders_btn",
+        )
+        st.caption(f"{len(rows)} ordini più recenti (limit {limit}).")
+
+
 def _render_history(
     factory: sessionmaker[Session],
     *,
@@ -1931,6 +1983,7 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
                 st.error(f"Registrazione ordini fallita: {err}")
 
     _render_history(factory, tenant_id=DEFAULT_TENANT_ID)
+    _render_orders_history(factory, tenant_id=DEFAULT_TENANT_ID)
 
 
 def try_record_orders(

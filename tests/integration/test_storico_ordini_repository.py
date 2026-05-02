@@ -15,8 +15,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from talos.orchestrator import REQUIRED_INPUT_COLUMNS, SessionInput, run_session
 from talos.persistence import (
+    OrderSummary,
     StoricoOrdine,
     count_orders_for_session,
+    list_recent_orders,
     record_orders_from_session,
     save_session_result,
 )
@@ -113,3 +115,29 @@ def test_record_tenant_isolation(orm_session: Session) -> None:
     # con superuser RLS è bypassed). Il behavior esatto dipende dal setup;
     # in MVP single-tenant verifichiamo solo che non crashi.
     assert n >= 0
+
+
+def test_list_recent_orders_empty_initially(orm_session: Session) -> None:
+    """Tabella vuota → list ritorna []."""
+    assert list_recent_orders(orm_session, tenant_id=1) == []
+
+
+def test_list_recent_orders_after_record(orm_session: Session) -> None:
+    """Dopo record, list ritorna OrderSummary con campi popolati."""
+    sid = _save_session(orm_session)
+    record_orders_from_session(orm_session, session_id=sid)
+    orders = list_recent_orders(orm_session, tenant_id=1)
+    assert len(orders) > 0
+    for o in orders:
+        assert isinstance(o, OrderSummary)
+        assert o.session_id == sid
+        assert o.qty > 0
+        assert float(o.unit_cost_eur) > 0
+        assert float(o.total_cost_eur) == float(o.unit_cost_eur) * o.qty
+
+
+def test_list_recent_orders_invalid_limit_raises(orm_session: Session) -> None:
+    with pytest.raises(ValueError, match="limit"):
+        list_recent_orders(orm_session, limit=0)
+    with pytest.raises(ValueError, match="limit"):
+        list_recent_orders(orm_session, limit=-5)

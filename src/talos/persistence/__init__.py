@@ -47,7 +47,9 @@ from talos.persistence.session_repository import (
     save_session_result,
 )
 from talos.persistence.storico_ordini_repository import (
+    OrderSummary,
     count_orders_for_session,
+    list_recent_orders,
     record_orders_from_session,
 )
 
@@ -65,6 +67,7 @@ __all__ = [
     "ListinoItem",
     "LoadedSession",
     "LockedInItem",
+    "OrderSummary",
     "PanchinaItem",
     "SessionSummary",
     "StoricoOrdine",
@@ -75,6 +78,7 @@ __all__ = [
     "find_session_by_hash",
     "get_config_override_numeric",
     "list_category_referral_fees",
+    "list_recent_orders",
     "list_recent_sessions",
     "load_session_by_id",
     "load_session_full",
