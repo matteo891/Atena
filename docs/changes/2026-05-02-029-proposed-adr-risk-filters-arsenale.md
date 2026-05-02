@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-029
 date: 2026-05-02
 adr_ref: ADR-0022, ADR-0023, ADR-0024, ADR-0001, ADR-0018, ADR-0017, ADR-0021
-commit: TBD
+commit: 2ab92ce
 ---
 
 ## What
@@ -82,4 +82,4 @@ infrastruttura/governance):
 - Predecessori: chiusura blocco UI restyle FASE 1 (CHG-023..028).
 - Successori previsti: CHG-030/031/032 implementazioni post ratifica
   + CHG-033 errata ADR-0018 drops_30.
-- Commit: TBD.
+- Commit: `2ab92ce`.
