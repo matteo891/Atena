@@ -9,24 +9,27 @@ R-04 verbatim PROJECT-RAW.md sez. 4.1.13 (L13 Round 5): *"ASIN locked_in
 entrano nel Tetris con Priorita'=infinity prima del normale ranking VGP,
 riservando il loro costo dal budget di sessione."*
 
+CHG-2026-05-02-020 — **Errata semantica F5/R-06 ratificata Leader**:
+`qty_final = floor(qty_target / lot_size) * lot_size` NON e' il MASSIMO
+acquistabile, e' il MINIMO (1 lotto fornitore = 5 unita' Samsung MVP).
+Pass 2 R-06 ora compra il **MAX multiplo di `lot_size`** che sta nel
+budget residuo per ogni ASIN VGP DESC che passa veto (greedy max-fill).
+Decisione Leader 2026-05-02: "5 sono i multipli, non il massimo".
+
 Semantica:
 - **Pass 1 (R-04)**: ogni ASIN in `locked_in` entra prima del normale
-  ranking. Se un locked-in non sta nel budget residuo -> `InsufficientBudgetError`
-  esplicito (R-01 NO SILENT DROPS — nascondere il fallimento sarebbe peggio
-  di stop). Il caller (UI) deve risolvere a monte.
-- **Pass 2 (R-06)**: scansione del DataFrame ordinato per `vgp_score` DESC.
-  Skip `vgp_score == 0` (esclusi a monte da R-05/R-08). Su costo > remaining,
-  `continue` (NON break) — pattern letterale R-06. Break solo su saturation
-  >= 0.999 (R-06 saturazione target).
-
-Versione "happy path" senza:
-- `Panchina` (R-09 archivio idonei scartati per capienza) -> `tetris/panchina.py` (CHG futuro).
-- Telemetria evento `tetris_break_saturation` -> richiede primo orchestrator.
-- Logica multi-budget / lotti del fornitore (F5) -> assume `qty_final` precalcolato.
+  ranking con qty_final velocity-based del listino. Se non sta nel budget
+  residuo -> `InsufficientBudgetError` esplicito (R-01 NO SILENT DROPS).
+- **Pass 2 (R-06 greedy max-fill)**: scansione del DataFrame ordinato per
+  `vgp_score` DESC. Skip `vgp_score == 0` (R-05/R-08). Skip `qty_target<=0`
+  (F5 azzera per v_tot piccolo). Per ogni ASIN comprabile: `qty = floor(
+  remaining / cost_unit / lot_size) * lot_size` (greedy MAX multiplo).
+  Skip se nemmeno 1 lotto sta nel budget. Break su saturation >= 0.999.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -46,6 +49,10 @@ _logger = structlog.get_logger(__name__)
 # Soglia saturazione R-06 verbatim PROJECT-RAW.md riga 224.
 # Modifica richiede errata corrige ADR-0018 (regola ADR-0009).
 SATURATION_THRESHOLD: float = 0.999
+
+# Lot size default (F5 PROJECT-RAW.md riga 313, Samsung MVP).
+# CHG-2026-05-02-020: parametrizzato per coerenza greedy max-fill.
+DEFAULT_LOT_SIZE: int = 5
 
 
 class InsufficientBudgetError(ValueError):
@@ -118,6 +125,7 @@ def allocate_tetris(  # noqa: PLR0913, C901 — 4 col-name override + due passi 
     cost_col: str = "cost_eur",
     qty_col: str = "qty_final",
     score_col: str = "vgp_score",
+    lot_size: int = DEFAULT_LOT_SIZE,
 ) -> Cart:
     """Allocator Tetris greedy: R-04 (Pass 1) + R-06 (Pass 2).
 
@@ -183,32 +191,42 @@ def allocate_tetris(  # noqa: PLR0913, C901 — 4 col-name override + due passi 
             ),
         )
 
-    # Pass 2 (R-06): VGP decrescente. Skip vgp_score==0. Skip qty<=0. Continue su cost > remaining.
+    # Pass 2 (R-06 greedy max-fill, CHG-2026-05-02-020):
+    # Per ogni ASIN VGP DESC che passa veto: compra il MAX multiplo di
+    # `lot_size` che sta nel budget residuo. Skip vgp=0, qty_target<=0,
+    # nemmeno-1-lotto. Break su saturation >= 0.999.
+    if lot_size <= 0:
+        msg = f"lot_size invalido: {lot_size}. Deve essere > 0."
+        raise ValueError(msg)
     for _, row in vgp_df[~vgp_df[asin_col].isin(locked_set)].iterrows():
         score = float(row[score_col])
         if score == 0.0:
             # R-05 / R-08 hanno gia' azzerato: skippa.
             continue
-        qty_value = int(row[qty_col])
-        if qty_value <= 0:
-            # F5 ha azzerato (qty_target sotto soglia lotto fornitore): non comprabile.
+        qty_target = int(row[qty_col])
+        if qty_target <= 0:
+            # F5 azzera per v_tot piccolo: ASIN non vendibile, skippa.
             continue
-        cost_total = float(row[cost_col]) * qty_value
-        if cost_total > cart.remaining:
-            # R-06 letterale: prosegue cercando item con VGP inferiore ma costo compatibile.
-            # Evento canonico (R-01 NO SILENT DROPS, ADR-0021).
+        cost_unit = float(row[cost_col])
+        if cost_unit <= 0:
+            continue
+        # Greedy MAX multiplo di lot_size compatibile col budget residuo.
+        qty_max_lot = math.floor(cart.remaining / cost_unit / lot_size) * lot_size
+        if qty_max_lot < lot_size:
+            # Nemmeno 1 lotto fornitore sta nel budget residuo -> skip.
             _logger.debug(
                 "tetris.skipped_budget",
                 asin=str(row[asin_col]),
-                cost=cost_total,
+                cost=cost_unit * lot_size,
                 budget_remaining=cart.remaining,
             )
             continue
+        cost_total = cost_unit * qty_max_lot
         cart.add(
             CartItem(
                 asin=str(row[asin_col]),
                 cost_total=cost_total,
-                qty=qty_value,
+                qty=qty_max_lot,
                 vgp_score=score,
                 locked=False,
             ),

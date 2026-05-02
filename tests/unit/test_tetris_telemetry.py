@@ -27,26 +27,23 @@ def _df(rows: list[tuple[str, float, int, float]]) -> pd.DataFrame:
 
 
 def test_skipped_budget_emits_canonical_event(log_capture: LogCapture) -> None:
-    """Quando un ASIN viene skippato per cost > remaining, emette `tetris.skipped_budget`."""
+    """CHG-2026-05-02-020 greedy: emit `tetris.skipped_budget` quando 1 lotto > remaining."""
     vgp_df = _df(
         [
-            ("A_TOP", 200.0, 1, 0.9),  # entra, cost=200
-            ("B_BIG", 1000.0, 1, 0.8),  # cost=1000 > remaining=300 -> skip
-            ("C_FITS", 100.0, 1, 0.7),  # entra, cost=100
+            ("A_FILL", 50.0, 5, 0.9),  # 1 lotto = 250, budget 300 → max_lot=5, cost=250 (entra)
+            ("B_TOO_BIG", 100.0, 5, 0.7),  # 1 lotto=500 > remaining=50 → skip
         ],
     )
-    cart = allocate_tetris(vgp_df, budget=500.0, locked_in=[])
+    cart = allocate_tetris(vgp_df, budget=300.0, locked_in=[])
+    assert cart.asin_list() == ["A_FILL"]
 
-    # Verifica esecuzione corretta
-    assert cart.asin_list() == ["A_TOP", "C_FITS"]
-
-    # Verifica emissione evento canonico per B_BIG
     skipped = [e for e in log_capture.entries if e["event"] == "tetris.skipped_budget"]
     assert len(skipped) == 1
     entry = skipped[0]
-    assert entry["asin"] == "B_BIG"
-    assert entry["cost"] == pytest.approx(1000.0)
-    assert entry["budget_remaining"] == pytest.approx(300.0)
+    assert entry["asin"] == "B_TOO_BIG"
+    # Greedy emit: cost = cost_unit * lot_size (1 lotto) anziché cost_total qty_final.
+    assert entry["cost"] == pytest.approx(500.0)
+    assert entry["budget_remaining"] == pytest.approx(50.0)
 
 
 def test_no_skipped_budget_event_when_all_fit(log_capture: LogCapture) -> None:

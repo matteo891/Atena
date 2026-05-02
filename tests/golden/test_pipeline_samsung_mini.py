@@ -66,18 +66,18 @@ def _golden_listino() -> pd.DataFrame:
     )
 
 
-# Snapshot atteso (calcolato 2026-04-30 post CHG-041 fix qty=0 in Pass 2).
-# NON aggiornare senza un nuovo CHG che documenti il cambio di pipeline.
+# Snapshot atteso (CHG-2026-05-02-020: errata greedy max-fill; precedente
+# CHG-041 fix qty=0 in Pass 2). NON aggiornare senza nuovo CHG.
 
-_EXPECTED_CART_ASINS: tuple[str, ...] = ("S004_GOOD", "S005_LOW", "S003_MID")
+_EXPECTED_CART_ASINS: tuple[str, ...] = ("S004_GOOD", "S002_HIGH", "S005_LOW")
 _EXPECTED_CART_LOCKED: tuple[bool, ...] = (True, False, False)
 _EXPECTED_CART_QTY: tuple[int, ...] = (5, 5, 5)
-_EXPECTED_CART_COST_TOTAL = 3600.0
-_EXPECTED_CART_SATURATION = 0.72
+_EXPECTED_CART_COST_TOTAL = 4500.0
+_EXPECTED_CART_SATURATION = 0.9
 
-_EXPECTED_PANCHINA_ASINS: tuple[str, ...] = ("S002_HIGH", "S001_TOP", "S010_TINY")
+_EXPECTED_PANCHINA_ASINS: tuple[str, ...] = ("S001_TOP", "S003_MID", "S010_TINY")
 
-_EXPECTED_BUDGET_T1 = 6187.208180
+_EXPECTED_BUDGET_T1 = 6658.870475
 
 _EXPECTED_VGP_SCORES: dict[str, float] = {
     "S001_TOP": 0.894737,
