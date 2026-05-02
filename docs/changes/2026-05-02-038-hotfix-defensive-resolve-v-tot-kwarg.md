@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-038
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0018, ADR-0019, ADR-0014
-commit: TBD
+commit: aebf8e7
 ---
 
 ## What
@@ -63,4 +63,4 @@ ruff/format/mypy strict OK. **TBD PASS** (+1 sentinel hotfix).
   (hotfix getattr ProductData simmetrico).
 - Bug Leader live 2026-05-02 post-deploy CHG-037 (Streamlit hot-reload
   skew).
-- Commit: TBD.
+- Commit: `aebf8e7`.
