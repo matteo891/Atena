@@ -35,6 +35,8 @@ _EXPECTED_EVENTS: frozenset[str] = frozenset(
         "session.persisted",
         # Errata CHG-2026-05-02-031 — Amazon Presence Filter (ADR-0024)
         "vgp.amazon_dominant_seller",
+        # Errata CHG-2026-05-02-032 — 90-Day Stress Test (ADR-0023)
+        "vgp.stress_test_failed",
     },
 )
 

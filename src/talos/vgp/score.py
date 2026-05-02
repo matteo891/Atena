@@ -44,6 +44,8 @@ _logger = structlog.get_logger(__name__)
 # - "vgp.kill_switch_zero": riga killed da R-05 (asin/match_status).
 # - "vgp.amazon_dominant_seller": riga vetata da Amazon Presence (ADR-0024,
 #   CHG-031): asin/amazon_share/threshold.
+# - "vgp.stress_test_failed": riga vetata da 90-Day Stress Test (ADR-0023,
+#   CHG-032): asin/buy_box_avg90/cost.
 
 # Pesi VGP verbatim PROJECT-RAW.md riga 329-331 (chiusa L04 Round 3).
 # Modifica richiede errata corrige ADR-0018 (regola ADR-0009).
@@ -52,7 +54,7 @@ VELOCITY_WEIGHT: float = 0.4
 CASH_PROFIT_WEIGHT: float = 0.2
 
 
-def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name override + 1 threshold + 1 asin_col + amazon_share_col opzionale CHG-031
+def compute_vgp_score(  # noqa: PLR0913, C901, PLR0912 — design ADR-0018 + risk-filters opzionali (CHG-031/032)
     df: pd.DataFrame,
     *,
     roi_col: str = "roi",
@@ -63,6 +65,9 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
     asin_col: str = "asin",
     match_status_col: str = "match_status",
     amazon_share_col: str = "amazon_buybox_share",
+    avg90_col: str = "buy_box_avg90",
+    fee_fba_col: str = "fee_fba_eur",
+    referral_fee_col: str = "referral_fee_resolved",
 ) -> pd.DataFrame:
     """Calcola il VGP Score vettoriale con applicazione di R-05 e R-08.
 
@@ -132,8 +137,24 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
     else:
         amazon_dominant_mask = pd.Series(data=False, index=out.index)
 
-    # R-05 + R-08 + ADR-0024 applicati: vgp_score = 0 dove kill | ~veto_passed | amazon_dominant.
-    blocked = kill_mask | ~out["veto_roi_passed"] | amazon_dominant_mask
+    # CHG-2026-05-02-032: 90-Day Stress Test (ADR-0023). Mask attiva solo
+    # se TUTTE le 4 colonne (avg90 + cost + fee_fba + referral) sono presenti.
+    stress_required_cols = (avg90_col, "cost_eur", fee_fba_col, referral_fee_col)
+    if all(c in out.columns for c in stress_required_cols):
+        from talos.risk import is_stress_test_failed_mask  # noqa: PLC0415
+
+        stress_test_mask = is_stress_test_failed_mask(
+            out,
+            avg90_col=avg90_col,
+            cost_col="cost_eur",
+            fee_fba_col=fee_fba_col,
+            referral_fee_col=referral_fee_col,
+        )
+    else:
+        stress_test_mask = pd.Series(data=False, index=out.index)
+
+    # R-05 + R-08 + ADR-0024 + ADR-0023 applicati.
+    blocked = kill_mask | ~out["veto_roi_passed"] | amazon_dominant_mask | stress_test_mask
     out["vgp_score"] = out["vgp_score_raw"].where(~blocked, 0.0)
 
     # Telemetria (ADR-0021). Eventi per-asin a livello DEBUG: silenti in produzione,
@@ -186,6 +207,20 @@ def compute_vgp_score(  # noqa: PLR0913 — design ADR-0018: 1 df + 4 col-name o
                     asin=str(asin),
                     amazon_share=float(share),
                     threshold=AMAZON_PRESENCE_MAX_SHARE,
+                )
+        # vgp.stress_test_failed: ASIN vetato da ADR-0023 (CHG-032).
+        if all(c in out.columns for c in stress_required_cols) and stress_test_mask.any():
+            for asin, avg90, cost in zip(
+                out.loc[stress_test_mask, asin_col],
+                out.loc[stress_test_mask, avg90_col],
+                out.loc[stress_test_mask, "cost_eur"],
+                strict=False,
+            ):
+                _logger.debug(
+                    "vgp.stress_test_failed",
+                    asin=str(asin),
+                    buy_box_avg90=float(avg90),
+                    cost=float(cost),
                 )
 
     return out

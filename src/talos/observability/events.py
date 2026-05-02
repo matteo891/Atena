@@ -73,6 +73,11 @@ CANONICAL_EVENTS: Final[dict[str, tuple[str, ...]]] = {
     # Emesso da `compute_vgp_score` quando un ASIN viene vetato perché
     # Amazon detiene la BuyBox per > AMAZON_PRESENCE_MAX_SHARE (0.25).
     "vgp.amazon_dominant_seller": ("asin", "amazon_share", "threshold"),
+    # Risk filter 90-Day Stress Test (ADR-0023) — errata CHG-2026-05-02-032
+    # Emesso quando ASIN fallisce break-even al prezzo medio Buy Box 90gg
+    # (`cash_inflow_eur(avg90) < cost_eur`): perdita catastrofica se prezzo
+    # torna alla media storica.
+    "vgp.stress_test_failed": ("asin", "buy_box_avg90", "cost"),
 }
 
 # Costanti tipizzate per uso applicativo (autocompletamento + refactor-safe).
@@ -96,3 +101,4 @@ EVENT_CACHE_MISS: Final[str] = "cache.miss"
 EVENT_V_TOT_ESTIMATED_FROM_BSR: Final[str] = "v_tot.estimated_from_bsr"
 EVENT_SESSION_PERSISTED: Final[str] = "session.persisted"
 EVENT_VGP_AMAZON_DOMINANT_SELLER: Final[str] = "vgp.amazon_dominant_seller"
+EVENT_VGP_STRESS_TEST_FAILED: Final[str] = "vgp.stress_test_failed"

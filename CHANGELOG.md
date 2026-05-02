@@ -50,6 +50,15 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 ### Changed (CHG-2026-05-02-031)
 - `src/talos/vgp/score.py:compute_vgp_score` — kwarg opzionale `amazon_share_col: str = "amazon_buybox_share"`. Mask `amazon_dominant_mask` calcolata se colonna presente (graceful skip altrimenti). Composizione `blocked = kill | ~veto_passed | amazon_dominant`. Telemetria `vgp.amazon_dominant_seller` per ASIN vetati. Backwards-compat 100%: 953 test esistenti invariati. [CHG-2026-05-02-031]
 
+### Added (CHG-2026-05-02-032 — 90-Day Stress Test implementazione)
+- `src/talos/risk/stress_test.py` — `passes_90d_stress_test(*, buy_box_avg90, cost_eur, fee_fba_eur, referral_fee_rate)` scalare (riusa `cash_inflow_eur`, R-01 break-even). `is_stress_test_failed_mask(df, *, avg90_col, cost_col, fee_fba_col, referral_fee_col)` vettoriale (NaN avg90 → False = pass). [CHG-2026-05-02-032]
+- `src/talos/observability/events.py` — voce catalogo `vgp.stress_test_failed` (asin/buy_box_avg90/cost) + costante `EVENT_VGP_STRESS_TEST_FAILED`. Catalogo ADR-0021 ora 22 eventi. [CHG-2026-05-02-032]
+- `tests/unit/test_risk_stress_test.py` — 13 test (boundary break-even / NaN pass / vettoriale / integrazione vgp / telemetria / backwards-compat sentinel). [CHG-2026-05-02-032]
+- `tests/unit/test_events_catalog.py` — `_EXPECTED_EVENTS` esteso con `vgp.stress_test_failed`. [CHG-2026-05-02-032]
+
+### Changed (CHG-2026-05-02-032)
+- `src/talos/vgp/score.py:compute_vgp_score` — kwarg opzionali `avg90_col`/`fee_fba_col`/`referral_fee_col`. Mask `stress_test_mask` calcolata SOLO se TUTTE le 4 colonne (avg90+cost+fee+referral) sono presenti (graceful skip altrimenti). Composizione `blocked = kill | ~veto_passed | amazon_dominant | stress_test_failed`. Telemetria `vgp.stress_test_failed`. Backwards-compat 100%: 970 test esistenti invariati. [CHG-2026-05-02-032]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.

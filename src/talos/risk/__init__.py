@@ -23,9 +23,15 @@ from talos.risk.amazon_presence import (
     is_amazon_dominant_mask,
     passes_amazon_presence,
 )
+from talos.risk.stress_test import (
+    is_stress_test_failed_mask,
+    passes_90d_stress_test,
+)
 
 __all__ = (
     "AMAZON_PRESENCE_MAX_SHARE",
     "is_amazon_dominant_mask",
+    "is_stress_test_failed_mask",
+    "passes_90d_stress_test",
     "passes_amazon_presence",
 )
