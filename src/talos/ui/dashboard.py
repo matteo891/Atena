@@ -656,6 +656,88 @@ def _render_cycle_overview(
     st.markdown(proj_html, unsafe_allow_html=True)
 
 
+def _render_action_buttons_shell() -> None:
+    """3 bottoni azione header shell (CHG-2026-05-02-026).
+
+    Disabled con tooltip "In arrivo" (placeholder UX). Ognuno aggancia
+    un ADR proposed:
+    - Satura Cash → ADR-0022 Ghigliottina (re-allocate forzando profit
+      assoluto minimo invece di ROI%).
+    - WhatsApp Ordini → ADR proposed futuro (out-of-MVP CFO).
+    - Chiudi Ciclo → ADR proposed futuro (snapshot ciclo + reset budget).
+    """
+    col1, col2, col3 = st.columns(3)
+    col1.button(
+        "💰 Satura Cash",
+        disabled=True,
+        help="In arrivo (ADR-0022 Ghigliottina proposed).",
+        key="action_satura_cash_btn",
+    )
+    col2.button(
+        "💬 WhatsApp Ordini",
+        disabled=True,
+        help="In arrivo (ADR proposed futuro, fuori MVP CFO).",
+        key="action_whatsapp_btn",
+    )
+    col3.button(
+        "🔒 Chiudi Ciclo",
+        disabled=True,
+        help="In arrivo (ADR proposed futuro: snapshot ciclo + reset budget).",
+        key="action_chiudi_ciclo_btn",
+    )
+
+
+def _render_tabs_section(
+    *,
+    cart_items: list[dict[str, object]],
+    panchina_df: pd.DataFrame,
+) -> None:
+    """Tab strip ScalerBot-like (CHG-2026-05-02-026): 4 tab di sezione cart/panchina.
+
+    Tab 1 (Carrello) = `_render_cart_table` (esistente).
+    Tab 2 (Panchina) = `_render_panchina_table` (riattivato post-CHG-022).
+    Tab 3 (Comparazione Fornitori) = shell ADR-0022 proposed.
+    Tab 4 (Centrale Validazione) = shell ADR-0023 proposed.
+    """
+    tabs = st.tabs(
+        [
+            "🛒 Carrello",
+            "🪑 Panchina",
+            "🤝 Comparazione Fornitori",
+            "✅ Centrale Validazione",
+        ],
+    )
+    with tabs[0]:
+        _render_cart_table(cart_items)
+    with tabs[1]:
+        _render_panchina_table(panchina_df)
+    with tabs[2]:
+        st.markdown(
+            """
+            <div class="talos-shell-info">
+              <div class="talos-shell-info-icon">◇</div>
+              <div class="talos-shell-info-title">Comparazione Fornitori</div>
+              <div class="talos-shell-info-meta">In arrivo · ADR-0022 proposed
+              (multi-supplier per ASIN, scelta best-cost vs reliability).</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with tabs[3]:
+        st.markdown(
+            """
+            <div class="talos-shell-info">
+              <div class="talos-shell-info-icon">◇</div>
+              <div class="talos-shell-info-title">Centrale Validazione</div>
+              <div class="talos-shell-info-meta">In arrivo · ADR-0023 proposed
+              (workflow human-in-the-loop su match ambigui + validazione
+              manuale ordini riga per riga).</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
     """CHG-2026-05-02-022: Cart exhaustive (TUTTI gli ASIN del listino con reason flag).
 
@@ -1977,6 +2059,27 @@ _TALOS_CSS = """
   .talos-tile-projection-meta {
     font-size: 0.78rem; color: #8B949E; margin-top: 0.2rem;
   }
+
+  /* Shell tab placeholder (CHG-2026-05-02-026) */
+  .talos-shell-info {
+    padding: 2rem 1.5rem;
+    border: 1px dashed #C9A96155; border-radius: 12px;
+    background: linear-gradient(135deg, #0E1117 0%, #161B22 100%);
+    text-align: center;
+    animation: talos-fade-in 480ms ease-out;
+  }
+  .talos-shell-info-icon {
+    font-size: 2.4rem; color: #C9A961; letter-spacing: 0.3rem;
+    margin-bottom: 0.6rem;
+  }
+  .talos-shell-info-title {
+    font-size: 1.1rem; color: #E6EDF3; font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+  .talos-shell-info-meta {
+    font-size: 0.85rem; color: #8B949E; max-width: 460px;
+    margin: 0 auto;
+  }
 </style>
 """
 
@@ -2265,6 +2368,10 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         f"Budget T+1 (R-07) € {result.budget_t1:,.2f}",
     )
 
+    # CHG-2026-05-02-026: 3 bottoni azione header shell (Satura Cash /
+    # WhatsApp / Chiudi Ciclo) disabled. Wireup reali post ADR proposed.
+    _render_action_buttons_shell()
+
     # CHG-2026-05-02-006: caption audit V_tot source extracted to helper.
     from talos.ui.listino_input import format_v_tot_source_caption  # noqa: PLC0415
 
@@ -2274,6 +2381,8 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
 
     # CHG-2026-05-02-022 cart exhaustive: mostra TUTTI gli ASIN del listino
     # con qty (0+) e reason flag esplicito.
+    # CHG-2026-05-02-026: cart + panchina ora in tab strip (Carrello/Panchina/
+    # Comparazione Fornitori shell/Centrale Validazione shell).
     cart_items_view = [
         {
             "asin": item.asin,
@@ -2285,7 +2394,10 @@ def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 �
         }
         for item in result.cart.items
     ]
-    _render_cart_table(cart_items_view)
+    _render_tabs_section(
+        cart_items=cart_items_view,
+        panchina_df=result.panchina,
+    )
 
     with st.expander("Listino completo enriched (audit / debug)"):
         enriched_view, enriched_cfg = _percentage_view(result.enriched_df)
