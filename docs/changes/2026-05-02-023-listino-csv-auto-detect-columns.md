@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-023
 date: 2026-05-02
 adr_ref: ADR-0016, ADR-0017, ADR-0019, ADR-0014
-commit: TBD
+commit: aaad10f
 ---
 
 ## What
@@ -64,4 +64,4 @@ ruff/format/mypy strict OK. **TBD PASS** (TBD unit/gov/golden + 160 integration)
 - Predecessore: CHG-2026-05-01-020 (`parse_descrizione_prezzo_csv` MVP), CHG-2026-05-02-011 (header normalization).
 - `parse_eur` riusato da `src/talos/io_/scraper.py:238`.
 - Decisione Leader 2026-05-02 round 7: "i listini accettati non devono iniziare con `descrizione`/`prezzo`, i due dati devono essere in colonne separate".
-- Commit: TBD.
+- Commit: `aaad10f`.
