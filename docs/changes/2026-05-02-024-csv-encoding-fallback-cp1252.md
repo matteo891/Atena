@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-024
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0019, ADR-0014
-commit: TBD
+commit: f7ed39e
 ---
 
 ## What
@@ -61,4 +61,4 @@ ruff/format/mypy strict OK. **921 PASS** (+5 vs 916).
 - ADR-0017, ADR-0019, ADR-0014.
 - Predecessore: CHG-2026-05-02-007 (multi-format upload).
 - Bug Leader 2026-05-02: `'utf-8' codec can't decode byte 0x97 in position 30`.
-- Commit: TBD.
+- Commit: `f7ed39e`.
