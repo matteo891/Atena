@@ -205,10 +205,14 @@ class _LiveKeepaAdapter:
       Buy Box reale (validato live su B0CSTC2RDW Galaxy S24: scraper
       €549.00 == Keepa NEW €549.00).
     - **bsr source A**: `data['SALES']` (BSR root categoria).
-    - **fee_fba policy alpha''**: SEMPRE `fee_fba_eur=None`. Il
-      `pickAndPackFee` Keepa NON e' equivalente alla formula L11b
-      Frozen del Leader (ordine di grandezza ~10x diverso). Caller
-      riceve `KeepaMissError` -> fallback `fee_fba_manual` CHG-022.
+    - **fee_fba policy alpha-prime (errata CHG-2026-05-02-040)**:
+      `fee_fba_eur` ora popolato da `product["fbaFees"]["pickAndPackFee"]`
+      Keepa quando disponibile (cents → EUR via /100). Decisione alpha-prime
+      originale (sempre None) INVERTITA dopo calibrazione ground truth
+      ScalerBot500K (CHG-039): la fee atomica Keepa è quella che
+      ScalerBot stesso usa per ROI/cart (€3 vs €22 L11b). `fee_fba_manual`
+      L11b resta fallback solo quando Keepa non espone il campo
+      (KeepaMissError → caller fallback formula manuale).
 
     Lazy init: `keepa.Keepa(api_key)` istanzia al primo `query()` per
     evitare network al boot del client (test unit non devono pagare
@@ -281,12 +285,26 @@ class _LiveKeepaAdapter:
             except (TypeError, ValueError):
                 amazon_buybox_share = None
 
-        # Decisione alpha'': fee_fba_eur sempre None (caller usa fee_fba_manual).
+        # CHG-2026-05-02-040: errata alpha-prime invertita post calibrazione ground
+        # truth ScalerBot500K (CHG-039). La fee_fba atomica Keepa
+        # (`pickAndPackFee`) è quella effettivamente usata da ScalerBot per
+        # decidere acquisti. Manteniamo `fee_fba_manual` L11b come FALLBACK
+        # per ASIN dove Keepa non espone il dato (KeepaMissError → caller
+        # usa fee_fba_manual). Decisione Leader 2026-05-02 round 7+ ratificata.
+        # Keepa espone `pickAndPackFee` in cents (centesimi di EUR).
+        fba_fees = product.get("fbaFees") or {}
+        pick_pack_cents = _safe_int(fba_fees.get("pickAndPackFee"))
+        fee_fba_eur: Decimal | None = (
+            Decimal(pick_pack_cents) / Decimal(100)
+            if pick_pack_cents is not None and pick_pack_cents > 0
+            else None
+        )
+
         return KeepaProduct(
             asin=asin,
             buybox_eur=buybox_eur,
             bsr=bsr,
-            fee_fba_eur=None,
+            fee_fba_eur=fee_fba_eur,
             drops_30=drops_30,
             buy_box_avg90=buy_box_avg90,
             amazon_buybox_share=amazon_buybox_share,

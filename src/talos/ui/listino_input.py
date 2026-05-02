@@ -214,6 +214,9 @@ class ResolvedRow:
     drops_30: int | None = None
     buy_box_avg90: Decimal | None = None
     amazon_buybox_share: float | None = None
+    # CHG-2026-05-02-040: fee_fba atomica Keepa (errata alpha-prime invertita).
+    # `None` → fallback fee_fba_manual L11b nell'orchestrator.
+    fee_fba_eur: Decimal | None = None
 
 
 def _column_price_parseable_ratio(series: pd.Series) -> float:
@@ -479,6 +482,7 @@ class _LiveLookupSnapshot:
     drops_30: int | None = None
     buy_box_avg90: Decimal | None = None
     amazon_buybox_share: float | None = None
+    fee_fba_eur: Decimal | None = None
     notes: tuple[str, ...] = ()
 
 
@@ -513,6 +517,8 @@ def _fetch_buybox_live_or_none(
         drops_30=getattr(product, "drops_30", None),
         buy_box_avg90=getattr(product, "buy_box_avg90", None),
         amazon_buybox_share=getattr(product, "amazon_buybox_share", None),
+        # CHG-2026-05-02-040: fee_fba atomica Keepa (errata alpha-prime invertita).
+        fee_fba_eur=getattr(product, "fee_fba_eur", None),
     )
 
 
@@ -593,6 +599,8 @@ def resolve_listino_with_cache(
                     drops_30=snap.drops_30,
                     buy_box_avg90=snap.buy_box_avg90,
                     amazon_buybox_share=snap.amazon_buybox_share,
+                    # CHG-2026-05-02-040: fee_fba atomica Keepa.
+                    fee_fba_eur=snap.fee_fba_eur,
                 ),
             )
             continue
@@ -663,6 +671,8 @@ def _resolved_row_from_result(
         drops_30=result.selected.drops_30,
         buy_box_avg90=result.selected.buy_box_avg90,
         amazon_buybox_share=result.selected.amazon_buybox_share,
+        # CHG-2026-05-02-040: fee_fba atomica Keepa propagata dal candidato.
+        fee_fba_eur=result.selected.fee_fba_eur,
     )
 
 
@@ -792,6 +802,9 @@ def build_listino_raw_from_resolved(
             "buy_box_avg90": (float(r.buy_box_avg90) if r.buy_box_avg90 is not None else None),
             "amazon_buybox_share": r.amazon_buybox_share,
             "drops_30": r.drops_30,
+            # CHG-2026-05-02-040: fee_fba atomica Keepa (errata alpha-prime invertita).
+            # `None` → orchestrator fallback fee_fba_manual L11b.
+            "fee_fba_eur_keepa": (float(r.fee_fba_eur) if r.fee_fba_eur is not None else None),
         }
         if has_category_node:
             record["category_node"] = r.category_node or ""
@@ -846,6 +859,8 @@ def apply_candidate_overrides(
                 drops_30=match.drops_30,
                 buy_box_avg90=match.buy_box_avg90,
                 amazon_buybox_share=match.amazon_buybox_share,
+                # CHG-2026-05-02-040: fee_fba atomica Keepa.
+                fee_fba_eur=match.fee_fba_eur,
                 notes=(
                     *row.notes,
                     f"override manuale CFO: {match.asin} (era {original_asin or '(nessuno)'})",

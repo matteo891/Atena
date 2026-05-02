@@ -92,6 +92,9 @@ class ResolutionCandidate:
     drops_30: int | None = None
     buy_box_avg90: Decimal | None = None
     amazon_buybox_share: float | None = None
+    # CHG-2026-05-02-040: fee_fba atomica Keepa (errata alpha-prime invertita).
+    # `None` → fallback fee_fba_manual L11b (Samsung-specific) downstream.
+    fee_fba_eur: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -275,6 +278,7 @@ class _LiveAsinResolver:
             drops_30: int | None = None
             buy_box_avg90: Decimal | None = None
             amazon_buybox_share: float | None = None
+            fee_fba_eur_keepa: Decimal | None = None
             try:
                 product = self._lookup(serp_item.asin)
                 # CHG-2026-05-02-037 hotfix: defensive `getattr` per tolleranza
@@ -287,6 +291,8 @@ class _LiveAsinResolver:
                 drops_30 = getattr(product, "drops_30", None)
                 buy_box_avg90 = getattr(product, "buy_box_avg90", None)
                 amazon_buybox_share = getattr(product, "amazon_buybox_share", None)
+                # CHG-2026-05-02-040: propaga fee_fba atomica Keepa.
+                fee_fba_eur_keepa = getattr(product, "fee_fba_eur", None)
             except Exception as exc:  # noqa: BLE001 — lookup puo' lanciare KeepaTransient/Rate/Selector*; tutti -> note + buybox=None
                 notes.append(
                     f"candidato {serp_item.asin} lookup failed: {type(exc).__name__}",
@@ -306,6 +312,7 @@ class _LiveAsinResolver:
                     drops_30=drops_30,
                     buy_box_avg90=buy_box_avg90,
                     amazon_buybox_share=amazon_buybox_share,
+                    fee_fba_eur=fee_fba_eur_keepa,
                 ),
             )
 

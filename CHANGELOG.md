@@ -118,6 +118,15 @@ Con CHG-036, i 3 filtri pull-only (Amazon Presence/Stress Test/Ghigliottina) si 
 - TALOS `fee_fba_manual` L11b ≈ €22 vs ScalerBot fee atomica ≈ €3. 6-50x. 5/6 ASIN ScalerBot CARRELLO sarebbero VETOed da TALOS L11b (ROI < 8%). **Bot inutilizzabile in produzione finché Leader ratifica errata corrige ADR-0017 α'' policy fee_fba**. Match conformi: ROI exact (con atomica), velocity badge perfetto, qty_target ±2. [CHG-2026-05-02-039]
 - Decisione Leader pendente: A) mantieni L11b conservativo, B) sostituisci → atomica (allinea ScalerBot), C) hybrid Keepa-live + L11b fallback. [CHG-2026-05-02-039]
 
+### Changed (CHG-2026-05-02-040 — Errata ADR-0017 fee_fba atomica Keepa)
+- Decisione α'' INVERTITA. `_LiveKeepaAdapter.query()` parsa `product["fbaFees"]["pickAndPackFee"]` cents → EUR Decimal. Pipeline propagation: `KeepaProduct → ProductData → ResolutionCandidate → ResolvedRow → listino_raw colonna fee_fba_eur_keepa → orchestrator._enrich_listino` (preferisce Keepa, L11b fallback). `fee_fba_manual` L11b conservata per fallback Keepa miss / no-KEEPA_API_KEY. [CHG-2026-05-02-040]
+- `docs/decisions/ADR-0017-stack-acquisizione-dati.md` sezione `## Errata` aggiunta con razionale post-calibrazione + pattern propagation. [CHG-2026-05-02-040]
+
+### Added (CHG-2026-05-02-040)
+- `tests/unit/test_keepa_client.py` — 3 test post-errata (KeepaProduct atomica field, fetch_fee_fba ritorna atomica quando presente, KeepaMiss quando None). [CHG-2026-05-02-040]
+- `tests/unit/test_orchestrator_fee_fba_keepa_priority.py` — nuovo: 3 test (Keepa preferred / L11b fallback / backwards-compat). [CHG-2026-05-02-040]
+- `tests/integration/test_live_keepa.py` — 2 test legacy aggiornati a tolleranza errata (Keepa atomica O miss accettati). [CHG-2026-05-02-040]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.

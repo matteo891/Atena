@@ -212,7 +212,21 @@ def _enrich_listino(
     impone. Per Samsung MVP (~100-500 righe) il costo e' trascurabile.
     """
     out = listino_raw.copy()
-    out["fee_fba_eur"] = out["buy_box_eur"].apply(fee_fba_manual)
+    # CHG-2026-05-02-040: errata alpha-prime invertita post calibrazione ground
+    # truth ScalerBot500K (CHG-039). Se il listino_raw ha la colonna
+    # `fee_fba_eur_keepa` popolata (atomica da Keepa pickAndPackFee), usa
+    # quella; altrimenti fallback a `fee_fba_manual` L11b (Samsung-specific).
+    if "fee_fba_eur_keepa" in out.columns:
+        out["fee_fba_eur"] = out.apply(
+            lambda r: (
+                float(r["fee_fba_eur_keepa"])
+                if r.get("fee_fba_eur_keepa") is not None
+                else fee_fba_manual(float(r["buy_box_eur"]))
+            ),
+            axis=1,
+        )
+    else:
+        out["fee_fba_eur"] = out["buy_box_eur"].apply(fee_fba_manual)
     out["referral_fee_resolved"] = out.apply(
         lambda r: _resolve_referral_fee(r, referral_fee_overrides),
         axis=1,
