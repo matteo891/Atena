@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-033
 date: 2026-05-02
 adr_ref: ADR-0022, ADR-0018, ADR-0021, ADR-0019, ADR-0014
-commit: TBD
+commit: f042822
 ---
 
 ## What
@@ -75,4 +75,4 @@ ruff/format/mypy strict OK. **TBD PASS**.
 - Successore: CHG-034 (errata ADR-0018 drops_30 V_tot upgrade).
 - Pattern: Arsenale 180k filtro 1/4 (Ghigliottina), chiude i 3 filtri
   ratificati di CHG-029/030.
-- Commit: TBD.
+- Commit: `f042822`.
