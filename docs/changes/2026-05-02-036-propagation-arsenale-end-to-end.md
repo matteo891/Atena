@@ -2,7 +2,7 @@
 id: CHG-2026-05-02-036
 date: 2026-05-02
 adr_ref: ADR-0017, ADR-0024, ADR-0023, ADR-0022, ADR-0018, ADR-0019, ADR-0014
-commit: TBD
+commit: 06afe52
 ---
 
 ## What
@@ -62,4 +62,4 @@ ruff/format/mypy strict OK. **1034 PASS** (+4 vs 1030 CHG-035).
   token Keepa per ASIN, scope CHG separato).
 - Pattern Arsenale 180k: PIPELINE END-TO-END CHIUSA (mancano solo dati
   reali per attivare i filtri, ma il telaio è pronto).
-- Commit: TBD.
+- Commit: `06afe52`.
