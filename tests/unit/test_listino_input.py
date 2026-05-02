@@ -112,13 +112,13 @@ def test_parse_csv_with_optional_columns() -> None:
     assert warnings == []
 
 
-def test_parse_csv_missing_required_columns_raises() -> None:
-    """Manca `descrizione` o `prezzo` -> ValueError."""
-    df = pd.DataFrame({"descrizione": ["x"]})
-    with pytest.raises(ValueError, match="prezzo"):
+def test_parse_csv_single_column_raises() -> None:
+    """1 sola colonna -> ValueError (CHG-023: vincolo 2 colonne separate)."""
+    df = pd.DataFrame({"descrizione": ["Galaxy S24"]})
+    with pytest.raises(ValueError, match="2 colonne separate"):
         parse_descrizione_prezzo_csv(df)
-    df2 = pd.DataFrame({"prezzo": [100]})
-    with pytest.raises(ValueError, match="descrizione"):
+    df2 = pd.DataFrame({"prezzo": [549]})
+    with pytest.raises(ValueError, match="2 colonne separate"):
         parse_descrizione_prezzo_csv(df2)
 
 
@@ -161,6 +161,189 @@ def test_parse_csv_normalizes_whitespace_in_description() -> None:
     )
     rows, _ = parse_descrizione_prezzo_csv(df)
     assert rows[0].descrizione == "Galaxy S24"
+
+
+# ---------------------------------------------------------------------------
+# CHG-2026-05-02-023: auto-detect colonne (alias + heuristica)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("desc_header", "prezzo_header"),
+    [
+        ("prodotto", "costo"),
+        ("articolo", "costo_unitario"),
+        ("title", "price"),
+        ("nome", "prezzo_eur"),
+        ("name", "cst"),
+        ("description", "eur"),
+    ],
+)
+def test_parse_csv_detects_alias_headers(
+    desc_header: str,
+    prezzo_header: str,
+) -> None:
+    """Alias canonici (case-insensitive) → riconoscimento senza heuristica."""
+    df = pd.DataFrame(
+        [["Galaxy S24 256GB", 549.00], ["iPhone 15 Pro", 1199.00]],
+        columns=[desc_header.upper(), prezzo_header.title()],
+    )
+    rows, warnings = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 2
+    assert rows[0].descrizione == "Galaxy S24 256GB"
+    assert rows[0].prezzo_eur == Decimal("549.00")
+    assert warnings == []
+
+
+def test_parse_csv_heuristic_detects_anonymous_columns() -> None:
+    """Header anonimi (`Unnamed: 0/1` o numerici) → detect via parseability."""
+    df = pd.DataFrame(
+        [["Galaxy S24 256GB Onyx", 549.00], ["iPhone 15 Pro 128", 1199.00]],
+        columns=["Unnamed: 0", "Unnamed: 1"],
+    )
+    rows, warnings = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 2
+    assert rows[0].descrizione == "Galaxy S24 256GB Onyx"
+    assert rows[0].prezzo_eur == Decimal("549.00")
+    assert warnings == []
+
+
+def test_parse_csv_heuristic_european_price_strings() -> None:
+    """Prezzi formato italiano "€ 549,99" come stringa → detect + parse OK."""
+    df = pd.DataFrame(
+        {
+            "Articolo": ["Galaxy S24 256GB", "iPhone 15 Pro"],
+            "Costo unitario": ["€ 549,99", "1.199,00"],
+        },
+    )
+    rows, warnings = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 2
+    assert rows[0].prezzo_eur == Decimal("549.99")
+    assert rows[1].prezzo_eur == Decimal("1199.00")
+    assert warnings == []
+
+
+def test_parse_csv_heuristic_optional_columns_preserved() -> None:
+    """Detect alias prezzo + colonne opzionali (`v_tot`/`s_comp`) per nome."""
+    df = pd.DataFrame(
+        {
+            "Prodotto": ["Galaxy S24"],
+            "Costo": [549.00],
+            "v_tot": [100],
+            "s_comp": [5],
+            "category_node": ["Smartphone"],
+        },
+    )
+    rows, warnings = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 1
+    assert rows[0].v_tot == 100
+    assert rows[0].s_comp == 5
+    assert rows[0].category_node == "Smartphone"
+    assert warnings == []
+
+
+def test_parse_csv_heuristic_extra_text_column_ignored() -> None:
+    """Colonne extra (note CFO, etc) ignorate; detect resta deterministico."""
+    df = pd.DataFrame(
+        {
+            "Articolo": ["Galaxy S24 256GB Onyx Premium edition"],
+            "Note CFO": ["consegna entro venerdi prossimo"],
+            "Prezzo": [549.00],
+        },
+    )
+    rows, _ = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 1
+    assert rows[0].descrizione == "Galaxy S24 256GB Onyx Premium edition"
+    assert rows[0].prezzo_eur == Decimal("549.00")
+
+
+def test_parse_csv_no_price_candidate_raises() -> None:
+    """0 colonne candidate prezzo (tutte stringhe non-EUR) → ValueError."""
+    df = pd.DataFrame(
+        {
+            "Articolo": ["Galaxy S24"],
+            "Note": ["consegna domani"],
+        },
+    )
+    with pytest.raises(ValueError, match="nessuna colonna riconosciuta come prezzo"):
+        parse_descrizione_prezzo_csv(df)
+
+
+def test_parse_csv_no_description_candidate_raises() -> None:
+    """Prezzo detected via alias, ma colonna restante con stringhe troppo corte
+    (avg_len < 4) → 0 candidati descrizione → ValueError."""
+    df = pd.DataFrame(
+        {
+            "prezzo": [549.00, 1199.00],
+            "tag": ["a", "b"],
+        },
+    )
+    with pytest.raises(
+        ValueError,
+        match="nessuna colonna riconosciuta come descrizione",
+    ):
+        parse_descrizione_prezzo_csv(df)
+
+
+def test_parse_csv_ambiguous_price_tie_raises() -> None:
+    """2+ colonne candidate prezzo con stesso ratio (tie) → ValueError esplicito."""
+    df = pd.DataFrame(
+        {
+            "col_a": [100.0, 200.0, 300.0],
+            "col_b": [50.0, 75.0, 125.0],
+        },
+    )
+    with pytest.raises(ValueError, match="ambiguo"):
+        parse_descrizione_prezzo_csv(df)
+
+
+def test_parse_csv_alias_overrides_heuristic() -> None:
+    """Alias canonico ha precedenza sulla heuristica anche se ratio favorevole.
+
+    Scenario: header `Prezzo` esplicito + altra colonna numerica. La heuristica
+    vedrebbe entrambe come prezzo, ma l'alias vince → no ambiguità.
+    """
+    df = pd.DataFrame(
+        {
+            "Articolo": ["Galaxy S24"],
+            "Sconto applicato": [50.0],  # numerico ma non e' il prezzo
+            "Prezzo": [549.00],
+        },
+    )
+    rows, _ = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 1
+    assert rows[0].prezzo_eur == Decimal("549.00")
+
+
+def test_parse_csv_backwards_compat_canonical_headers() -> None:
+    """CHG-023 backwards-compat sentinel: header canonici → comportamento invariato."""
+    df = pd.DataFrame(
+        {
+            "descrizione": ["Galaxy S24"],
+            "prezzo": [549.00],
+            "v_tot": [100],
+        },
+    )
+    rows, warnings = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 1
+    assert rows[0].descrizione == "Galaxy S24"
+    assert rows[0].prezzo_eur == Decimal("549.00")
+    assert rows[0].v_tot == 100
+    assert warnings == []
+
+
+def test_parse_csv_european_price_in_canonical_column() -> None:
+    """`prezzo` canonico con valore "€ 549,99" stringa → fallback parse_eur."""
+    df = pd.DataFrame(
+        {
+            "descrizione": ["Galaxy S24"],
+            "prezzo": ["€ 549,99"],
+        },
+    )
+    rows, warnings = parse_descrizione_prezzo_csv(df)
+    assert len(rows) == 1
+    assert rows[0].prezzo_eur == Decimal("549.99")
+    assert warnings == []
 
 
 # ---------------------------------------------------------------------------

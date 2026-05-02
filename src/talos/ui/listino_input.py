@@ -50,6 +50,7 @@ from talos.extract.asin_resolver import (
     is_ambiguous as _is_ambiguous_threshold,
 )
 from talos.extract.velocity_estimator import V_TOT_SOURCE_BSR_ESTIMATE, resolve_v_tot
+from talos.io_.scraper import parse_eur
 from talos.persistence.asin_resolver_repository import (
     compute_description_hash,
     find_resolution_by_hash,
@@ -105,6 +106,43 @@ def _emit_cache_miss(*, table: str) -> None:
 
 # Colonne obbligatorie del CSV "umano" descrizione+prezzo.
 REQUIRED_DESCRIZIONE_PREZZO_COLUMNS: tuple[str, ...] = ("descrizione", "prezzo")
+
+# CHG-2026-05-02-023: alias accettati per auto-detect colonne CSV.
+# Il CFO non deve riformattare il proprio export: header diversi
+# (`Articolo`/`Costo unitario`/...) vengono riconosciuti via alias o
+# heuristica price-parseable (vedi `_detect_columns`).
+DESCRIZIONE_HEADER_ALIASES: frozenset[str] = frozenset(
+    {
+        "descrizione",
+        "description",
+        "prodotto",
+        "product",
+        "title",
+        "titolo",
+        "nome",
+        "name",
+        "articolo",
+        "item",
+    },
+)
+PREZZO_HEADER_ALIASES: frozenset[str] = frozenset(
+    {
+        "prezzo",
+        "price",
+        "costo",
+        "cost",
+        "prezzo_fornitore",
+        "prezzo_eur",
+        "costo_eur",
+        "costo_unitario",
+        "cst",
+        "eur",
+    },
+)
+# Soglie heuristica auto-detect (R-01: deterministiche, no fuzzy).
+_PRICE_PARSEABLE_THRESHOLD: float = 0.8  # ≥80% righe parseable -> candidato prezzo
+_DESC_MIN_AVG_LEN: float = 4.0  # avg string length per essere candidato descrizione
+_MIN_COLUMNS_REQUIRED: int = 2  # vincolo: descrizione + prezzo separate
 
 # Default per le 5 colonne `REQUIRED_INPUT_COLUMNS` non risolvibili dal
 # resolver (ADR-0017 + CHG-039). Override-abili dal CSV: se la colonna
@@ -171,6 +209,139 @@ class ResolvedRow:
     bsr_root: int | None = None
 
 
+def _column_price_parseable_ratio(series: pd.Series) -> float:
+    """Frazione di valori parseable come EUR via `parse_eur` o numerici nativi.
+
+    CHG-2026-05-02-023: oracle price-detection per `_detect_columns`.
+    Tratta `int/float` nativi pandas come prezzi validi (CSV con
+    tipi inferiti). Stringhe parsate via `parse_eur` (italiano/anglo).
+    Bool esclusi (CSV potrebbe avere flag boolean che NON sono prezzi).
+    NaN/None contano nel denominatore solo se ci sono valori non-null
+    nella colonna (denominatore = righe non-null).
+    """
+    n_total = 0
+    n_parseable = 0
+    for value in series:
+        if value is None or not _is_finite(value):
+            continue
+        n_total += 1
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, (int, float, Decimal)):
+            n_parseable += 1
+            continue
+        text = str(value).strip()
+        if not text:
+            continue
+        if parse_eur(text) is not None:
+            n_parseable += 1
+    return n_parseable / n_total if n_total else 0.0
+
+
+def _column_avg_string_length(series: pd.Series) -> float:
+    """Avg lunghezza stringhe (escluse NaN/None/empty) — oracle desc-detection."""
+    lengths: list[int] = []
+    for value in series:
+        if value is None or not _is_finite(value):
+            continue
+        text = str(value).strip()
+        if text:
+            lengths.append(len(text))
+    return sum(lengths) / len(lengths) if lengths else 0.0
+
+
+def _detect_columns(df: pd.DataFrame) -> tuple[str, str]:
+    """Identifica le 2 colonne descrizione/prezzo via alias + heuristica.
+
+    CHG-2026-05-02-023: il CFO non deve riformattare il CSV. Strategia
+    deterministica:
+
+    1. **Match per alias canonico** (`DESCRIZIONE_HEADER_ALIASES` /
+       `PREZZO_HEADER_ALIASES`). Header già normalizzati (strip+lower).
+    2. Per le colonne mancanti via alias: **heuristica price-parseable**
+       (≥80% righe via `parse_eur` o numerico nativo) per il prezzo,
+       **avg length ≥4 char** per la descrizione.
+    3. Tie esatto sul max → `ValueError` esplicito (no guess silente).
+
+    R-01 NO SILENT DROPS: errori espliciti per <2 colonne / 0 candidati
+    prezzo / tie ambiguo / 0 candidati descrizione.
+
+    Le colonne opzionali (`v_tot`/`s_comp`/`category_node`) NON sono
+    soggette a detection: continuano a matchare per nome canonico nel
+    chiamante (zero behavior change).
+    """
+    cols = [str(c) for c in df.columns]
+
+    if len(cols) < _MIN_COLUMNS_REQUIRED:
+        msg = (
+            f"CSV non valido: rilevate {len(cols)} colonne. "
+            f"Servono almeno 2 colonne separate (descrizione + prezzo). "
+            f"Verifica il separatore CSV."
+        )
+        raise ValueError(msg)
+
+    desc_col = next((c for c in cols if c in DESCRIZIONE_HEADER_ALIASES), None)
+    prezzo_col = next(
+        (c for c in cols if c != desc_col and c in PREZZO_HEADER_ALIASES),
+        None,
+    )
+
+    # Heuristica per le colonne non risolte via alias.
+    excluded = {c for c in (desc_col, prezzo_col) if c is not None}
+    remaining = [c for c in cols if c not in excluded]
+
+    if prezzo_col is None:
+        ratios = [(c, _column_price_parseable_ratio(df[c])) for c in remaining]
+        candidates = sorted(
+            [(c, r) for c, r in ratios if r >= _PRICE_PARSEABLE_THRESHOLD],
+            key=lambda x: -x[1],
+        )
+        if not candidates:
+            msg = (
+                f"CSV non valido: nessuna colonna riconosciuta come prezzo. "
+                f"Aliases supportati: {sorted(PREZZO_HEADER_ALIASES)}. "
+                f"In alternativa una colonna deve contenere almeno "
+                f"{int(_PRICE_PARSEABLE_THRESHOLD * 100)}% di valori EUR parseable."
+            )
+            raise ValueError(msg)
+        if len(candidates) > 1 and candidates[0][1] == candidates[1][1]:
+            tied = [c for c, r in candidates if r == candidates[0][1]]
+            msg = (
+                f"CSV ambiguo: piu' colonne candidate prezzo con ratio identico "
+                f"({candidates[0][1]:.2f}): {tied}. "
+                f"Specifica un header esplicito tra {sorted(PREZZO_HEADER_ALIASES)}."
+            )
+            raise ValueError(msg)
+        prezzo_col = candidates[0][0]
+        remaining = [c for c in remaining if c != prezzo_col]
+
+    if desc_col is None:
+        lengths = [(c, _column_avg_string_length(df[c])) for c in remaining]
+        candidates = sorted(
+            [(c, length) for c, length in lengths if length >= _DESC_MIN_AVG_LEN],
+            key=lambda x: -x[1],
+        )
+        if not candidates:
+            msg = (
+                f"CSV non valido: nessuna colonna riconosciuta come descrizione. "
+                f"Aliases supportati: {sorted(DESCRIZIONE_HEADER_ALIASES)}. "
+                f"In alternativa una colonna deve contenere stringhe di almeno "
+                f"{_DESC_MIN_AVG_LEN:.0f} caratteri media."
+            )
+            raise ValueError(msg)
+        if len(candidates) > 1 and candidates[0][1] == candidates[1][1]:
+            tied = [c for c, length in candidates if length == candidates[0][1]]
+            msg = (
+                f"CSV ambiguo: piu' colonne candidate descrizione con avg length identica "
+                f"({candidates[0][1]:.2f}): {tied}. "
+                f"Specifica un header esplicito tra {sorted(DESCRIZIONE_HEADER_ALIASES)}."
+            )
+            raise ValueError(msg)
+        desc_col = candidates[0][0]
+
+    return desc_col, prezzo_col
+
+
 def parse_descrizione_prezzo_csv(
     df: pd.DataFrame,
 ) -> tuple[list[DescrizionePrezzoRow], list[str]]:
@@ -179,25 +350,33 @@ def parse_descrizione_prezzo_csv(
     Ritorna `(rows, warnings)`. Le righe non parsabili vengono
     skippate con warning esplicito (R-01 UX-side: l'utente sa cosa
     e' stato escluso). Solleva `ValueError` se mancano colonne
-    obbligatorie.
+    obbligatorie o se l'auto-detect non riesce a identificarle.
 
     CHG-2026-05-02-011: header normalizzati (strip + lower) per tolleranza
-    Excel italiano / variazioni di case. Le colonne diventano accessibili
-    via nome canonico lower-case.
+    Excel italiano / variazioni di case.
 
-    Colonne opzionali con default:
+    CHG-2026-05-02-023: auto-detect colonne descrizione/prezzo. Header
+    canonici NON obbligatori: il parser identifica le 2 colonne via
+    alias (`prodotto`/`articolo`/`costo`/...) o heuristica
+    price-parseable (≥80% righe EUR-parseable per il prezzo,
+    avg-len ≥4 char per la descrizione). Le colonne riconosciute
+    vengono rinominate internamente a `descrizione`/`prezzo`.
+    Vincolo invariato: 2 colonne separate (no concatenazione).
+
+    Colonne opzionali con default (sempre per nome canonico):
     - `v_tot`: 0
     - `s_comp`: 0
     - `category_node`: None
     """
     df = df.rename(columns=lambda c: str(c).strip().lower() if c is not None else c)
-    missing = [c for c in REQUIRED_DESCRIZIONE_PREZZO_COLUMNS if c not in df.columns]
-    if missing:
-        msg = (
-            f"CSV non valido: colonne mancanti {missing}. "
-            f"Attese: {list(REQUIRED_DESCRIZIONE_PREZZO_COLUMNS)}."
-        )
-        raise ValueError(msg)
+    desc_col, prezzo_col = _detect_columns(df)
+    rename_map: dict[str, str] = {}
+    if desc_col != "descrizione":
+        rename_map[desc_col] = "descrizione"
+    if prezzo_col != "prezzo":
+        rename_map[prezzo_col] = "prezzo"
+    if rename_map:
+        df = df.rename(columns=rename_map)
 
     rows: list[DescrizionePrezzoRow] = []
     warnings: list[str] = []
@@ -206,7 +385,7 @@ def parse_descrizione_prezzo_csv(
         try:
             descrizione = str(raw["descrizione"]).strip()
             prezzo_raw = raw["prezzo"]
-            prezzo = Decimal(str(prezzo_raw)) if prezzo_raw is not None else None
+            prezzo = _coerce_prezzo(prezzo_raw)
         except (ValueError, TypeError, ArithmeticError) as exc:
             warnings.append(f"Riga {idx}: parse fallito ({exc!s})")
             continue
@@ -244,6 +423,29 @@ def parse_descrizione_prezzo_csv(
         )
 
     return rows, warnings
+
+
+def _coerce_prezzo(value: object) -> Decimal | None:
+    """Convert prezzo single-cell a Decimal con fallback su `parse_eur`.
+
+    CHG-2026-05-02-023: coerente con `_column_price_parseable_ratio`
+    (detect oracle). Numeri nativi → Decimal diretto. Stringhe → prima
+    Decimal diretto (fast path per "549.00"), poi `parse_eur` (formato
+    italiano/anglo "€ 549,99"). `None` se non parsabile.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return Decimal(text)
+    except (ValueError, ArithmeticError):
+        return parse_eur(text)
 
 
 def _is_finite(value: object) -> bool:

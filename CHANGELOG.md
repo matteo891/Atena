@@ -9,6 +9,13 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 ## [Unreleased]
 
+### Added
+- `src/talos/ui/listino_input.py` — `_detect_columns(df) -> tuple[str, str]` heuristica deterministica (alias canonici 10+10 → fallback ratio price-parseable ≥80% + avg-len descrizione ≥4 char). + `_column_price_parseable_ratio` / `_column_avg_string_length` oracle. + `_coerce_prezzo(value)` con fallback `parse_eur` per stringhe formato italiano (`€ 549,99`). + costanti `DESCRIZIONE_HEADER_ALIASES` / `PREZZO_HEADER_ALIASES` (frozenset). [CHG-2026-05-02-023]
+- `tests/unit/test_listino_input.py` — 12 test nuovi (alias parametrico 6-case, header anonimi, prezzi italiano, opzionali preservate, errori espliciti R-01, alias-overrides-heuristic, backwards-compat sentinel). [CHG-2026-05-02-023]
+
+### Changed
+- `parse_descrizione_prezzo_csv` ora chiama `_detect_columns` e rinomina internamente le colonne riconosciute a `descrizione`/`prezzo`. Header canonici NON più obbligatori. Vincolo 2 colonne separate invariato. R-01 NO SILENT DROPS: 4 errori espliciti (1-col / no-price-cand / tie-ambiguous / no-desc-cand). Backwards-compat 100% (header canonici matchano via alias al primo step). [CHG-2026-05-02-023]
+
 ## [0.22.0] — 2026-04-30 — 🎯 Schema Allegato A 10/10 COMPLETO: audit_log + trigger
 
 `AuditLog` (tabella `audit_log`) è la decima e ultima tabella dell'Allegato A. **Conclude la copertura dello schema verbatim** dell'ADR-0015. Append-only registry con funzione PL/pgSQL `record_audit_log()` + 3 trigger AFTER (storico_ordini, locked_in, config_overrides). Primi campi JSONB del DB (`before_data`, `after_data`). Revision Alembic `6e03f2a4f5a3`.
