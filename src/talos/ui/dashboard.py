@@ -444,9 +444,17 @@ def _render_metrics(saturation: float, budget_t1: float) -> None:
 
 def _render_cart_table(cart_items: list[dict[str, object]]) -> None:
     """Tabella Cart (ASIN allocati) + bottone export CSV."""
-    st.subheader("Cart — ASIN allocati (R-04 Locked-in + R-06 Tetris)")
+    _section("4", "Cart · ASIN allocati (R-04 Locked-in + R-06 Tetris)")
     if not cart_items:
-        st.info("Cart vuoto. Nessun ASIN allocato.")
+        st.markdown(
+            """
+            <div class="talos-empty">
+              <div class="talos-empty-icon">◇ ◇ ◇</div>
+              <div>Cart vuoto. Nessun ASIN allocato in questa sessione.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
     cart_df = pd.DataFrame(cart_items)
     cart_view, cart_cfg = _percentage_view(cart_df)
@@ -991,9 +999,17 @@ def _render_replay_result(replayed: SessionResult) -> None:
 
 def _render_panchina_table(panchina: pd.DataFrame) -> None:
     """Tabella Panchina (R-09: idonei scartati per cassa, ordinati VGP DESC) + export CSV."""
-    st.subheader("Panchina — Idonei scartati per capienza (R-09)")
+    _section("5", "Panchina · Idonei scartati per capienza (R-09)")
     if panchina.empty:
-        st.info("Panchina vuota. Tutti gli idonei sono in Cart.")
+        st.markdown(
+            """
+            <div class="talos-empty">
+              <div class="talos-empty-icon">◇ ◇ ◇</div>
+              <div>Panchina vuota. Tutti gli idonei sono in Cart.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
     display_cols = [
         c for c in ["asin", "vgp_score", "roi", "cost_eur", "qty_final"] if c in panchina.columns
@@ -1069,7 +1085,7 @@ def _render_descrizione_prezzo_flow_body(  # noqa: C901, PLR0911, PLR0915 — fl
         resolve_listino_with_cache,
     )
 
-    st.subheader("Listino con descrizione + prezzo (nuovo)")
+    _section("2", "Risoluzione descrizione → ASIN")
     st.caption(
         "Carica un CSV con colonne `descrizione` e `prezzo`. Il sistema risolve "
         "ogni descrizione in un ASIN candidato verificato con Keepa.",
@@ -1297,60 +1313,371 @@ def _render_ambiguous_candidate_overrides(
 
 _TALOS_CSS = """
 <style>
+  /* =============== Tipografia & base =============== */
   html, body, [class*="css"] { font-family: 'Georgia', 'Cambria', serif; }
   h1, h2, h3 { letter-spacing: 0.5px; font-weight: 600; }
-  .talos-header {
-    padding: 0.5rem 0 1rem 0;
-    border-bottom: 1px solid #C9A96133;
+
+  /* =============== Portale brand header =============== */
+  .talos-portal-hero {
+    text-align: center;
+    padding: 3rem 2rem 2.5rem 2rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(180deg, #161B22 0%, #0E1117 100%);
+    border: 1px solid #C9A96122;
+    border-radius: 16px;
+    position: relative;
+  }
+  .talos-portal-hero::before {
+    content: '';
+    position: absolute; top: 0; left: 50%;
+    width: 80px; height: 2px;
+    background: linear-gradient(90deg, transparent, #C9A961, transparent);
+    transform: translateX(-50%);
+  }
+  .talos-portal-mark {
+    font-size: 3.6rem; line-height: 1; margin: 0;
+    color: #C9A961; letter-spacing: 0.3rem;
+  }
+  .talos-portal-title {
+    font-size: 2.8rem; font-weight: 700; color: #E6EDF3;
+    margin: 0.6rem 0 0 0; letter-spacing: 0.08rem;
+  }
+  .talos-portal-tagline {
+    color: #C9A961; font-size: 0.85rem; letter-spacing: 0.4rem;
+    text-transform: uppercase; margin-top: 0.6rem;
+  }
+  .talos-portal-subtitle {
+    color: #8B949E; font-size: 1rem; margin-top: 1.2rem;
+    max-width: 640px; margin-left: auto; margin-right: auto;
+    font-style: italic;
+  }
+  .talos-section-label {
+    color: #8B949E; font-size: 0.7rem; letter-spacing: 0.3rem;
+    text-transform: uppercase; text-align: center; margin: 2rem 0 1rem 0;
+  }
+
+  /* =============== Module cards (portale) =============== */
+  .talos-module-card {
+    border: 1px solid #C9A96133;
+    border-radius: 12px;
+    padding: 1.8rem 1.6rem;
+    background: linear-gradient(180deg, #161B22 0%, #11161D 100%);
+    transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
     margin-bottom: 1rem;
   }
-  .talos-title {
-    font-size: 2.2rem; font-weight: 700; color: #E6EDF3; margin: 0;
+  .talos-module-card:hover {
+    border-color: #C9A961;
+    box-shadow: 0 8px 24px rgba(201, 169, 97, 0.12);
+    transform: translateY(-2px);
   }
-  .talos-tagline {
-    color: #C9A961; font-size: 0.95rem; letter-spacing: 1.5px;
-    text-transform: uppercase; margin-top: 0.25rem;
+  .talos-module-icon {
+    color: #C9A961; font-size: 1.6rem;
+    letter-spacing: 0.2rem; margin-bottom: 0.4rem;
   }
-  .talos-subtitle {
-    color: #8B949E; font-size: 0.95rem; margin-top: 0.5rem;
+  .talos-module-name {
+    color: #E6EDF3; font-size: 1.4rem; font-weight: 600;
+    margin: 0 0 0.2rem 0; letter-spacing: 0.05rem;
   }
-  [data-testid="stMetricValue"] { font-size: 1.6rem; font-weight: 600; }
+  .talos-module-codename {
+    color: #C9A961; font-size: 0.7rem; letter-spacing: 0.25rem;
+    text-transform: uppercase; margin-bottom: 0.8rem;
+  }
+  .talos-module-desc {
+    color: #8B949E; font-size: 0.9rem; line-height: 1.5;
+    margin-bottom: 1rem; min-height: 3rem;
+  }
+  .talos-module-disabled {
+    opacity: 0.45;
+  }
+  .talos-module-status {
+    display: inline-block;
+    padding: 0.15rem 0.6rem; border-radius: 999px;
+    font-size: 0.65rem; letter-spacing: 0.15rem;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .talos-module-status.live { background: #C9A96122; color: #C9A961; border: 1px solid #C9A96155; }
+  .talos-module-status.soon { background: #8B949E22; color: #8B949E; border: 1px solid #8B949E33; }
+
+  /* =============== Modulo: breadcrumb + header =============== */
+  .talos-breadcrumb {
+    color: #8B949E; font-size: 0.8rem; letter-spacing: 0.15rem;
+    text-transform: uppercase; margin-bottom: 0.4rem;
+  }
+  .talos-breadcrumb a, .talos-breadcrumb .crumb-current {
+    color: #C9A961;
+  }
+  .talos-module-header {
+    padding: 0.5rem 0 1.2rem 0;
+    border-bottom: 1px solid #C9A96122;
+    margin-bottom: 1.6rem;
+  }
+  .talos-module-header h1 {
+    font-size: 2rem; color: #E6EDF3; margin: 0;
+  }
+  .talos-module-header .subtitle {
+    color: #8B949E; font-size: 0.95rem; margin-top: 0.4rem; font-style: italic;
+  }
+
+  /* =============== Section divider con accent oro =============== */
+  .talos-section {
+    margin: 2rem 0 1rem 0;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid #21262D;
+    position: relative;
+  }
+  .talos-section::after {
+    content: ''; position: absolute; bottom: -1px; left: 0;
+    width: 48px; height: 2px; background: #C9A961;
+  }
+  .talos-section h2 {
+    color: #E6EDF3; font-size: 1.15rem; margin: 0;
+    letter-spacing: 0.05rem;
+  }
+  .talos-section .section-num {
+    color: #C9A961; font-weight: 700; margin-right: 0.6rem;
+  }
+
+  /* =============== Hero metric (KPI tile) =============== */
+  [data-testid="stMetric"] {
+    background: linear-gradient(180deg, #161B22 0%, #11161D 100%);
+    border: 1px solid #21262D;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    transition: border-color 150ms ease;
+  }
+  [data-testid="stMetric"]:hover { border-color: #C9A96155; }
+  [data-testid="stMetricValue"] {
+    font-size: 1.9rem; font-weight: 700; color: #E6EDF3;
+    letter-spacing: 0.02rem;
+  }
   [data-testid="stMetricLabel"] {
-    color: #8B949E; text-transform: uppercase; letter-spacing: 1px;
-    font-size: 0.75rem;
+    color: #C9A961; text-transform: uppercase;
+    letter-spacing: 0.18rem; font-size: 0.7rem; font-weight: 600;
   }
+  [data-testid="stMetricDelta"] { font-size: 0.85rem; }
+
+  /* =============== Bottoni =============== */
   .stButton > button {
     border: 1px solid #C9A96155;
     transition: all 150ms ease-in-out;
+    letter-spacing: 0.05rem;
+    font-weight: 500;
   }
-  .stButton > button:hover { border-color: #C9A961; background: #C9A96111; }
-  [data-testid="stSidebar"] h2 { color: #C9A961; font-size: 1.1rem; }
-  [data-testid="stDataFrame"] { padding: 0.5rem 0; }
+  .stButton > button:hover {
+    border-color: #C9A961;
+    background: #C9A96115;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(201, 169, 97, 0.1);
+  }
+  .stButton > button[kind="primary"] {
+    background: linear-gradient(180deg, #C9A961 0%, #B8985A 100%);
+    color: #0E1117; border: none; font-weight: 600;
+  }
+  .stButton > button[kind="primary"]:hover {
+    box-shadow: 0 6px 18px rgba(201, 169, 97, 0.3);
+  }
+
+  /* =============== Sidebar polished =============== */
+  [data-testid="stSidebar"] {
+    background: #11161D;
+    border-right: 1px solid #21262D;
+  }
+  [data-testid="stSidebar"] h2 {
+    color: #C9A961; font-size: 0.85rem;
+    letter-spacing: 0.25rem; text-transform: uppercase;
+    border-bottom: 1px solid #21262D; padding-bottom: 0.4rem;
+  }
+
+  /* =============== Tabelle =============== */
+  [data-testid="stDataFrame"] {
+    border: 1px solid #21262D;
+    border-radius: 8px;
+    padding: 0.4rem;
+  }
+
+  /* =============== Caption / info =============== */
   .stCaption { color: #8B949E !important; font-style: italic; }
+  [data-testid="stAlert"] { border-radius: 8px; }
+
+  /* =============== Empty state container =============== */
+  .talos-empty {
+    text-align: center; padding: 3rem 1rem;
+    color: #8B949E; border: 1px dashed #21262D;
+    border-radius: 12px; background: #0E111722;
+  }
+  .talos-empty-icon {
+    font-size: 2.4rem; color: #C9A96155;
+    margin-bottom: 0.8rem; letter-spacing: 0.4rem;
+  }
+
+  /* =============== Footer =============== */
+  .talos-footer {
+    margin-top: 4rem; padding-top: 1.2rem;
+    border-top: 1px solid #21262D;
+    text-align: center; color: #6B7280;
+    font-size: 0.75rem; letter-spacing: 0.15rem;
+    text-transform: uppercase;
+  }
 </style>
 """
 
 
-def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Streamlit multi-step
-    """Entrypoint Streamlit. Eseguito da `streamlit run`."""
+def _render_portal() -> None:
+    """Portale TALOS: hero + lista moduli (Demetra MVP, futuri locked)."""
+    st.markdown(
+        """
+        <div class="talos-portal-hero">
+          <div class="talos-portal-mark">◆</div>
+          <div class="talos-portal-title">TALOS</div>
+          <div class="talos-portal-tagline">Operational Intelligence Suite</div>
+          <div class="talos-portal-subtitle">
+            Hedge fund algoritmico per FBA Wholesale High-Ticket.
+            Suite modulare di moduli decisionali per il CFO.
+          </div>
+        </div>
+        <div class="talos-section-label">Moduli disponibili</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(
+            """
+            <div class="talos-module-card">
+              <div class="talos-module-icon">◈</div>
+              <div class="talos-module-codename">Demetra</div>
+              <div class="talos-module-name">Scaler 500k</div>
+              <div class="talos-module-desc">
+                Pipeline algoritmica FBA Wholesale: listino → ASIN verificati live →
+                VGP score → allocazione Tetris budget → carrello + panchina.
+              </div>
+              <div class="talos-module-status live">Live · MVP CFO</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Apri Demetra ▸",
+            key="open_demetra",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state.current_module = "demetra"
+            st.rerun()
+
+    with col2:
+        st.markdown(
+            """
+            <div class="talos-module-card talos-module-disabled">
+              <div class="talos-module-icon">◇</div>
+              <div class="talos-module-codename">Hermes</div>
+              <div class="talos-module-name">Order Dispatcher</div>
+              <div class="talos-module-desc">
+                Ordering automation: dal carrello Demetra all'invio ordini fornitori
+                + tracking conferme. R-03 ORDER-DRIVEN MEMORY end-to-end.
+              </div>
+              <div class="talos-module-status soon">Coming soon</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col3:
+        st.markdown(
+            """
+            <div class="talos-module-card talos-module-disabled">
+              <div class="talos-module-icon">◇</div>
+              <div class="talos-module-codename">Atena</div>
+              <div class="talos-module-name">Strategic Cockpit</div>
+              <div class="talos-module-desc">
+                Cruscotto direzionale: KPI multi-sessione, calibrazione algoritmi,
+                analisi storico ordini, governance ADR.
+              </div>
+              <div class="talos-module-status soon">Coming soon</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        """
+        <div class="talos-footer">
+          TALOS · powered by VGP/Tetris algorithm · ADR-driven governance
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_module_header(*, codename: str, module_name: str, subtitle: str) -> None:
+    """Header sezione modulo: breadcrumb + back button + titolo."""
+    col_back, col_title = st.columns([1, 9])
+    with col_back:
+        if st.button("◂ Portale", key="back_to_portal"):
+            st.session_state.current_module = None
+            st.rerun()
+    with col_title:
+        st.markdown(
+            f"""
+            <div class="talos-module-header">
+              <div class="talos-breadcrumb">
+                TALOS · <span class="crumb-current">{codename} · {module_name}</span>
+              </div>
+              <h1>{codename} — {module_name}</h1>
+              <div class="subtitle">{subtitle}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def _section(num: str, title: str) -> None:
+    """Render section divider con accent oro + numerazione."""
+    st.markdown(
+        f"""
+        <div class="talos-section">
+          <h2><span class="section-num">{num}</span>{title}</h2>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def main() -> None:
+    """Entrypoint Streamlit. Dispatcher portale TALOS / modulo Demetra."""
     st.set_page_config(
-        page_title="TALOS — Cruscotto Sessione",
+        page_title="TALOS · Operational Intelligence Suite",
         layout="wide",
         page_icon="◆",
         initial_sidebar_state="expanded",
     )
     st.markdown(_TALOS_CSS, unsafe_allow_html=True)
-    st.markdown(
-        """
-        <div class="talos-header">
-          <div class="talos-title">◆ TALOS</div>
-          <div class="talos-tagline">Scaler 500k · FBA Wholesale Engine</div>
-          <div class="talos-subtitle">
-            Listino → ASIN verificati live → VGP score → allocazione Tetris budget.
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+
+    if "current_module" not in st.session_state:
+        st.session_state.current_module = None
+
+    if st.session_state.current_module is None:
+        _render_portal()
+        return
+
+    if st.session_state.current_module == "demetra":
+        _render_demetra_module()
+        return
+
+    # Fallback: modulo sconosciuto -> reset.
+    st.session_state.current_module = None
+    st.rerun()
+
+
+def _render_demetra_module() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Streamlit multi-step
+    """Modulo Demetra · Scaler 500k. Pipeline VGP/Tetris end-to-end."""
+    _render_module_header(
+        codename="Demetra",
+        module_name="Scaler 500k",
+        subtitle="Listino → ASIN verificati live → VGP score → allocazione Tetris budget.",
     )
 
     factory_for_sidebar = get_session_factory_or_none()
@@ -1359,7 +1686,7 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
     # Decisione Leader 2026-05-01 round 4 (delta=A): convivenza dei 2 flow
     # CSV. Default = nuovo (descrizione+prezzo); legacy disponibile per
     # CSV gia' strutturati con ASIN noto.
-    st.subheader("1 · Listino di sessione")
+    _section("1", "Listino di sessione")
     mode = st.radio(
         "Formato sorgente",
         options=("Descrizione + prezzo", "ASIN già noto"),
@@ -1451,7 +1778,7 @@ def main() -> None:  # noqa: C901, PLR0911, PLR0912, PLR0915 — entry-point Str
 
     # Persistenza opzionale: graceful degrade se DB non disponibile.
     factory = get_session_factory_or_none()
-    st.subheader("Persistenza Sessione")
+    _section("6", "Persistenza & storico")
     if factory is None:
         st.info(
             "Persistenza disabilitata. Per attivarla, imposta `TALOS_DB_URL` "
